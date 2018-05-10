@@ -2,21 +2,24 @@
 
 ---
 
-## 第8 章 Detecting Duplicate Quora8
+## 第8章 检测重复的Quora问题
 
-Questions
-Quora (www.quora.com) is a community-driven question and answer website where users, either anonymously or publicly, ask and answer questions. In January 2017, Quora first released a public dataset consisting of question pairs, either duplicate or not. A duplicate pair of questions is semantically similar; in other words, two questions being duplicated means that they carry the same meaning, although they use a different set of words to express the exact same intent. For Quora, it is paramount to have a single question page for each distinct question, in order to offer a better service to users consulting its repository of answers, so they won't have to look for any more sources before finding all they need to know. Moderators can be helpful in avoiding duplicated content on the site, but that won't easily scale, given the increasing number of questions answered each day and a growing historical repository. In this case, an automation project based on Natural Language Processing (NLP) and deep learning could be the right solution for the task.
-This chapter will deal with understanding how to build a project based on TensorFlow that explicates the semantic similarity between sentences using the Quora dataset. The chapter is based on the work of Abhishek Thakur (https:// www	.linkedin	.com	/pulse	/duplicate	quora-question	-abhishek	-thakur	/) , who originally developed a solution based on the Keras package. The presented techniques can also easily be applied to other problems that deal with semantic similarity. In this project, we will cover the following:
-Feature engineering on text data
-TF-IDF and SVD
-Word2vec and GloVe based features
-Traditional machine learning models such as logistic regression and gradient boosting using xgboost
-Deep learning models including LSTM, GRU, and 1D-CNN
-By the end of the chapter, you will be able to train your own deep learning model on similar problems. To start with, let's have a quick look at the Quora dataset.
-Presenting the dataset
-The data, made available for non-commercial purposes (https:// www	.quora	.com	/about	/ tos) in a Kaggle competition (https:// www .kaggle	.com	/c /quora	-question	-pair	s) and on
-Quora's blog (https:// data	.quora	.com /First	-Quora	-Dataset	-Release	-Question	-	Pairs), consists of 404,351 question pairs with 255,045 negative samples (non-duplicates) and 149,306 positive samples (duplicates). There are approximately 40% positive samples, a slight imbalance that won't need particular corrections. Actually, as reported on the Quora blog, given their original sampling strategy, the number of duplicated examples in the dataset was much higher than the non-duplicated ones. In order to set up a more balanced dataset, the negative examples were upsampled by using pairs of related questions, that is, questions about the same topic that are actually not similar.
-Before starting work on this project, you can simply directly download the data, which is about 55 MB, from its Amazon S3 repository at this link: http:// qim	.ec .quoracdn	.net	/ quora_duplicate	_questions	.ts v into our working directory.
+Quora (www.quora.com)是一个社区驱动的问答网站。用户可以在上边公开的或者匿名的提出问题和回答问题。2017年1月， Quora第一次发布了一个包含问题对的数据集，其中的问题有可能是重复的。重复问题对在语义上是类似的。或者说，尽管两个问题使用不同的词汇，但是传达了相同的意思。为了给用户提供更好的答案集合展示以便尽快找出需要的信息，Quora需要为每一个问题都准备一个页面。这个工程量是非常大。主持人机制对于避免网站上的重复内容是很有帮助的，但是一旦每天回答的问题增多以及历史存量问题的扩大，这种机制就不容易扩展了。这种情况下，基于**自然语言理解（Natural Language Processing，NLP）**和深度学习的自动化项目就成了合适的方案。
+
+本章会介绍如何构建基于TensorFlow的项目，以便理解Quora数据集中句子之间的相似性问题。本章的内容基于Abhishek Thakur （https://www.linkedin.com/pulse/duplicate-quora-question-abhishek-thakur/）的工作。他基于Keras库开发了一套方案 。给出的处理技术也可以用在其它有关语义相似性的问题。在这个项目中，我们会介绍： 
+
+* 文本数据的特征工程Feature engineering on text data
+* TF-IDF和SVD
+* 基于特征的Word2vec和GloVe算法
+* 传统的机器学习模型，例如logistic回归，和使用`xgboost`的梯度加速
+* 深度学习模型，包括LSTM，GRU和1D-CNN
+
+学完本章，读者可以训练自己的深度学习模型，来解决类似的问题。首先，让我们看一下Quora数据集。
+
+### 展示数据集
+这个数据集仅面向非商业目的 （https://www.quora.com/about/tos），可以在Kaggle竞赛（https://www.kaggle.com/c/quora-question-pairs）和Quora的博客上（https://data.quora.com/First-Quora-Dataset-Release-Question-Pairs）获取。它包含404,351个问题对，其中255,045个负样本（非重复的）和149,306个正样本（重复的）。此数据集中，正样本的比例大约是40%。这说明存在轻度的数据不均衡，但是并不需要专门的处理。事实上，正如Quora博客所公布的，采用初始的采样策略，数据集中的重复样本要比非重复样本多得多。为了构建更加均衡的数据集，负样本需要通过相关问题进行升采样。这些问题是关于相同的主题，但是事实上并不相似。
+
+开始项目之前，读者可以下载数据集Before starting work on this project, you can simply directly download the data, which is about 55 MB, from its Amazon S3 repository at this link: http:// qim	.ec .quoracdn	.net	/ quora_duplicate	_questions	.ts v into our working directory.
 After loading it, we can start diving directly into the data by picking some example rows and examining them. The following diagram shows an actual snapshot of the few first rows from the dataset:
 
 First few rows of the Quora dataset
