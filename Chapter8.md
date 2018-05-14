@@ -67,12 +67,13 @@ Quora (www.quora.com)是一个社区驱动的问答网站。用户可以在上�
 
 ​        一些词语的存在，例如Hillary Clinton和Donald Trump，提示我们数据是在特定历史时期收集的。其中的许多问题也是阶段性的，只在数据收集的时间点上有意义。其他主题，例如programming language，World War或者earn money，不论是人们的兴趣还是答案的有效性性上将，也许会持久一些。
 
-查看数据之后，现在我们可以确定项目中要争取优化的目标。在这一章中，我们会使用 Throughout the chapter, we will be using accuracy as a metric to evaluate the performance of our models. Accuracy as a measure is simply focused on the effectiveness of the prediction, and it may miss some important differences between alternative models, such as discrimination power (is the model more able to detect duplicates or not?) or the exactness of probability scores (how much margin is there between being a duplicate and not being one?). We chose accuracy based on the fact that this metric was the one decided on by Quora's engineering team to create a benchmark for this dataset (as stated in this blog post of theirs: https:// engineering	.quora	.com	/ Semantic-Question	-Matching	-with	-Deep	-Learnin	g). Using accuracy as the metric makes it easier for us to evaluate and compare our models with the one from Quora's engineering team, and also several other research papers. In addition, in a real-world application, our work may simply be evaluated on the basis of how many times it is just right or wrong, regardless of other considerations.
-We can now proceed furthermore in our projects with some very basic feature engineering to start with.
+查看数据之后，现在我们可以确定项目中要争取优化的目标。在这一章中，我们会使准确率作为度量来评估模型的性能。准确率关注于预测的有效程度，可能会丢失不同模型之间的重要差异，例如鉴别能力（模型检测重复问题的能力更强）或者概率分数的正确度（重复问题和非重复问题的有多大区别？）。 我们选择准确率是基于以下事实：这个度量是被Quora工程团队拿来确定数据集的基准表现（其博客提到了这一点： https://engineering.quora.com/Semantic-Question-Matching-with-Deep-Learning）。使用准确率可以让我们的结果更易于和Quora工程团队的结果，以及其他科研文献的结果进行评估和比较。另外，在实际应用中，本书的工作可以基于预测正确错误与否进行快速评估，而不用涉及其他考量。
+
+现在，我们首先介绍基础的特征工程。
 
 ### 基础特征工程
 
-Before starting to code, we have to load the dataset in Python and also provide Python with all the necessary packages for our project. We will need to have these packages installed on our system (the latest versions should suffice, no need for any specific package version):
+开始编码之前，我们需要使用Python加载数据集，同时给Python环境提供项目必须的程序库。我们需要给系统安装一些库（最新版的就可以满足需求，不需要指定具体的版本号：
 
 * `Numpy` 
 * `pandas `
@@ -83,38 +84,40 @@ Before starting to code, we have to load the dataset in Python and also provide 
 * ` pyemd `
 * `NLTK`
 
-As we will be using each one of these packages in the project, we will provide specific instructions and tips to install them.
-For all dataset operations, we will be using pandas (and Numpy will come in handy, too). To install numpy and pandas:
+因为我们会在项目中使用到每一个库，所以我们会提供具体的安装说明和建议。
+
+对于数据集操作，我们会使用`pandas` （ `Numpy` 也会使用）。要安装`numpy`和`pandas`：
 
 ```
 pip install numpy 
 pip install pandas
 ```
-The dataset can be loaded into memory easily by using pandas and a specialized data structure, the pandas dataframe (we expect the dataset to be in the same directory as your script or Jupyter notebook):
+数据集可以通过使用`pandas`和具体的数据结构`pandas dataframe`加载到内存中（我们假设数据集和你的脚本或者Jupyter notebook位于同一个目录下）：
 ```python
 import pandas as pd 
 import numpy as np
 data = pd.read_csv('quora_duplicate_questions.tsv', sep='\t') 
 data = data.drop(['id', 'qid1', 'qid2'], axis=1)
 ```
-We will be using the pandas dataframe denoted by data throughout this chapter, and also when we work with our TensorFlow model and provide input to it.
-We can now start by creating some very basic features. These basic features include lengthbased features and string-based features:
+我们会在本章中使用`data` 表示`pandas dataframe` 。使用TensorFlow模型的时候，我们也会给它提供输入。
 
-1. Length of question1
+首先，我们可以构造一些基本的特征。这些基础特征包括基于长度的特征和基于字符串的特征：
 
-2. Length of question2
+1. 问题1的长度
 
-3. Difference between the two lengths
+2. 问题2的长度
 
-4. Character length of question1 without spaces
+3. 两个长度的差异
 
-5. Character length of question2 without spaces
+4. 去除空格后，问题1的字符串长度
 
-6. Number of words in question1
+5. 去除空格后，问题2的字符串长度
 
-7. Number of words in question2
+6. 问题1的词数
 
-8. Number of common words in question1 and question2
+7. 问题2的词数
+
+8. 问题1和问题2中相同词的数量
 
 These features are dealt with one-liners transforming the original input using the pandas package in Python and its method apply:
 
