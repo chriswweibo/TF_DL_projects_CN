@@ -119,7 +119,7 @@ data = data.drop(['id', 'qid1', 'qid2'], axis=1)
 
 8. 问题1和问题2中相同词的数量
 
-These features are dealt with one-liners transforming the original input using the pandas package in Python and its method apply:
+这些特征都可以通过一行代码得到。使用Python中的`pandas库`和`apply`方法转换原始输入:
 
 ```python
 # length based features
@@ -141,51 +141,55 @@ data['common_words'] = data.apply(lambda x:
                                       .lower().split()))), axis=1)
                         
 ```
-For future reference, we will mark this set of features as feature set-1 or fs_1:
+为了后续引用方便，我们把这些特征标记为特征集-1或 `fs_1`:
 ```python
 fs_1 = ['len_q1', 'len_q2', 'diff_len', 'len_char_q1', 'len_char_q2', 
         'len_word_q1', 'len_word_q2','common_words']
 ```
-This simple approach will help you to easily recall and combine a different set of features in the machine learning models we are going to build, turning comparing different models run by different feature sets into a piece of cake.
+这个简单的方法可以便于后边机器学习模型中调用和合并不同特征集合，使得不同特征集合上的模型比较易于操作。
 
 ### 创建模糊特征
 
-The next set of features are based on fuzzy string matching. Fuzzy string matching is also known as approximate string matching and is the process of finding strings that approximately match a given pattern. The closeness of a match is defined by the number of primitive operations necessary to convert the string into an exact match. These primitive operations include insertion (to insert a character at a given position), deletion (to delete a particular character), and substitution (to replace a character with a new one).
-Fuzzy string matching is typically used for spell checking, plagiarism detection, DNA sequence matching, spam filtering, and so on and it is part of the larger family of edit distances, distances based on the idea that a string can be transformed into another one. It is frequently used in natural language processing and other applications in order to ascertain the grade of difference between two strings of characters. 
-It is also known as Levenshtein distance, from the name of the Russian scientist, Vladimir Levenshtein, who introduced it in 1965. 
-These features were created using the fuzzywuzzy package available for Python (https://pypi.python.org/pypi/fuzzywuzzy). This package uses Levenshtein distance to calculate the differences in two sequences, which in our case are the pair of questions.
-The fuzzywuzzy package can be installed using pip3: 
+​        下一个特征集合基于模糊字符串匹配。模糊字符串匹配也叫作近似字符串匹配，是找出近似匹配给定模式的字符串的过程。匹配的完全程度定义为，把字符串转换为精确匹配的原始操作步数。这些原始操作包括插入（在给定位置插入一个字符），删除（删除特定字符）和替换（用新的字符替换旧的字符）。
+
+模糊字符串匹配经常用在拼写检查，抄袭检测，DNA序列匹配，垃圾邮件过滤等方面。它是编辑距离大家族中一部分。这个距离是基于字符串转换为另一个字符串的思想。它经常用在自然语言处理，和其他应用中，以便断定不同字符串之间的差异程度。
+
+它也叫做Levenshtein距离。它是由俄国科学家Vladimir Levenshtein于1965年发明的。
+
+ 
+这些特征可以使用 Python的`fuzzywuzzy` 库（https://pypi.python.org/pypi/fuzzywuzzy）生成。这个库使用Levenshtein distance计算两个不同序列的差异，即对应本书项目中问题对的差异。
+
+`fuzzywuzzy`库可以使用`pip3`安装： 
 
 ```
 pip install fuzzywuzzy
 ```
 
 
-As an important dependency, fuzzywuzzy requires the Python-Levenshtein package
-(https:// github .com /ztane /python -Levenshtein /) , which is a blazingly fast implementation of this classic algorithm, powered by compiled C code. To make the calculations much faster using fuzzywuzzy, we also need to install the PythonLevenshtein package: 
+​       `fuzzywuzzy`需要`Python-Levenshtein`库（https://github.com/ztane/python-Levenshtein/）作为依赖库，它是使用C代码构造，是经典算法的快速实现。因此要使用`fuzzywuzzy`做更快的计算,，我们还需要安装`PythonLevenshtein`库： 
 
 ```
 pip install python-Levenshtein
 ```
 
 
-The fuzzywuzzy package offers many different types of ratio, but we will be using only the following:
+`fuzzywuzzy`库提供了需要不同的比率，但是我们只会用到下面几种：
 
 1. QRatio
 
 2. WRatio
 
-3. Partial ratio
+3. 部分比率
 
-4. Partial token set ratio
+4. 部分令牌集比率
 
-5. Partial token sort ratio
+5. 部分令牌排序比率
 
-6. Token set ratio
+6. 令牌集比率
 
-7. Token sort ratio
+7. 令牌排序比率
 
-Examples of fuzzywuzzy features on Quora data: 
+下面是Quora数据的 `fuzzywuzzy` 例子特征： 
 
 ```python
 from fuzzywuzzy import fuzz
@@ -194,7 +198,7 @@ fuzz.QRatio("Why did Trump win the Presidency?",
 ```
 
 
-  This code snippet will result in the value of 67 being returned:
+  这个代码片段会返回67：
 
 ```python
 fuzz.QRatio("How can I start an online shopping (e-commerce) website?",
@@ -202,7 +206,7 @@ fuzz.QRatio("How can I start an online shopping (e-commerce) website?",
 ```
 
 
-  In this comparison, the returned value will be 60. Given these examples, we notice that although the values of QRatio are close to each other, the value for the similar question pair from the dataset is higher than the pair with no similarity. Let's take a look at another feature from fuzzywuzzy for these same pairs of questions:
+另外，这个返回值是60。我们注意到，尽管这些 `QRatio`值都很接近，但是数据集中相似问题对的值要比非相似问题对的值要高。让我们再看同一个问题对的另一个特征：
 
 
 ```python
@@ -211,7 +215,7 @@ fuzz.partial_ratio("Why did Trump win the Presidency?",
 ```
 
 
-  In this case, the returned value is 73:
+ 这时，返回值是73：
 
 
 ```python
@@ -219,10 +223,11 @@ fuzz.partial_ratio("Why did Trump win the Presidency?",
                     "Which web technology is best suitable for building a big                        E-Commerce website?")
 ```
 
+  这时，返回值是57。
 
-  Now the returned value is 57.
-  Using the partial_ratio method, we can observe how the difference in scores for these two pairs of questions increases notably, allowing an easier discrimination between being a duplicate pair or not. We assume that these features might add value to our models.
-  By using pandas and the fuzzywuzzy package in Python, we can again apply these features as simple one-liners:
+​    使用`partial_ratio`方法，我们可以观察到两个问题对的分数差异显著升高。这意味着重复问题对和非重复问题对之间的鉴别更加容易。我们认为这个特征可以给模型加分不少。
+
+ 借助Python 的`pandas` 和 `fuzzywuzzy` 库，我们可以通过一行代码，使用这些特征：
 
 ```python
 data['fuzz_qratio'] = data.apply(lambda x: fuzz.QRatio(
@@ -239,7 +244,7 @@ data['fuzz_token_sort_ratio'] = data.apply(lambda x:                            
 ```
 
 
-  This set of features are henceforth denoted as feature set-2 or fs_2:
+  这个特征集合标记为特征集-2或`fs_2`：
 
 ```python
 fs_2 = ['fuzz_qratio', 'fuzz_WRatio', 'fuzz_partial_ratio',
@@ -248,7 +253,7 @@ fs_2 = ['fuzz_qratio', 'fuzz_WRatio', 'fuzz_partial_ratio',
 ```
 
 
-  Again, we will store our work and save it for later use when modeling.
+  我们再一次把结果存储起来以便建模中使用。
 
 
 ### 借助TF-IDF和SVD特征
