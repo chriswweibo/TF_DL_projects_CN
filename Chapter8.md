@@ -129,10 +129,12 @@ data['len_q2'] = data.question2.apply(lambda x: len(str(x)))
 data['diff_len'] = data.len_q1 - data.len_q2 
 # character length based features 
 data['len_char_q1'] = data.question1.apply(lambda x:
-                  len(''.join(set(str(x).replace(' ', ''))))) data['len_char_q2'] = data.question2.apply(lambda x:                                             len(''.join(set(str(x).replace(' ', '')))))
+                  len(''.join(set(str(x).replace(' ', ''))))) 
+data['len_char_q2'] = data.question2.apply(lambda x:                                             len(''.join(set(str(x).replace(' ', '')))))
 # word length based features 
 data['len_word_q1'] = data.question1.apply(lambda x:
-                                         len(str(x).split())) data['len_word_q2'] = data.question2.apply(lambda x:                                                                    len(str(x).split()))
+                                         len(str(x).split())) 
+data['len_word_q2'] = data.question2.apply(lambda x:                                                                    len(str(x).split()))
 # common words in the two questions 
 data['common_words'] = data.apply(lambda x: 
                                   len(set(str(x['question1'])
@@ -156,7 +158,7 @@ fs_1 = ['len_q1', 'len_q2', 'diff_len', 'len_char_q1', 'len_char_q2',
 
 它也叫做Levenshtein距离。它是由俄国科学家Vladimir Levenshtein于1965年发明的。
 
- 
+
 这些特征可以使用 Python的`fuzzywuzzy` 库（https://pypi.python.org/pypi/fuzzywuzzy）生成。这个库使用Levenshtein distance计算两个不同序列的差异，即对应本书项目中问题对的差异。
 
 `fuzzywuzzy`库可以使用`pip3`安装： 
@@ -238,7 +240,7 @@ data['fuzz_partial_ratio'] = data.apply(lambda x:
                                         fuzz.partial_ratio(str(x['question1']),
                                         str(x['question2'])), axis=1)
 data['fuzz_partial_token_set_ratio'] = data.apply(lambda x:                                                fuzz.partial_token_set_ratio(str(x['question1']),           str(x['question2'])), axis=1)
-data['fuzz_partial_token_sort_ratio'] = data.apply(lambda x:                   fuzz.partial_token_sort_ratio(str(x['question1']), str(x['question2'])), axis=1)
+data['fuzz_partial_token_sort_ratio'] = data.apply(lambda x:                   fuzz.partial_token_sort_ratio(str(x['question1']),str(x['question2'])), axis=1)
 data['fuzz_token_set_ratio'] = data.apply(lambda x:                                    fuzz.token_set_ratio(str(x['question1']), str(x['question2'])), axis=1)
 data['fuzz_token_sort_ratio'] = data.apply(lambda x:                               fuzz.token_sort_ratio(str(x['question1']), str(x['question2'])), axis=1)
 ```
@@ -258,22 +260,26 @@ fs_2 = ['fuzz_qratio', 'fuzz_WRatio', 'fuzz_partial_ratio',
 
 ### 借助TF-IDF和SVD特征
 
-  The next few sets of features are based on TF-IDF and SVD. Term Frequency-Inverse Document Frequency (TF-IDF). Is one of the algorithms at the foundation of information retrieval. Here, the algorithm is explained using a formula:
+ 接下来的特征集合基于TF-IDF和SVD。**词频逆文档频率（Term Frequency-Inverse Document Frequency ，TF-IDF）**是信息检索基础中的一个算法。这个算法可以使用下面的公式解释：
 
 $$TF(t)=C(t)/N$$
 
 $$IDF(t)=log(ND/ND_t)$$
 
-You can understand the formula using this notation: C(t) is the number of times a term t appears in a document, N is the total number of terms in the document, this results in the Term Frequency (TF).  ND is the total number of documents and NDt is the number of documents containing the term t, this provides the Inverse Document Frequency (IDF).  TF-IDF for a term t is a multiplication of Term Frequency and Inverse Document Frequency for the given term t:
+公式中的记号： $C(t)$ 是词项$t$出现在文档中的次数，$N$是文档中词项的总数，可以由此计算**词频（Term Frequency ，TF）。** $ND$是文档总数，$ND_t $是包含词频$t$的文档数，可以由此计算**逆文档频率（Inverse Document Frequency ，IDF）。**  一个词项的TF-IDF是词频和逆文档频率的成绩：
 
 $$TFIDF(t)=TF(t)*IDF(t)$$
 
-Without any prior knowledge, other than about the documents themselves, such a score will highlight all the terms that could easily discriminate a document from the others, down-weighting the common words that won't tell you much, such as the common parts of speech (such as articles, for instance).
+除了文档本身之外，不用借助任何先验知识，通过减少信息较少的公共词项（例如冠词）的权重，这个分数就可以给出区分不同文档的所有词项。
 
-> If you need a more hands-on explanation of TFIDF, this great online tutorial will help you try coding the algorithm yourself and testing it on some text data: https://stevenloria.com/tf-idf/
+> 如果需要更多关于TFIDF的实操解释，下面的在线教程可以帮助读者编码实现算法，并使用文本数据进行测试： https://stevenloria.com/tf-idf/
 
-For convenience and speed of execution, we resorted to the scikit-learn implementation of TFIDF.  If you don't already have scikit-learn installed, you can install it using pip: pip install -U scikit-learn
-We create TFIDF features for both question1 and question2 separately (in order to type less, we just deep copy the question1 TfidfVectorizer):
+为了方便快速实现，我们借助于TFIDF的`scikit-learn实现`。如果还没有安装`scikit-learn`，读者可以使用`pip`安装：
+
+```
+pip install -U scikit-learn
+```
+我们可以分别为问题1和问题2构造TFIDF特征2（为了减少打字，我们会深度复制问题1） :
 
 ```python
 from sklearn.feature_extraction.text import TfidfVectorizer 
@@ -291,9 +297,9 @@ tfv_q1 = TfidfVectorizer(min_df=3,
 tfv_q2 = deepcopy(tfv_q1)
 ```
 
+需要注意的是，这里的参数并没有经过大量的实验验证。这些参数通常在其他自然语言处理问题，特别是文本分类上都有不错的效果。读者可能需要修改对应语言中的停用词列表。
 
-It must be noted that the parameters shown here have been selected after quite a lot of experiments. These parameters generally work pretty well with all other problems concerning natural language processing, specifically text classification. One might need to change the stop word list to the language in question.
-We can now obtain the TFIDF matrices for question1 and question2 separately:
+现在我们可以分别得到问题1和问题2的TFIDF矩阵：
 
 ```python
 q1_tfidf = tfv_q1.fit_transform(data.question1.fillna("")) 
@@ -301,15 +307,15 @@ q2_tfidf = tfv_q2.fit_transform(data.question2.fillna(""))
 ```
 
 
-> In our TFIDF processing, we computed the TFIDF matrices based on all the data available (we used the fit_transform method). This is quite a common approach in Kaggle competitions because it helps to score higher on the leaderboard. However, if you are working in a real setting, you may want to exclude a part of the data as a training or validation set in order to be sure that your TFIDF processing helps your model to generalize to a new, unseen dataset. 
+> 在TFIDF处理工程中，我们根据所以可用数据计算出TFIDF矩阵（我们用了`fit_transform`方法）。这个Kaggle竞赛中的常用手段，可以帮助我们拿到高分。但是，如果面对真实场景，读者可能希望排除训练集和验证集中的一些数据，以便保证TFIDF处理可以泛化到新的未知数据集中。
 
-After we have the TFIDF features, we move to SVD features. SVD is a feature decomposition method and it stands for singular value decomposition. It is largely used in NLP because of a technique called Latent Semantic Analysis (LSA).
+有了TFIDF特征后，我们继续介绍SVD特征。SVD是一种特征分解方法，即奇异值分解。它广泛应用于自然语言处理中，其中一个技术叫做**潜在语义分析（Latent Semantic Analysis ，LSA）**。
 
-> A detailed discussion of SVD and LSA is beyond the scope of this chapter, but you can get an idea of their workings by trying these two approachable and clear online tutorials: https://alyssaq.github.io/2015/singular-value-decomposition-visualisation/ and 	https://technowiki.wordpress.com/2011/08/27/latent-semantic-analysis-lsa-tutorial/
+> SVD和LSA的具体讨论超出了本书的范畴。读者可以参考下面两个简单明了的网上教程，了解其中的思想： https://alyssaq.github.io/2015/singular-value-decomposition-visualisation/ 和https://technowiki.wordpress.com/2011/08/27/latent-semantic-analysis-lsa-tutorial/
 
-To create the SVD features, we again use scikit-learn implementation. This implementation is a variation of traditional SVD and is known as TruncatedSVD.
+要创建SVD特征，我们再次使用`scikit-learn`实现。这个实现是传统的SVD的变种，叫做`TruncatedSVD`。
 
-> A TruncatedSVD is an approximate SVD method that can provide you with reliable yet computationally fast SVD matrix decomposition. You can find more hints about how this technique works and it can be applied by consulting this web page: http://langvillea.people.cofc.edu/DISSECTION-LAB/Emmie'sLSI-SVDModule/p5module.html 
+>  `TruncatedSVD` 是SVD方法的近似，提供了可靠而迅速的SVD矩阵分解。读者可以参考下面的网站，找到更多有关技术实现和应用的建议：http://langvillea.people.cofc.edu/DISSECTION-LAB/Emmie'sLSI-SVDModule/p5module.html 
 
 ```python
 from sklearn.decomposition import TruncatedSVD 
@@ -317,24 +323,25 @@ svd_q1 = TruncatedSVD(n_components=180)
 svd_q2 = TruncatedSVD(n_components=180)
 ```
 
-We chose 180 components for SVD decomposition and these features are calculated on a TFIDF matrix:
+我们选择180个成分，进行SVD分解。这些特征都是在TFIDF矩阵上计算的：
 ```python
 question1_vectors = svd_q1.fit_transform(q1_tfidf) 
 question2_vectors = svd_q2.fit_transform(q2_tfidf)
 ```
-Feature set-3 is derived from a combination of these TF-IDF and SVD features. For example, we can have only the TF-IDF features for the two questions separately going into the model, or we can have the TF-IDF of the two questions combined with an SVD on top of them, and then the model kicks in, and so on. These features are explained as follows.
-Feature set-3(1) or fs3_1 is created using two different TF-IDFs for the two questions, which are then stacked together horizontally and passed to a machine learning model:
+特征集-3来自于TF-IDF特征和SVD特征。例如，我们可以只用TF-IDF特征建模两个问题，或者使用TF-IDF特征加上SVD特征，然后加入模型进行学习。这些特征的解释如下：
+
+特征集-3(1) 或者记作`fs3_1`包含两个问题的TF-IDF，通过水平堆砌生成，最终传给机器学习模型： 
 
 ![](figures\184_1.png)
 
-This can be coded as:
+这个过程可以编码为：
 
 ```python
 from scipy import sparse
 # obtain features by stacking the sparse matrices together 
 fs3_1 = sparse.hstack((q1_tfidf, q2_tfidf))
 ```
-Feature set-3(2), or fs3_2, is created by combining the two questions and using a single TFIDF: 
+特征集-3(2), 或者记作`fs3_2`，通过合并两个问题生成一个TFIDF而实现： 
 
 ![](figures\185_1.png)
 
@@ -356,7 +363,7 @@ q1q2 += " " + data.question2.fillna("")
 fs3_2 = tfv.fit_transform(q1q2)
 ```
 
-The next subset of features in this feature set, feature set-3(3) or fs3_3, consists of separate TF-IDFs and SVDs for both questions:
+这个特征集合的子集，特征集-3(3)或者记作`fs3_3`，包括两个TF-IDFs和两个SVD：
 
 ![](figures\185_2.png)
 
@@ -366,16 +373,17 @@ This can be coded as follows:
 fs3_3 = np.hstack((question1_vectors, question2_vectors))
 ```
 
-We can similarly create a couple more combinations using TF-IDF and SVD, and call them fs3-4 and fs3-5, respectively. These are depicted in the following diagrams, but the code is left as an exercise for the reader.
-Feature set-3(4) or fs3-4:
+我们可以类似创建更多TF-IDF和SVD组合特征，把它们分别记作`fs3-4` 和`fs3-5`。 下图给出了构造过程，读者可以练习着尝试编码。
+
+特征集-3(4)或者记作`fs3_4`：
 
 ![](figures\186_1.png)
 
-Feature set-3(5) or fs3-5:
+特征集-3(5)或者记作`fs3_5`：
 
 ![](figures\186_2.png)
 
-After the basic feature set and some TF-IDF and SVD features, we can now move to more complicated features before diving into the machine learning and deep learning models. 
+有了基础的特征集，以及TF-IDF和SVD特征，我们可以继续构造更加复杂的特征，进而支持后面的机器学习和深度学习模型。
 
 ### 使用Word2vec词嵌入映射
 
