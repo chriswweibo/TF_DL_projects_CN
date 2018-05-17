@@ -387,23 +387,25 @@ fs3_3 = np.hstack((question1_vectors, question2_vectors))
 
 ### 使用Word2vec词嵌入映射
 
-Very broadly, Word2vec models are two-layer neural networks that take a text corpus as input and output a vector for every word in that corpus. After fitting, the words with similar meaning have their vectors close to each other, that is, the distance between them is small compared to the distance between the vectors for words that have very different meanings.
-Nowadays, Word2vec has become a standard in natural language processing problems and often it provides very useful insights into information retrieval tasks. For this particular problem, we will be using the Google news vectors. This is a pretrained Word2vec model trained on the Google News corpus.
-Every word, when represented by its Word2vec vector, gets a position in space, as depicted in the following diagram:
+简单的讲，Word2vec模型就是两层的神经网络，它接收文本语料作为输入，输出语料库中每个词语的向量。通过拟合，意思相近的词语的向量也会彼此靠近。相比意思不同的词语而言，它们之间的距离也更小。
+
+如今，Word2vec已经变成了自然语言处理问题中的标准流程，为信息检索任务提供非常有用的理解。对于具体的问题，我们会使用谷歌新闻的词向量。它是通过在谷歌新闻语料库上预训练得出的Word2vec模型，
+
+当每一个单词使用Word2vec的向量表示时，都会在空间中对应一个位置，如下图所示：
 
 ![](figures\187_1.png)
 
-All the words in this example, such as Germany, Berlin, France, and Paris, can be represented by a 300-dimensional vector, if we are using the pretrained vectors from the Google news corpus. When we use Word2vec representations for these words and we subtract the vector of Germany from the vector of Berlin and add the vector of France to it, we will get a vector that is very similar to the vector of Paris. The Word2vec model thus carries the meaning of words in the vectors. The information carried by these vectors constitutes a very useful feature for our task. 
-> For a user-friendly, yet more in-depth, explanation and description of possible applications of Word2vec, we suggest reading https://www.distilled.net/resources/a-beginners-guide-to-Word2vec-aka-whats-the-opposite-of-canada/, or if you need a more mathematically defined explanation, we recommend reading this paper: http://www.1-4-5.net/~dmm/ml/how_does_Word2vec_work.pdf
+如果我们使用谷歌新闻语料库上的预训练词向量，上面例子的所有词语，例如Germany，Berlin，France和Paris都可以表示为300维的向量。借助这些词语的Word2vec表示，把Berlin的向量减去Germany的向量，再加上France的向量，我们会得到一个与Paris向量非常接近的向量。因此Word2vec模型中的向量保留了词语的含义。这些向量所蕴含的信息会给我们的任务带来非常有用的特征。
+> 想要获得关于Word2vec应用的易懂且更多详尽的介绍，建议阅读https://www.distilled.net/resources/a-beginners-guide-to-Word2vec-aka-whats-the-opposite-of-canada/，或者如果需要更多严格数学定义的解释，推荐阅读这篇文章：http://www.1-4-5.net/~dmm/ml/how_does_Word2vec_work.pdf
 
-To load the Word2vec features, we will be using Gensim. If you don't have Gensim, you can install it easily using pip. At this time, it is suggested you also install the pyemd package, which will be used by the WMD distance function, a function that will help us to relate two Word2vec vectors:
+要加载Word2vec特征我们输赢。如果没有安装Gensim，读者可以使用`pip`安装。同时，我们也建议安装`pyemd`库，因为会在WMD距离计算中用到。WDM函数可以帮助我们把两个Word2vec向量关联起来：
 ```
 pip install gensim 
 pip install pyemd
 ```
 
 
-To load the Word2vec model, we download the GoogleNews-vectorsnegative300.bin.gz binary and use Gensim's load_Word2vec_format function to load it into memory. You can easily download the binary from an Amazon AWS repository using the wget command from a shell:
+要加载Word2vec模型，下载`GoogleNews-vectorsnegative300.bin.gz`的二进制文件，使用 Gensim's的`load_Word2vec_format`函数加载到内存中。读者也可以从亚马逊的AWS仓库中下载二进制文件。使用shell中的`wget`命令：
 ```
 wget -c "https://s3.amazonaws.com/dl4j-distribution/GoogleNews-vectors	negative300.bin.gz"
 ```
