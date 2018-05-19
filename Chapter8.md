@@ -411,7 +411,7 @@ wget -c "https://s3.amazonaws.com/dl4j-distribution/GoogleNews-vectors	negative3
 ```
 
 
-After downloading and decompressing the file, you can use it with the Gensim KeyedVectors functions: 
+完成文件下载和解压之后，使用Gensim的`KeyedVectors`函数： 
 
 ```python
 import gensim
@@ -419,15 +419,16 @@ model = gensim.models.KeyedVectors.load_word2vec_format(
     'GoogleNews-vectors-negative300.bin.gz', binary=True)
 ```
 
+现在，我们可以通过调用`model[word]`获取每一个词语的向量。但是，要想处理句子的时候，还会有新的问题。在这个例子中，我们需要问题1和问题2中所有词的向量，以便后续比较。我们可以使用以下代码。这段代码可以给出一条谷歌新闻句子中所有词语的向量，并最终给出归一化的向量。我们称之为句向量或者Sent2Vec。
 
-Now, we can easily get the vector of a word by calling model[word]. However, a problem arises when we are dealing with sentences instead of individual words. In our case, we need vectors for all of question1 and question2 in order to come up with some kind of comparison. For this, we can use the following code snippet. The snippet basically adds the vectors for all words in a sentence that are available in the Google news vectors and gives a normalized vector at the end. We can call this sentence to vector, or Sent2Vec.
-Make sure that you have Natural Language Tool Kit (NLTK) installed before running the preceding function:
+运行下面的函数前，确定已经安装了 **自然语言工具包（Natural Language Tool Kit ，NLTK）** ：
+
 ```
 $ pip install nltk
 ```
 
 
-It is also suggested that you download the punkt and stopwords packages, as they are part of NLTK:
+建议下载`punkt`和`stopwords`程序包，它们也是NLTK的一部分：
 ```python
 import nltk 
 nltk.download('punkt') 
@@ -435,7 +436,7 @@ nltk.download('stopwords')
 ```
 
 
-If NLTK is now available, you just have to run the following snippet and define the sent2vec function:
+NLTK可用之后，我们只需要运行下列代码，定义`sent2vec`函数：
 ```python
 from nltk.corpus import stopwords 
 from nltk import word_tokenize 
@@ -459,49 +460,50 @@ def sent2vec(s, model):
         return np.zeros(300)
 ```
 
+当句子为空时，我们可以返回一个标准的零值向量。
 
-When the phrase is null, we arbitrarily decide to give back a standard vector of zero values.
-To calculate the similarity between the questions, another feature that we created was word mover's distance. Word mover's distance uses Word2vec embeddings and works on a principle similar to that of earth mover's distance to give a distance between two text documents. Simply put, word mover's distance provides the minimum distance needed to move all the words from one document to an other document. 
-> The WMD has been introduced by this paper: KUSNER, Matt, et al. From word embeddings to document distances. In: International Conference on Machine Learning. 2015. p. 957-966 which can be found at http://proceedings.mlr.press/v37/kusnerb15.pdf. For a hands-on tutorial on the distance, you can also refer to this tutorial based on the Gensim implementation of the distance: https://markroxor.github.io/gensim/static/notebooks/WMD_tutorial.html
+要计算问题间的相似度，另外一个特征是词语移动距离（ Word mover's distance）。词语移动距离使用Word2vec词嵌入技术，其找工作原理与给出两篇文档距离的测地距（earth mover's distance）类似。简单的说，词语移动距离提供了从一个文档到另一个文档移动所有词语所需的最小距离。
 
-Final Word2vec (w2v) features also include other distances, more usual ones such as the Euclidean or cosine distance. We complete the sequence of features with some measurement of the distribution of the two document vectors:
-1. Word mover distance
+> 词语移动距离由以下文章提出： *KUSNER, Matt, et al. From word embeddings to document distances. In: International Conference on Machine Learning. 2015. p. 957-966*。该文章的下载地址：http://proceedings.mlr.press/v37/kusnerb15.pdf。需要实际操作介绍，读者可以参考Gensim的距离实现教程：https://markroxor.github.io/gensim/static/notebooks/WMD_tutorial.html
 
-2. Normalized word mover distance
+最终的Word2vec （w2v）特征也包括其他距离，例如更常见的欧式距离或余弦距离。完整的特特征集合也包含对两个文档向量分布的一些度量：
+1. 词语移动距离
 
-3. Cosine distance between vectors of question1 and question2
+2. 归一化词语移动距离
 
-4. Manhattan distance between vectors of question1 and question2
+3. 问题1向量和问题2向量的余弦距离
 
-5. Jaccard similarity between vectors of question1 and question2
+4. 问题1向量和问题2向量的曼哈顿距离
 
-6. Canberra distance between vectors of question1 and question2
+5. 问题1向量和问题2向量的杰拉德相似度
 
-7. Euclidean distance between vectors of question1 and question2
+6. 问题1向量和问题2向量的堪培拉距离
 
-8. Minkowski distance between vectors of question1 and question2
+7. 问题1向量和问题2向量的欧氏距离
 
-9. Braycurtis distance between vectors of question1 and question2
+8. 问题1向量和问题2向量的闵可夫斯基距离
 
-10. The skew of the vector for question1
+9. 问题1向量和问题2向量的布雷克蒂斯距离
 
-11. The skew of the vector for question2
+10. 问题1向量的偏度
 
-12. The kurtosis of the vector for question1
+11. 问题2向量的偏度
 
-13. The kurtosis of the vector for question2
+12. 问题1向量的峰度
+
+13. 问题2向量的峰度
 
    
-All the Word2vec features are denoted by fs4.
+所以这些Word2vec特征记作`fs4`。
 
-A separate set of w2v features consists in the matrices of Word2vec vectors themselves:
+另一个w2v特征集合包含Word2vec向量自身的矩阵：
 
-1.    Word2vec vector for question1
+1. 问题1的Word2vec向量
 
-2.    Word2vec vector for question2
+2. 问题2的Word2vec向量
 
-   These will be represented by fs5:
-   
+
+它们记作`fs5`：
 
 ```python
 w2v_q1 = np.array([sent2vec(q, model) 
@@ -511,7 +513,7 @@ w2v_q2 = np.array([sent2vec(q, model)
 ```
 
 
-   In order to easily implement all the different distance measures between the vectors of the Word2vec embeddings of the Quora questions, we use the implementations found in the scipy.spatial.distance module:
+ 为了快速实现Quora问题的Word2vec词向量之间的不同距离度量，我们使用`scipy.spatial.distance`模块：
 
 ```python
 from scipy.spatial.distance import cosine, cityblock, jaccard, canberra, euclidean, minkowski, braycurtis
@@ -532,7 +534,7 @@ data['braycurtis_distance'] = [braycurtis(x,y)
 ```
 
 
-   All the features names related to distances are gathered under the list fs4_1:
+ 所有这些和距离相关的特征名都保存在`fs4_1`列中：
 
 
 ```python
@@ -542,14 +544,14 @@ fs4_1 = ['cosine_distance', 'cityblock_distance','jaccard_distance',
 ```
 
 
-   The Word2vec matrices for the two questions are instead horizontally stacked and stored away in the w2v variable for later usage: 
+两个问题的Word2vec矩阵通过水平堆叠，存储在变量`w2v`中，以便后用：
 
 ```python
 w2v = np.hstack((w2v_q1, w2v_q2))
 ```
 
 
-   The Word Mover's Distance is implemented using a function that returns the distance between two questions, after having transformed them into lowercase and after removing any stopwords. Moreover, we also calculate a normalized version of the distance, after transforming all the Word2vec vectors into L2-normalized vectors (each vector is transformed to the unit norm, that is, if we squared each element in the vector and summed all of them, the result would be equal to one) using the init_sims method:
+词语移动距离的函数首先对两个问题进行小写转换，并去除停用词，然后返回距离。然而，我们也可以把所有Word2vec向量转换为L2-归一化向量（每一个向量都转换为单元范式，即对向量的元素取平方和，结果的和为1），计算距离的归一化值  。使用`init_sims`方法：
 
 
 ```python
@@ -569,11 +571,11 @@ fs4_2 = ['wmd', 'norm_wmd']
 ```
 
 
-   After these last computations, we now have most of the important features that are needed to create some basic machine learning models, which will serve as a benchmark for our deep learning models. The following table displays a snapshot of the available features:
+完成最终计算，我们就结束了大部分重要特征的创建。这些特征是基本的机器学习模型所需的   ，也会作为深度学习模型的基线标准。下表展示了备用特征的截图：
 
 ![](figures\192_1.png)
 
-Let's train some machine learning models on these and other Word2vec based features.
+现在让我们训练一些机器学习模型，以及其他Word2vec特征。
 
 ### 测试机器学习模型
 
