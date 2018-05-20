@@ -579,7 +579,7 @@ fs4_2 = ['wmd', 'norm_wmd']
 
 ### 测试机器学习模型
 
-Before proceeding, depending on your system, you may need to clean up the memory a bit and free space for machine learning models from previously used data structures. This is done using gc.collect, after deleting any past variables not required anymore, and then checking the available memory by exact reporting from the psutil.virtualmemory function:
+测试之前，根据系统情况不同，读者可能需要清理内存和释放空间，以防机器学习模型使用之前的数据结构。这个过程可以通过`gc.collect`实现，它可以删除所有过去的不再需要的变量，并检查可用内存，使用`psutil.virtualmemory`函数返回准确的结果：
 
 ```python
 import gc
@@ -587,54 +587,43 @@ import psutil
 del([tfv_q1, tfv_q2, tfv, q1q2,
      question1_vectors, question2_vectors, svd_q1,
      svd_q2, q1_tfidf, q2_tfidf])
-del([w2v_q1, w2v_q2]) del([model]) 
+del([w2v_q1, w2v_q2]) 
+del([model]) 
 gc.collect() 
 psutil.virtual_memory()
 ```
 
 
-At this point, we simply recap the different features created up to now, and their meaning in terms of generated features:
+现在，我们可以汇总出到目前为止，所有创建的特征及其含义：
 
-- fs_1: List of basic features 
-- fs_2: List of fuzzy features 
-- fs3_1: Sparse data matrix of TFIDF for separated questions 
-- fs3_2: Sparse data matrix of TFIDF for combined questions
--  fs3_3: Sparse data matrix of SVD 
-- fs3_4: List of SVD statistics 
-- fs4_1: List of w2vec distances 
-- fs4_2: List of wmd distances
-- w2v: A matrix of transformed phrase's Word2vec vectors by means of the Sent2Vec function
+- fs_1: 基础特征列表
+- fs_2: 模糊特征列表
+- fs3_1: 不同问题的TFIDF稀疏数据矩阵
+- fs3_2: 合并问题的TFIDF稀疏数据矩阵
+-  fs3_3: SVD稀疏数据矩阵
+- fs3_4: SVD统计特征列表
+- fs4_1:  Word2vec距离特征列表 
+- fs4_2: 词语移动距离特征列表
+- w2v:  使用`Sent2Vec`函数后的转换表述的Word2vec向量矩阵
 
-We evaluate two basic and very popular models in machine learning, namely logistic regression and gradient boosting using the xgboost package in Python. The following table provides the performance of the logistic regression and xgboost algorithms on different sets of features created earlier, as obtained during the Kaggle competition:
+我们会评估两个基础并且常见的机器学习模型，即逻辑斯蒂回归和`xgboost`程序包中的梯度下降。下表给出了Kaggle竞赛中，逻辑斯蒂回归和`xgboost`算法在不同特征集合上的表现：
 
-|      |      |      |      |      |      |
-| ---- | ---- | ---- | ---- | ---- | ---- |
-|      |      |      |      |      |      |
-|      |      |      |      |      |      |
-|      |      |      |      |      |      |
-|      |      |      |      |      |      |
-|      |      |      |      |      |      |
-|      |      |      |      |      |      |
-|      |      |      |      |      |      |
-|      |      |      |      |      |      |
-|      |      |      |      |      |      |
-|      |      |      |      |      |      |
+| 特征集合                                                 | 逻辑斯蒂回归准确度 | `xgboost`准确度 |
+| -------------------------------------------------------- | ------------------ | --------------- |
+| 基础特征（fs1）                                          | 0.658              | 0.721           |
+| 基础特征+模糊特征（fs1+fs2）                             | 0.660              | 0.738           |
+| 基础特征+模糊特征+w2v特征（fs1+fs2+fs4）                 | 0.676              | 0.766           |
+| w2v向量特征（fs5）                                       | *                  | 0.780           |
+| 基础特征+模糊特征+w2v特征+w2v向量特征（fs1+fs2+fs4+fs5） | *                  | 0.814           |
+| TFIDF-SVD（fs3-1）                                       | 0.777              | 0.749           |
+| TFIDF-SVD（fs3-2）                                       | 0.804              | 0.748           |
+| TFIDF-SVD（fs3-3）                                       | 0.706              | 0.763           |
+| TFIDF-SVD（fs3-4）                                       | 0.700              | 0.753           |
 
-Feature set	Logistic regression accuracy	xgboost accuracy
-Basic features (fs1)	0.658	0.721
-Basic features + fuzzy features (fs1 + fs2)	0.660	0.738
-Basic features + fuzzy features + w2v features (fs1 + fs2 + fs4)	0.676	0.766
-W2v vector features (fs5)	*	0.78
-Basic features + fuzzy features + w2v features + w2v vector features (fs1 + fs2 + fs4 + fs5)	*	0.814
-TFIDF-SVD features (fs3-1)	0.777	0.749
-TFIDF-SVD features (fs3-2)	0.804	0.748
-TFIDF-SVD features (fs3-3)	0.706	0.763
-TFIDF-SVD features (fs3-4)	0.700	0.753
-TFIDF-SVD features (fs3-5)	0.714	0.759
+\* *由于对内存需求太高，这个模型没有训练。*
 
-\* These models were not trained due to high memory requirements.
+我们可以把这些表现作为深度学习模型的基线或者最低标准，但是也不会照搬其中的工作，止步于此。
 
-We can treat the performances achieved as benchmarks or baseline numbers before starting with deep learning models, but we won't limit ourselves to that and we will be trying to replicate some of them.
 We are going to start by importing all the necessary packages. As for as the logistic regression, we will be using the scikit-learn implementation.
 The xgboost is a scalable, portable, and distributed gradient boosting library (a tree ensemble machine learning algorithm). Initially created by Tianqi Chen from Washington University, it has been enriched with a Python wrapper by Bing Xu, and an R interface by Tong He (you can read the story behind xgboost directly from its principal creator at homes.cs.washington.edu/~tqchen/2016/03/10/story-and-lessons-behind-theevolution-of-xgboost.html ). The xgboost is available for Python, R, Java, Scala, Julia, and C++, and it can work both on a single machine (leveraging multithreading) and in Hadoop and Spark clusters.
 
