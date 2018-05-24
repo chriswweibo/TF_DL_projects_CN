@@ -622,53 +622,57 @@ psutil.virtual_memory()
 
 \* *由于对内存需求太高，这个模型没有训练。*
 
-我们可以把这些表现作为深度学习模型的基线或者最低标准，但是也不会照搬其中的工作，止步于此。
+我们可以把这些性能作为深度学习模型的基线或者最低标准，但是也不会完全照搬其中的工作。
 
-We are going to start by importing all the necessary packages. As for as the logistic regression, we will be using the scikit-learn implementation.
-The xgboost is a scalable, portable, and distributed gradient boosting library (a tree ensemble machine learning algorithm). Initially created by Tianqi Chen from Washington University, it has been enriched with a Python wrapper by Bing Xu, and an R interface by Tong He (you can read the story behind xgboost directly from its principal creator at homes.cs.washington.edu/~tqchen/2016/03/10/story-and-lessons-behind-theevolution-of-xgboost.html ). The xgboost is available for Python, R, Java, Scala, Julia, and C++, and it can work both on a single machine (leveraging multithreading) and in Hadoop and Spark clusters.
+接下来，我们会引入所有必须的程序包。对于逻辑斯蒂回归，我们会使用scikit-learn实现。
 
-> Detailed instruction for installing xgboost on your system can be found on this page: github.com/dmlc/xgboost/blob/master/doc/build.md
-> The installation of xgboost on both Linux and macOS is quite straightforward, whereas it is a little bit trickier for Windows users.
-> For this reason, we provide specific installation steps for having xgboost working on Windows:
+`xgboost`是一个可扩展的和可移植的分布式梯度加速库（基于树结构的机器学习集成模型）。它是由华盛顿大学的陈天奇发明的，后来由Bing Xu实现了Python的封装，由Tong He实现了R的接口（读者可以通过主要发明者的网站了解到xgboost背后的故事 homes.cs.washington.edu/~tqchen/2016/03/10/story-and-lessons-behind-the-evolution-of-xgboost.html ）。`xgboost`可以在Python，R，Java，Scala，Julia和C++中使用，并且可以在单机上使用（利用多线程），也可以部署在Hadoop和Spark集群上。
+
+> 安装`xgboost`的具体说明可以在这里找到： github.com/dmlc/xgboost/blob/master/doc/build.md
 >
-> 1. First, download and install Git for Windows (git-forwindows.github.io)
-> 2. Then, you need a MINGW compiler present on your system. You can download it from www.mingw.org according to the characteristics of your system
-> 3. From the command line, execute:
+> Linux和macOS系统上的`xgboost`安装很简单，但是Windows系统上的安装要稍微注意一下。 
+>
+> 我们给出Windows系统上的安装`xgboost`的具体步骤：
+>
+> 1. 首先下载安装Git的Windows版本（git-forwindows.github.io）
+> 2. 然后，需要在系统中安装MinGW编译器，可以根据系统的配置在 www.mingw.org 下载
+> 3. 在命令行中，执行：
 >
 > ```
 > $> git clone --recursive https://github.com/dmlc/xgboost 
 > $> cd xgboost
 > $> git submodule init
 > $> git submodule update
+> 
 > ```
 >
-> 4. Then, always from the command line, you copy the configuration for 64-byte systems to be the default one:
+> 4.  在命令行中，复制64位系统的配置信息作为默认配置：
 >
 > ```
 > $> copy make\mingw64.mk config.mk
 > ```
 >
-> ​      Alternatively, you just copy the plain 32-byte version:
+> ​      也可以复制32位版本：
 >
 > ```
 > $> copy make\mingw.mk config.mk
 > ```
 >
-> 
->
-> 5. After copying the configuration file, you can run the compiler, setting it to use four threads in order to speed up the compiling process:
+> 5.  配置文件复制完成之后，可以运行编译器，设置4个线程以加速编译过程：
 >
 > ```
 > $> mingw32-make -j4
+> 
 > ```
 >
-> 6. In MinGW, the make command comes with the name mingw32make; if you are using a different compiler, the previous command may not work, but you can simply try:
+> 6.  在MinGW中，有`make`命令和`mingw32make`；如果读者使用不同的编译器，之前的命令可能不会起作用，读者可以尝试：
 >
 > ```
 > $> make -j4
+> 
 > ```
 >
-> 7. Finally, if the compiler completed its work without errors, you can install the package in Python with:
+> 7.  最后，如果编译器顺利完成编译，就可以使用Python安装程序包：
 >
 > ```
 > $> cd python-package
@@ -676,7 +680,7 @@ The xgboost is a scalable, portable, and distributed gradient boosting library (
 > ```
 
 
-If xgboost has also been properly installed on your system, you can proceed with importing both machine learning algorithms:
+`xgboost`正确安装之后，我们可以引入机器学习算法模型： 
 ```python
 from sklearn import linear_model
 from sklearn.preprocessing import StandardScaler 
@@ -684,20 +688,19 @@ import xgboost as xgb
 ```
 
 
-Since we will be using a logistic regression solver that is sensitive to the scale of the features
-it is the sag solver from https:// github	.com	/EpistasisLab	/tpot	/issues	/29 2, which requires a linear computational time in respect to the size of the data), we will start by standardizing the data using the scaler function in scikit-learn:
+由于我们会用到逻辑斯蒂回归求解器（它是一个https://github.com/EpistasisLab/tpot/issues/292中的`sag`求解器，根据数据的规模需要线性计算时间）：
 
 ```python
-scaler = StandardScaler() y = data.is_duplicate.values y = y.astype('float32').reshape(-1, 1) 
+scaler = StandardScaler() 
+y = data.is_duplicate.values 
+y = y.astype('float32').reshape(-1, 1) 
 X = data[fs_1+fs_2+fs3_4+fs4_1+fs4_2]
 X = X.replace([np.inf, -np.inf], np.nan).fillna(0).values
 X = scaler.fit_transform(X)
 X = np.hstack((X, fs3_3))
 ```
 
-
-
-We also select the data for the training by first filtering the fs_1, fs_2, fs3_4, fs4_1, and fs4_2 set of variables, and then stacking the fs3_3 sparse SVD data matrix. We also provide a random split, separating 1/10 of the data for validation purposes (in order to effectively assess the quality of the created model):
+我们选定一些数据用于训练，首先过滤`fs_1`, `fs_2`, `fs3_4`, `fs4_1`和`fs4_2`集合中的变量，然后把`fs3_3`的稀疏SVD矩阵堆叠放置。我们也可以随机划分，分出1/10的数据用于验证（这样可以有效的评估模型的质量）：
 
 ```python
 np.random.seed(42) 
@@ -713,10 +716,8 @@ x_val = X[idx_val]
 y_val = np.ravel(y[idx_val])
 ```
 
-
-
-As a first model, we try logistic regression, setting the regularization l2 parameter C to 0.1
-(modest regularization). Once the model is ready, we test its efficacy on the validation set (x_val for the training matrix, y_val for the correct answers). The results are assessed on accuracy, that is the proportion of exact guesses on the validation set:
+在第一个模型中，我们尝试使用逻辑斯蒂回归，并设定L2正则化参数C为0.1
+（最保守的正则化）。模型准备好后，我们在验证集合上测试效果（`x_val`是训练矩阵，`y_val`是正确答案）。结果通过准确率，即测试集上正确预测的占比，进行评估：
 
 ```python
 logres = linear_model.LogisticRegression(C=0.1,
@@ -727,9 +728,8 @@ log_res_accuracy = np.sum(lr_preds == y_val) / len(y_val)
 print("Logistic regr accuracy: %0.3f" % log_res_accuracy)
 ```
 
+等待片刻（求解器最多迭代1,000次，就会停止收敛），最终的测试集准确率是0.743。它会作为我们的第一个基线。
 
-After a while (the solver has a maximum of 1,000 iterations before giving up converging the results), the resulting accuracy on the validation set will be 0.743, which will be our starting
-baseline.
 Now, we try to predict using the xgboost algorithm. Being a gradient boosting algorithm, this learning algorithm has more variance (ability to fit complex predictive functions, but also to overfit) than a simple logistic regression afflicted by greater bias (in the end, it is a summation of coefficients) and so we expect much better results. We fix the max depth of its decision trees to 4 (a shallow number, which should prevent overfitting) and we use an eta of 0.02 (it will need to grow many trees because the learning is a bit slow). We also set up a watchlist, keeping an eye on the validation set for an early stop if the expected error on the validation doesn't decrease for over 50 steps.
 
 > It is not best practice to stop early on the same set (the validation set in our case) we use for reporting the final results. In a real-world setting, ideally, we should set up a validation set for tuning operations, such as early stopping, and a test set for reporting the expected results when generalizing to new data.
