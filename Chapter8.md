@@ -730,11 +730,11 @@ print("Logistic regr accuracy: %0.3f" % log_res_accuracy)
 
 等待片刻（求解器最多迭代1,000次，就会停止收敛），最终的测试集准确率是0.743。它会作为我们的第一个基线。
 
-Now, we try to predict using the xgboost algorithm. Being a gradient boosting algorithm, this learning algorithm has more variance (ability to fit complex predictive functions, but also to overfit) than a simple logistic regression afflicted by greater bias (in the end, it is a summation of coefficients) and so we expect much better results. We fix the max depth of its decision trees to 4 (a shallow number, which should prevent overfitting) and we use an eta of 0.02 (it will need to grow many trees because the learning is a bit slow). We also set up a watchlist, keeping an eye on the validation set for an early stop if the expected error on the validation doesn't decrease for over 50 steps.
+现在，我们试着使用`xgboost`算法做预测。作为梯度加速算法的一种，它的方差（可以拟合复杂的预测函数，但要注意过拟合）比逻辑斯蒂回归要大， 而逻辑斯蒂回归的偏差较大（最后我们可以看到，它是系数的和）。我们可以从`xgboost`中得到更好的结果。我们可以把树的最大深度固定位为4（这个深度较浅，可以避免过拟合），并设置学习率为0.02（模型需要生成许多树，因为学习速率比较慢）。我们还可以设置一个监测列表，查看测试集上的表现。一旦误差超过50步不再减少，就尽早停止训练。
 
-> It is not best practice to stop early on the same set (the validation set in our case) we use for reporting the final results. In a real-world setting, ideally, we should set up a validation set for tuning operations, such as early stopping, and a test set for reporting the expected results when generalizing to new data.
+> 在同一个集合上（比如例子中的验证集）尽早停止训练返回最终结果并不是好的尝试。在现实世界中，我们应该设置一个验证集以便调整模型运行，例如尽早停止，以及一个测试集来报告泛化情形下的结果。
 
-After setting all this, we run the algorithm. This time, we will have to wait for longer than we when running the logistic regression:
+设置完成之后，我们运行算法。这一次，训练的时间要比逻辑斯蒂回归的时间长：
 
 ```python
 params = dict()
@@ -753,12 +753,13 @@ print("Xgb accuracy: %0.3f" % xgb_accuracy)
 ```
 
 
-The final result reported by xgboost is 0.803 accuracy on the validation set.
+`xgboost`在验证集上的准确率是0.803。
 
 ###  搭建TensorFlow模型
 
-he deep learning models in this chapter are built using TensorFlow, based on the original script written by Abhishek Thakur using Keras (you can read the original code at https://github.com/abhishekkrthakur/is_that_a_duplicate_quora_question). Keras is a Python library that provides an easy interface to TensorFlow. Tensorflow has official support for Keras, and the models trained using Keras can easily be converted to TensorFlow models. Keras enables the very fast prototyping and testing of deep learning models. In our project, we rewrote the solution entirely in TensorFlow from scratch anyway.
-To start, let's import the necessary libraries, in particular TensorFlow, and let's check its version by printing it:
+本章的深度学习模型会使用TensorFlow搭建，并在Abhishek Thakur的Keras代码上修改（读者可以阅读源代码：https://github.com/abhishekkrthakur/is_that_a_duplicate_quora_question）。Keras是一个Python库，提供TensorFlow的简单接口。Tensorflow有Keras的官方支持。使用Keras训练的模型可以轻松的转换为TensorFlow模型。Keras支持深度学习模型的快捷原型搭建和测试。在我们的项目中，我们会从头开始，完整的编写TensorFlow方案。
+
+首先，引入必要的库，特别是TensorFlow，打印信息，检查版本：
 
 ```python
 import zipfile
@@ -768,7 +769,7 @@ print("TensorFlow version %s" % tf.__version__)
 ```
 
 
-At this point, we simply load the data into the df pandas dataframe or we load it from disk. We replace the missing values with an empty string and we set the y variable containing the target answer encoded as 1 (duplicated) or 0 (not duplicated):
+现在，我们可以把数据加载到pandas数据库`df`中，也可以共本地磁盘加载。 我们把缺失值替换为空字符串，并把包含答案的`y`变量编码为1（重复问题）或0（非重复问题）：
 
 ```python
 try:
@@ -781,11 +782,11 @@ y = y.astype('float32').reshape(-1, 1)
 ```
 
 
-We can now dive into deep neural network models for this dataset.
+现在我们可以继续构建深度神经网络。
 
 ### 深度神经网络之前的处理
 
-Before feeding data into any neural network, we must first tokenize the data and then convert the data to sequences. For this purpose, we use the Keras Tokenizer provided with TensorFlow, setting it using a maximum number of words limit of 200,000 and a maximum sequence length of 40. Any sentence with more than 40 words is consequently cut off to its first 40 words:
+给神经网络输入数据之前，我们必须对数据进行切分，并转化为序列。因此，我们使用Keras的`Tokenizer`函数，并设置词语的最多数量为200,000 ，序列最长为40。任何多于40个词语的句子都会被切开保留前40个词语：
 
 ```python
 Tokenizer = tf.keras.preprocessing.text.Tokenizer 
@@ -794,7 +795,7 @@ tk = Tokenizer(num_words=200000) max_len = 40
 ```
 
 
-After setting the Tokenizer, tk, this is fitted on the concatenated list of the first and second questions, thus learning all the possible word terms present in the learning corpus:
+切词器`tk`设置完成后，就可以在两个问题的拼接列表上使用了，并学习语料库中所有可能的词语：
 
 ```python
 tk.fit_on_texts(list(df.question1) + list(df.question2))
@@ -805,20 +806,21 @@ x2 = pad_sequences(x2, maxlen=max_len)
 word_index = tk.word_index
 ```
 
+`word_index`是一个词典，包含所有被切出的词语及其所对应的索引，以便跟踪切词器的运行效果。
 
-In order to keep track of the work of the tokenizer, word_index is a dictionary containing all the tokenized words paired with an index assigned to them.
-Using the GloVe embeddings, we must load them into memory, as previously seen when discussing how to get the Word2vec embeddings.
-The GloVe embeddings can be easily recovered using this command from a shell: 
+使用GloVe词嵌入算法的时候，我们必须加载到内存中，和之前获取Word2vec词嵌入方法类似。
+
+GloVe词嵌入模型可以通过shell命令方便的获取：
 
 ```
 wget http://nlp.stanford.edu/data/glove.840B.300d.zip
 ```
 
+GloVe词嵌入算法与Word2vec算法类似，都可以根据词语共现把词语编码到复杂的多维空间上。但是，正如下面文章所介绍的，http://clic.cimec.unitn.it/marco/publications/acl2014/baroni-etal-countpredict-acl2014.pdf  —BARONI，Marco；DINU，Georgiana；KRUSZEWSKI，Germán，不要计数，要预测！（*Don't count, predict! A systematic comparison of context-counting vs. context-predicting semantic vectors. In: Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers). 2014. p. 238-247.*）
 
-he GloVe embeddings are similar to Word2vec in the sense that they encode words into a complex multidimensional space based on their co-occurrence. However, as explained by the paper http://clic.cimec.unitn.it/marco/publications/acl2014/baroni-etal-countpredict-acl2014.pdf  —BARONI, Marco; DINU, Georgiana; KRUSZEWSKI, Germán. Don't count, predict! A systematic comparison of context-counting vs. context-predicting semantic vectors. In: Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers). 2014. p. 238-247.
-GloVe is not derived from a neural network optimization that strives to predict a word from its context, as Word2vec is. Instead, GloVe is generated starting from a co-occurrence count matrix (where we count how many times a word in a row co-occurs with the words in the columns) that underwent a dimensionality reduction (a factorization just like SVD, as we mentioned before when preparing our data). 
+GloVe并不是从试图通过背景词来预测中心词语的神经网络优化中得来的，但是Word2vec却是。GloVe来自于经过降维（例如在准备数据中提到的SVD矩阵分解）的词语共现计数矩阵（矩阵记录了每一行的一个词语与每一列的一个词语共同出现了几次）。
 
-> hy are we now using GloVe instead of Word2vec? In practice, the main difference between the two simply boils down to the empirical fact that GloVe embeddings work better on some problems, whereas Word2vec embeddings perform better on others. In our case, after experimenting, we found GloVe embeddings working better with deep learning algorithms. You can read more information about GloVe and its uses from its official page at Stanford University: https://nlp.stanford.edu/projects/glove/
+> 那么我们为什么使用GloVe，而不用Word2vec？事实上，二者的最大区别是GloVe词嵌入在某些问题上效果更好，而Word2vec词嵌入在其他问题上表现更好。在我们的项目中，经过试验发现GloVe词嵌入与深度学习结合效果更好。读者可以通过斯坦福大学的官方网页了解更多GloVe的信息和使用：https://nlp.stanford.edu/projects/glove/
 
 Having got a hold of the GloVe embeddings, we can now proceed to create an embedding_matrix by filling the rows of the embedding_matrix array with the embedding vectors (sized at 300 elements each) extracted from the GloVe file.
 The following code reads the glove embeddings file and stores them into our embedding matrix, which in the end will consist of all the tokenized words in the dataset with their respective vectors:
