@@ -822,13 +822,16 @@ GloVe并不是从试图通过背景词来预测中心词语的神经网络优化
 
 > 那么我们为什么使用GloVe，而不用Word2vec？事实上，二者的最大区别是GloVe词嵌入在某些问题上效果更好，而Word2vec词嵌入在其他问题上表现更好。在我们的项目中，经过试验发现GloVe词嵌入与深度学习结合效果更好。读者可以通过斯坦福大学的官方网页了解更多GloVe的信息和使用：https://nlp.stanford.edu/projects/glove/
 
-Having got a hold of the GloVe embeddings, we can now proceed to create an embedding_matrix by filling the rows of the embedding_matrix array with the embedding vectors (sized at 300 elements each) extracted from the GloVe file.
-The following code reads the glove embeddings file and stores them into our embedding matrix, which in the end will consist of all the tokenized words in the dataset with their respective vectors:
+理解GloVe词嵌入后，我们可以创建`embedding_matrix`。 `embedding_matrix`数组来自GloVe文件的词嵌入向量（每一个向量300维）。
+
+下面的代码读入词向量文件，并存储在词嵌入矩阵中。这个矩阵最终会包含所有切分的词语，以及对应的向量：
 
 ```python
 embedding_matrix = np.zeros((len(word_index) + 1, 300), dtype='float32')
+
 glove_zip = zipfile.ZipFile('data/glove.840B.300d.zip') 
 glove_file = glove_zip.filelist[0]
+
 f_in = glove_zip.open(glove_file) 
 for line in tqdm(f_in):
     values = line.split(b' ')    
@@ -843,15 +846,17 @@ f_in.close()
 glove_zip.close()
 ```
 
+首先创建空值`embedding_matrix`，然后每一个行向量准确对应矩阵的具体行数。词语和行之间的这种对应已经在切词器的编码过程中定义好，现在可以通过`word_index`词典调用。 
 
-Starting from an empty embedding_matrix, each row vector is placed on the precise row number of the matrix that is expected to represent its corresponding wording. Such correspondence between words and rows has previously been defined by the encoding process completed by the tokenizer and is now available for consultation in the word_index dictionary. 
-After the embedding_matrix has completed loading the embeddings, it is time to start building some deep learning models.
+`embedding_matrix`完成词嵌入加载后，我们就可以开始构建深度学习模型了。
 
 ### 深度神经网络搭建模块
 
-In this section, we are going to present the key functions that will allow our deep learning project to work. Starting from batch feeding (providing chunks of data to learn to the deep neural network) we will prepare the building blocks of a complex LSTM architecture. 
-The LSTM architecture is presented in a hands-on and detailed way in Chapter 7, Stock Price Prediction with LSTM, inside the Long short-term memory – LSTM 101 section
-The first function we start working with is the prepare_batches one. This function takes the question sequences and based on a step value (the batch size), returns a list of lists, where the internal lists are the sequence batches to be learned:
+在这一节中，我们会给出深度学习的关键函数。首先，我们会进行批输入（提供数据分块进行深度神经网络学习），然后准备复杂的LSTM结构的构建模块。
+
+> LSTM的结构在第7章使用LSTM进行股票价格预测，长短期记忆网络——LSTM101一节中给出。
+
+我们用的第一个函数是`prepare_batches`。这个函数接收问题序列，并根据`step`值（批的多少）返回问题列表的列，其中里边的列是要学习的成批序列：
 
 ```python
 def prepare_batches(seq, step):    
@@ -862,18 +867,18 @@ def prepare_batches(seq, step):
     return res
 ```
 
+`dense`函数会根据提供的规模创建一个全连接的神经网络层，并用均值为0，2的平方根除以输入的特征数作为标准差的随机正态分布数字激活和初始化.
 
-The dense function will create a dense layer of neurons based on the provided size and activate and initialize them with random normally distributed numbers that have a mean of zero, and as a standard deviation, the square root of 2 divided by the number of input features.
-A proper initialization helps back-propagating the input derivative deep inside the network. In fact:
+一个恰当的初始化可以帮助输入的导数后向传播到较深的网络。事实上：
 
-- If you initialize the weights in a network too small, then the derivative shrinks as it passes through each layer until it's too faint to trigger the activation functions.
--  If the weights in a network are initialized too large, then the derivative simply grows (the so-called exploding gradient problem) as it traverses through each layer, the network won't converge to a proper solution and it will break because of handling numbers that are too large.
+- 如果给网络的初始化权重太小，导数会随着传播逐渐衰减，直到变得很微弱而无法触动激活函数。
+-  如果给网络的初始化权重太大，导数会随着传播逐渐增大（即所谓的梯度爆炸）。网络就不会收敛到一个合适的解，并且会因为处理的数值过大而中断。
 
-The initialization procedure makes sure the weights are just right by setting a reasonable starting point where the derivative can propagate through many layers. There are quite a few initialization procedures for deep learning networks, such as Xavier by Glorot and Bengio (Xavier is Glorot's first name), and the one proposed by He, Rang, Zhen, and Sun, and built on the Glorot and Bengio one, which is commonly referred to as He.
+初始化过程要确保权重通过合理的设置而支持导数可以传播很多层。深度学习中有许多初始化的过程，例如Glorot和Bengio的Xavier（其实，Xavier也是Glorot的姓），以及He，Rang，Zhen和Sun在二人工作上提出的另一种方法，通常叫做He。
 
-> eight initialization is quite a technical aspect of building a neural network architecture, yet a relevant one. If you want to know more about it, you can start by consulting this post, which also delves into more mathematical explanations of the topic: http://deepdish.io/2015/02/24/network-initialization/ 
+> 权重初始化是神经网络架构中一个非常技术性的操作，也是很相关的一环。如果读者想要了解更多，可以首先阅读这篇博客，它也涉及到一些更加数学的解释：http://deepdish.io/2015/02/24/network-initialization/ 
 
-n this project, we opted for the He initialization, since it works quite well for rectified units. Rectified units, or ReLu, are the powerhouse of deep learning because they allow signals to propagate and avoid the exploding or vanishing gradient problems, yet neurons activated by the ReLU,  from a practical point of view, are actually most of the time just firing a zero value. Keeping the variance large enough in order to have a constant variance of the input and output gradient passing through the layer really helps this kind of activation to work best, as explained in this paper: HE, Kaiming, et al. Delving deep into rectifiers: Surpassing human-level performance on imagenet classification. In: Proceedings of the IEEE international conference on computer vision. 2015. p. 1026-1034 which can be found and read at https:// arxiv.org /abs	/1502	.0185	2:
+在这个项目中，我们倾向于使用He初始化，因为它对整流单元的效果很好。整流单元，即ReLu，是深度学习的动力源，因为它支持梯度信号传播的同时可以避免梯度散失和梯度爆炸问题。然而从实际角度讲，用ReLu激活的神经元在大多说情况下抑制了零值。保证方差足够大进而有持续的输入和输出梯度通过每一层，就可以使得激活过程奏效，正如在下面的文章中介绍的：HE, Kaiming, et al. Delving deep into rectifiers: Surpassing human-level performance on imagenet classification. In: Proceedings of the IEEE international conference on computer vision. 2015. p. 1026-1034。这篇文章可以在 https://arxiv.org/abs/1502.01852上找到:
 
 ```python
 def dense(X, size, activation=None):
