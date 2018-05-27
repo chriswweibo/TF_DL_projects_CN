@@ -996,9 +996,9 @@ learning_rate = 0.001
 
 接着两个模型，`model_3`和`model_4`，获取GloVe词嵌入结果并按照卷积，dropout，最大池化等一系列操作处理。最终输出向量通过批归一化，以便保证不同批之间稳定的方差。
 
-> If you want to know about the nuts and bolts of batch normalization, this Quora answer by Abhishek Shivkumar clearly provides all the key points you need to know about what batch normalization is and why it is effective in neural network architecture: https://www.quora.com/In-layman%E2%80%99s-terms-what-is-batch-normalisation-what-does-it-do-and-why-does-it-work-so-well/answer/Abhishek-Shivkumar
+> 如果读者想知道批归一化的具体细节，Abhishek Shivkumar在Quora上的回答清楚地提供了所有关于批处理的重要理解，以及为什么其在神经网络中会有效：https://www.quora.com/In-layman%E2%80%99s-terms-what-is-batch-normalisation-what-does-it-do-and-why-does-it-work-so-well/answer/Abhishek-Shivkumar
 
-Finally, model_5 and model_6 acquire the uniform random embedding and process it with an LSTM. The results of all six models are concatenated together and batch normalized:
+最后，`model_5`和`model_6`获取均匀随机词嵌入结果，并使用LSTM处理。所有6个模型的结果拼接在一起，并经过批归一化：
 
 ```python
 graph = tf.Graph() 
@@ -1060,7 +1060,7 @@ with graph.as_default():
 ```
 
 
-We then complete the architecture by adding five dense layers with dropout and batch normalization. Then, there is an output layer with sigmoid activation. The model is optimized using an AdamOptimizer based on log-loss:
+然后，我们添加5个带有dropout和批归一化的全连接层，完成整个架构。最后是一个但又sigmoid函数的输出层。整个模型使用基于对数损失的`AdamOptimizer`进行优化：
     
 
 ```python
@@ -1068,6 +1068,7 @@ for i in range(5):
     merged = dense(merged, 300, activation=tf.nn.relu)      
     merged = tf.layers.dropout(merged, rate=0.2, training=place_training)
     merged = tf.layers.batch_normalization(merged, training=place_training)
+    
 merged = dense(merged, 1, activation=tf.nn.sigmoid)    
 loss = tf.losses.log_loss(place_y, merged)
 prediction = tf.round(merged)
@@ -1084,7 +1085,7 @@ session.run(init)
 ```
 
 
-After defining the architecture, we initialize the sessions and we are ready for learning. As a good practice, we split the available data into a training part (9/10) and a testing one (1/10). Fixing a random seed allows replicability of the results:
+定义好架构后，我们初始化会话，并准备学习。一个好的习惯是，我们把可用数据分成训练集（9/10）和测试集（1/10）。设置随机种子可以支持重现结果：
 
 ```python
 np.random.seed(1)
@@ -1106,7 +1107,7 @@ y_val = y[idx_val]
 ```
 
 
-If you run the following code snippet, the training will start and you will notice that the model accuracy increases with the increase in the number of epochs. However, the model will take a lot of time to train, depending on the number of batches you decide to iterate through. On an NVIDIA Titan X, the model takes over 300 seconds per epoch. As a good balance between obtained accuracy and training time, we opt for running 10 epochs:
+如果读者运行下列代码片段，训练就开始了。可以看到，模型的准确率随着论数的增多而增长。但是，根据需要迭代的批的数量不同，模型会花费很长的的时间来训练。在NVIDIA Titan X上，这个模型每轮需要300秒。为了平衡准确率和训练时间，我们选择训练10轮：
 
 ```python
 val_idx = np.arange(y_val.shape[0]) 
@@ -1114,7 +1115,8 @@ val_batches = prepare_batches(val_idx, 5000)
 
 no_epochs = 10
 
-# see https://github.com/tqdm/tqdm/issues/481 tqdm.monitor_interval = 0
+# see https://github.com/tqdm/tqdm/issues/481 
+tqdm.monitor_interval = 0
 
 for i in range(no_epochs):
     np.random.seed(i)
@@ -1145,7 +1147,7 @@ for i in range(no_epochs):
     print('batch %02d, accuracy: %0.3f' % (i, np.mean(y_val == y_pred)))
 ```
 
-Trained for 10 epochs, the model produces an accuracy of  82.5%. This is much higher than the benchmarks we had before. Of course, the model could be improved further by using better preprocessing and tokenization. More epochs (up to 200) could also help raise the accuracy a bit more. Stemming and lemmatization may also definitely help to get near the state-of-the-art accuracy of 88% reported by Quora on its blog. 
+经过10轮训练，模型给出了82.5%的准确率。这比之前的基准表现提高了不少。 Of course, the model could be improved further by using better preprocessing and tokenization. More epochs (up to 200) could also help raise the accuracy a bit more. Stemming and lemmatization may also definitely help to get near the state-of-the-art accuracy of 88% reported by Quora on its blog. 
 Having completed the training, we can use the in-memory session to test some question evaluations. We try with two questions about the duplicated questions on Quora, but the procedure works with any pair of questions you would like to test the algorithm on.
 
 > As with many machine learning algorithms, this one depends on the distribution that it has learned. Questions completely different from the ones it has been trained on could prove difficult for the algorithm to guess.
