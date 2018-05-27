@@ -890,26 +890,29 @@ out = tf.layers.dense(X, units=size,
 return out
 ```
 
+接下来，我们开始另一种神经网络层，时间分布的全连接层。
 
-Next, we work on another kind of layer, the time distributed dense layer.
-This kind of layer is used on recurrent neural networks in order to keep a one-to-one relationship between the input and the output. An RNN (with a certain number of cells providing channel outputs), fed by a standard dense layer, receives matrices whose dimensions are rows (examples) by columns (sequences) and it produces as output a matrix whose dimensions are rows by the number of channels (cells). If you feed it using the time distributed dense layer, its output will instead be dimensionality shaped as rows by columns by channels. In fact, it happens that a dense neural network is applied to timestamp (each column).
-A time distributed dense layer is commonly used when you have, for instance, a sequence of inputs and you want to label each one of them, taking into account the sequence that arrived. This is a common scenario for tagging tasks, such as multilabel classification or Part-Of-Speech tagging. In our project, we will be using it just after the GloVe embedding in order to process how each GloVe vector changes by passing from a word to another in the question sequence.
-As an example, let's say you have a sequence of two cases (a couple of question examples), and each one has three sequences (some words), each of which is made of four elements (their embeddings). If we have such a dataset passed through the time distributed dense layer with five hidden units, we will obtain a tensor of size (2, 3, 5). In fact, passing through the time distributed layer, each example retains the sequences, but the embeddings are replaced by the result of the five hidden units. Passing them through a reduction on the 1 axis, we will simply have a tensor of size (2,5), that is a result vector for each since example.
+这种神经网络层用在递归神经网络中，保持输入和输出之间的一对一关系。一个RNN结构（带有一定数量的细胞单元提供通道输出），始于标准的全连接层，接收行（样本）列（序列）矩阵，其结果矩阵的维度是行乘以通道（细胞单元）数量。如果使用时间分布的全连接层，它的输出维度会是行乘以列乘以通道数。事实上，一个全连接神经网络分配给了每一个时间戳（每一列）。
 
-> If you want to replicate the previous example:
+时间分布的全连接层经常用在诸如输入序列已知，并希望根据序列的出现，标记每一个输入的情形。这是一个标记任务的常见场景，例如多标签分类或者词性标注。在我们的项目中，我们会在GloVe词嵌入后使用时间分布的全连接层，以便处理每一个GloVe词向量随着问题序列中词语的出现而改变的现象。
+
+例如，假设有两个例子的序列（一对问题），每一个都有3个序列（词语），每一个序列都由4个元素（词嵌入）构成。如果我们有这样的数据集，并传给带有5个隐藏单元的时间分布全连接层，我们会得到大小为 (2, 3, 5)的张量。当输入通过时间分布全连接层时，每一个例子都保留了序列，但是词嵌入结果被5个隐藏单元替换掉了。继续把结果传给一个1轴上的维度约减过程，我们可以得到大小为 (2,5)的张量，这就是最终的向量。
+
+> 如果读者想重复之前的例子，如下：
 >
 > ```python
 > print("Tensor's shape:", X.shape)
 > tensor = tf.convert_to_tensor(X, dtype=tf.float32)
 > dense_size = 5
-> i = time_distributed_dense(tensor, dense_size)print("Shape of time distributed output:", i)
+> i = time_distributed_dense(tensor, dense_size)
+> print("Shape of time distributed output:", i)
 > j = tf.reduce_sum(i, axis=1) 
 > print("Shape of reduced output:", j)
 > ```
 
 
 
-> he concept of a time distributed dense layer could be a bit trickier to grasp than others and there is much discussion online about it. You can also read this thread from the Keras issues to get more insight into the topic: https://github.com/keras-team/keras/issues/1029
+> 和其他神经网络层相比，时间分布全连接层的概念可能会有点不容易理解。网络上有一个关于它的讨论。读者可以通过Keras问题的一些介绍中获得更多的认识：https://github.com/keras-team/keras/issues/1029
 
 ```python
 def time_distributed_dense(X, dense_size):     
@@ -923,26 +926,26 @@ def time_distributed_dense(X, dense_size):
 ```
 
 
-he conv1d and maxpool1d_global functions are in the end wrappers of the TensorFlow functions tf.layers.conv1d (https://www.tensorflow.org/api_docs/python/tf/layers/conv1d), which is a convolution layer, and tf.reduce_max (https://www.tensorflow.org/api_docs/python/tf/reduce_max), which computes the maximum value of elements across the dimensions of an input tensor. In natural language processing, this kind of pooling (called global max pooling) is more frequently used than the standard max pooling that is commonly found in deep learning applications for computer vision. As explained by a Q&A on cross-validated (https://stats.stackexchange.com/a/257325/49130) global max pooling simply takes the maximum value of an input vector, whereas standard max pooling returns a new vector made of the maximum values found in different pools of the input vector given a certain pool size:
+`conv1d`和`maxpool1d_globa`函数分别下面TensorFlow函数的封装：`tf.layers.conv1d`（https://www.tensorflow.org/api_docs/python/tf/layers/conv1d），它是一个卷积层；`tf.reduce_max` (https://www.tensorflow.org/api_docs/python/tf/reduce_max)，它计算输入张量所有维度上最大值。在自然语言处理中，这种池化（也叫全局最大池化）比标准池化用的多，它也经常用在计算机视觉的深度学习实践中。 正如在交叉验证的问答中所提到的（https://stats.stackexchange.com/a/257325/49130），全局最大池化使用输入向量的最大值，然而标准池化根据池的大小返回由输入向量在不同池化下的最大值构成新向量：
 
 ```python
 def conv1d(inputs, num_filters, filter_size, padding='same'):     
     he_std = np.sqrt(2 / (filter_size * num_filters))
     out = tf.layers.conv1d(
-    inputs=inputs, filters=num_filters, padding=padding,
-    kernel_size=filter_size, 
-    activation=tf.nn.relu,
-    kernel_initializer=tf.random_normal_initializer(stddev=he_std))     
-return out
+        inputs=inputs, filters=num_filters, padding=padding,
+        kernel_size=filter_size, 
+        activation=tf.nn.relu,
+        kernel_initializer=tf.random_normal_initializer(stddev=he_std)) 
+    return out
 def maxpool1d_global(X):     
     out = tf.reduce_max(X, axis=1)
-return out
+    return out
 ```
 
 
-ur core lstm function is initialized by a different scope at every run due to a random integer number generator, initialized by He initialization (as seen before), and it is a wrapper of the TensorFlow tf.contrib.rnn.BasicLSTMCell for the layer of Basic LSTM recurrent network cells (https://www.tensorflow.org/api_docs/python/tf/contrib/rnn/BasicLSTMCell) and tf.contrib.rnn.static_rnn for creating a recurrent neural network specified by the layer of cells (https://www.tensorflow.org/versions/r1.1/api_docs/python/tf/contrib/rnn/static_rnn).
+核心函数`lstm`通过随机数生成器在每一次运行时都会被不同的初始化。而随机数生成器使用He初始化策略。`lstm`是TensorFlow中两个模块的封装：`tf.contrib.rnn.BasicLSTMCell`，对应基础的LSTM递归网络层（https://www.tensorflow.org/api_docs/python/tf/contrib/rnn/BasicLSTMCell），`tf.contrib.rnn.static_rnn`，负责创建由单元层刻画的递归神经网络（https://www.tensorflow.org/versions/r1.1/api_docs/python/tf/contrib/rnn/static_rnn）。
 
-> he implementation of the Basic LSTM recurrent network cells is based on the paper ZAREMBA, Wojciech; SUTSKEVER, Ilya; VINYALS, Oriol. Recurrent neural network regularization. arXiv preprint arXiv:1409.2329, 2014 found at https://arxiv.org/abs/1409.2329.
+> 基础的LSTM递归网络层实现基于文章：*ZAREMBA，Wojciech；SUTSKEVER，Ilya；VINYALS，Oriol. Recurrent neural network regularization*. arXiv preprint arXiv:1409.2329, 2014，可以查看https://arxiv.org/abs/1409.2329。
 
 ```python
 def lstm(X, size_hidden, size_out):     
@@ -963,11 +966,11 @@ def lstm(X, size_hidden, size_out):
 ```
 
 
-At this stage of our project, we have gathered all the building blocks necessary to define the architecture of the neural network that will be learning to distinguish duplicated questions.
+现在，我们已经有了所有必需的搭建模块，进而定义神经网路的架构以区分重复问题。
 
 ### 设计学习架构
 
-We start defining our architecture by fixing some parameters such as the number of features considered by the GloVe embeddings, the number and length of filters, the length of maxpools, and the learning rate:
+我们首先设置一些参数，例如GloVe词嵌入的特征数，滤波器的数量和长度，最大池化策略的长度和学习率：
 
 ```python
 max_features = 200000 
@@ -977,17 +980,21 @@ pool_length = 4
 learning_rate = 0.001
 ```
 
+试图掌握不同词语数量的语义差别，最终检测出重复问题，这个任务确实很难，肯定需要复杂的架构。因此，经过多次试验，我们创建了一个包含LSTM，时间分布的全连接层，以及1d-卷积神经网络的更深的模型。这个模型有6类输入，可以通过拼接合成1个。拼接之后，整个架构由5个全连接层和1个带有sigmoid激活函数的输出层构成。
 
-Managing to grasp the different semantic meanings of less or more different phrases in order to spot possible duplicated questions is indeed a hard task that requires a complex architecture. For this purpose, after various experimentation, we create a deeper model consisting of LSTM, time-distributed dense layers, and 1d-cnn. Such a model has six heads, which are merged into one by concatenation. After concatenation, the architecture is completed by five dense layers and an output layer with sigmoid activation. 
-The full model is shown in the following diagram:
+下图展示了完整的模型：
 
 ![](figures\205_1.png)
 
-The first head consists of an embedding layer initialized by GloVe embeddings, followed by a time-distributed dense layer. The second head consists of 1D convolutional layers on top of embeddings initialized by the GloVe model, and the third head is an LSTM model on the embeddings learned from scratch. The other three heads follow the same pattern for the other question in the pair of questions.
-We start defining the six models and concatenating them. In the end, the models are merged by concatenation, that is, the vectors from the six models are stacked together horizontally.
-Even if the following code chunk is quite long, following it is straightforward. Everything starts at the three input placeholders, place_q1, place_q2, and place_y, which feed all six models with the first questions, the second questions, and the target response respectively. The questions are embedded using GloVe (q1_glove_lookup and q2_glove_lookup) and a random uniform embedding. Both embeddings have 300 dimensions.
-The first two models, model_1 and model_2, acquire the GloVe embeddings and they apply a time distributed dense layer.
-The following two models, model_3 and model_4, acquire the GloVe embeddings and process them by a series of convolutions, dropouts, and maxpools. The final output vector is batch normalized in order to keep stable variance between the produced batches.
+第一类输入包含一个有Glove算法初始化的词嵌入层，已经后续的时间分布全连接层。第二类输入包含1D卷积神经网络和GloVe模型词嵌入层。第三类输入是一个基于词嵌入的LSTM模型。其他三类输入与上述三个的模式相同，只不过是对应第二个问题。 
+
+我们首先定义了6个模型，然后把6种模型拼接起来。最终，6个模型拼接成1个，即来自6个模型的向量水平堆叠在一起。
+
+尽管下面的代码很长，但是不难理解。每一步都从3个输入占位符开始：`place_q1`， `place_q2`和`place_y`，它们负责给所有6个模型传入第一个问题，第二个问题和目标响应。这些问题都通过GloVe（ `q1_glove_lookup` 和`q2_glove_lookup` ）以及随机均匀策略进行词嵌入。两种词嵌入都是300维。 
+
+前两个模型`model_1` 和`model_2`，获取GloVe词嵌入结果，并使用时间分布全连接层。
+
+接着两个模型，`model_3`和`model_4`，获取GloVe词嵌入结果并按照卷积，dropout，最大池化等一系列操作处理。最终输出向量通过批归一化，以便保证不同批之间稳定的方差。
 
 > If you want to know about the nuts and bolts of batch normalization, this Quora answer by Abhishek Shivkumar clearly provides all the key points you need to know about what batch normalization is and why it is effective in neural network architecture: https://www.quora.com/In-layman%E2%80%99s-terms-what-is-batch-normalisation-what-does-it-do-and-why-does-it-work-so-well/answer/Abhishek-Shivkumar
 
