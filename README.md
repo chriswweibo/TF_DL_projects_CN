@@ -1,7 +1,18 @@
-# 关系概念译法统一（按音序）
+# 关系概念译法统一（按音序），大家有不同意见，或者需要添加，可以提出来讨论
+* accuracy: 准确率
 * batch：批
+* batch normalization： 批归一化
 * cnn：卷积神经网络
+* dense layer: 全连接层
+* dropout: dropout
+* embedding: 词嵌入
 * epoch：轮
+* in order to: 为了，以便
+* pooling: 池化
+* session: 会话
+* testing set: 测试集
+* TF-IDF: 词频-逆文档频率
+* validation set: 验证集
 * we：我们，本书
 * you：读者
 
