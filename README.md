@@ -2,16 +2,23 @@
 * accuracy: 准确率
 * batch：批
 * batch normalization： 批归一化
+* benchmark：基准，基准表现
+* boosting: 提升
 * cnn：卷积神经网络
 * dense layer: 全连接层
 * dropout: dropout
 * embedding: 词嵌入
 * epoch：轮
 * in order to: 为了，以便
+* library：库
+* logistic regression：logistic回归
+* package：程序包
 * pooling: 池化
+* pool size：池化大小
 * session: 会话
 * testing set: 测试集
 * TF-IDF: 词频-逆文档频率
+* tokenization: 切词
 * validation set: 验证集
 * we：我们，本书
 * you：读者
