@@ -121,7 +121,7 @@ High,Adj. Low,Adj. Close,Adj. Volume
 
 ==经典的机器学习算法一般用预设好大小的数据做训练（即每条数据的特征数是固定的）。但是，用时间序列数据做训练和预测时无法预先定义时间长度，因为无法让模型既能作用在10天以来的数据上，又能作用在3年以来的数据上。==
 
-很简单，本章不改变特征数，令特征维度大小不变，改变观测的数目。每个观测值都代表了时间序列上的一个时间窗口， 向右滑动一格就可以创建一个新的观测值。代码如下：
+很简单，本章在保持特征维度大小不变的情况下，改变观测的数目。每个观测值都代表了时间序列上的一个时间窗口， 向右滑动一格就可以创建一个新的观测值。代码如下：
 
 ```python
   def format_dataset(values, temporal_features):
@@ -131,7 +131,7 @@ High,Adj. Low,Adj. Close,Adj. Volume
 	  return feats, labels
 ```
 
-给定时间序列、特征大小，此函数创建一个滑动窗口来遍历时间序列，并生成特征和标注（每个滑动窗口后面的一个值作为这个滑动窗口所生成特征的标注）。最后，将所有观测值和标注分别按行堆叠起来。输出是列数确定的观测值矩阵，以及标注向量。
+给定时间序列、特征大小，此函数会创建一个滑动窗口来遍历时间序列，并生成特征和标注（每个滑动窗口后面的一个值作为这个滑动窗口所生成特征的标注）。最后，将所有观测值和标注分别按行堆叠起来。输出是列数确定的观测值矩阵，以及标注向量。
 
 建议读者将此函数写入`tools.py`文件中，以便后续使用。
 
@@ -141,7 +141,8 @@ High,Adj. Low,Adj. Close,Adj. Volume
   import datetime
   import matplotlib.pyplot as plt
   import numpy as np import seaborn
-  from tools import fetch_cosine_values, fetch_stock_price, format_dataset np.set_printoptions(precision=2)
+  from tools import fetch_cosine_values, fetch_stock_price, format_dataset
+  np.set_printoptions(precision=2)
 
   cos_values = fetch_cosine_values(20, frequency=0.1)
   seaborn.tsplot(cos_values)
@@ -165,7 +166,7 @@ High,Adj. Low,Adj. Close,Adj. Volume
   print("minibatch_cos_y.shape=", minibatch_cos_y.shape)
 ```
 
-用20个点的时间序列作为输入，输出是一个15x5的观测矩阵和长度为15的标签向量。当然，如果改变特征大小，观测矩阵的行数也会发生改变。
+输入是20个点的时间序列，输出是一个15x5的观测矩阵和长度为15的标签向量。当然，如果改变特征大小，观测矩阵的行数也会发生改变。
 
 为了便于读者理解，在这里对上述操作进行可视化展示。例如，把观测矩阵的前5个观测序列及其对应的标签（红色标记）在图中画出：
 
@@ -217,9 +218,9 @@ High,Adj. Low,Adj. Close,Adj. Volume
 
 ### 用回归模型来预测未来的股票价格
 
-准备好了观测矩阵和实值标签，本节先将这个问题看作回归问题。回归问题其实很简单：给定一个数值类型向量，预测一个数值类型的值。==当然，也没这么简单==。把这个问题当做回归问题，并使得算法认为特征间相互独立。由于他们是从同一个时间序列中通过滑动窗口得到的，所以如果不做强制，特征之间将被认为相互依赖。本节先从特征相互独立这个简单的假设开始，下节会展示如何利用时间的相关性来提高性能。
+准备好了观测矩阵和实值标签，本节先将这个问题看作回归问题。回归问题其实很简单：给定一个数值类型向量，预测一个数值类型的值。把这个问题当做回归问题，理想情况下，需要使得算法认为特征间相互独立。如果不做强制，那么，从同一个时间序列中通过滑动窗口得到的特征将被认为相互依赖。本节先从特征相互独立这个简单的假设开始，下节会展示如何利用时间的相关性来提高性能。
 
-为了评估模型，本节构建了一个函数，输入为观测矩阵、实际的标签，以及预测的标签，输出为评估指标：均方误差**mean square error**(*MSE*)和平均绝对误差**mean absolute error**(*MAE*)。函数同时将训练、测试、预测性能在同一张图中画出，以便能直观的看出模型的性能。另外，本节设置了一个基准：即，简单地将最后一天的价格作为预测价格，与模型预测给出的结果作比较。
+为了评估模型，本节构建了一个函数，输入为观测矩阵、实际的标签，以及预测的标签，输出为评估指标：均方误差**mean square error**(*MSE*)和平均绝对误差**mean absolute error**(*MAE*)。函数同时将训练、测试、预测性能在同一张图中画出，以便读者能直观地观测到模型的性能。另外，本节设置了一个基准：即，简单地将最后一天的价格作为预测价格，与模型预测给出的结果作比较。
 
 另外，本节仍然需要一个辅助函数来将矩阵转化为一维数组。由于后续还要在多个脚本中使用此辅助函数，所以将此函数写在`tool.py`中。
 
@@ -228,7 +229,7 @@ High,Adj. Low,Adj. Close,Adj. Volume
 	  return np.asarray(m).reshape(-1)
 ```
 
-接下来写评估函数。评估函数写进`evaluate_ts.py`文件中，以便其他脚本调用：
+接下来是评估函数部分。评估函数写进`evaluate_ts.py`文件中，以便其他脚本调用：
 
 ```python
   import numpy as np
@@ -262,9 +263,11 @@ High,Adj. Low,Adj. Close,Adj. Volume
 
 接下来进入构建模型的部分。
 
-正如上述，本节先在余弦信号波上进行预测，再在股票价格上进行预测。
+如前所述，本节先在余弦信号波上进行预测，再在股票价格上进行预测。
+
 建议读者把下面代码写进另一个文件中，例如，写进`2_regression_cosion.py`中（读者可在以此命名的脚本中找到这些代码）。
-首先，引入一些包，为numpy和tensorflow设置一下随机数种子。
+
+首先，引入一些包，并为numpy和tensorflow设置一下随机数种子。
 
 ```python
   import matplotlib.pyplot as plt
@@ -277,8 +280,8 @@ High,Adj. Low,Adj. Close,Adj. Volume
   tf.set_random_seed(101)
 ```
 
-接下来，构建余弦波信号，并将其转换成一个观测矩阵。本例将特征大小设置为20（这个数大约相当于一个月的工作日天数）。回归问题会变成如下：给定余弦曲线上20个点，预测下一个点的值。
-本节用分别用250条观测数据作为训练集和测试集，这个数字基本等于一年可获取的数据量（一年的工作日天数小于250天）。本例会生成1个余弦波信号曲线，并将此曲线分成两部分：前半部分用于训练，后半部分用于测试。读者可以按照自己的医院进行重新划分，观察一下当这些参数改变的时候，模型性能怎么变化：
+接下来，构建余弦波信号，并将其转换成一个观测矩阵。本例将特征大小设置为20（这个数大约相当于一个月的工作日天数）。此时，此回归问题可描述为：给定余弦曲线上20个点，预测下一个点的值。
+本节用分别用250条观测数据作为训练集和测试集，这个数字基本等于一年可获取的数据量（一年的工作日天数小于250天）。本例只会生成一个余弦波信号曲线，并将此曲线分成两部分：前半部分用于训练，后半部分用于测试。读者可以按照自己的意愿进行重新划分，并观测以下参数变化时，模型性能的变化：
 
 ```python
   feat_dimension = 20
@@ -294,7 +297,7 @@ High,Adj. Low,Adj. Close,Adj. Volume
   n_epochs = 10
 ```
 
-1. 接下来是为训练和测试来准备观测矩阵。读者需注意，在训练和测试中会使用`float32`（4个字节长度）以加速Tensorflow。
+2. 接下来是为训练和测试来准备观测矩阵。读者需注意，在训练和测试中会使用`float32`（4个字节长度）以加速Tensorflow。
 
 ```python
   cos_values = fetch_cosine_values(train_size + test_size + feat_dimension)
@@ -314,6 +317,7 @@ High,Adj. Low,Adj. Close,Adj. Volume
 ```
 
 下面是本项目的代码：回归算法在Tensorflow中的实现。
+
    1.本节用最经典的方式来实现回归算法，即，观测矩阵与权值数组相乘后加上偏差。返回的结果是一个数组，包含数据集X中所有数据的预测结果:
 
 ```python
@@ -321,18 +325,18 @@ def regression_ANN(x, weights, biases):
 	return tf.add(biases, tf.matmul(x, weights))
 ```
 
-1. 接下来，本节定义回归器需要训练的参数，这些参数也是`tensorflow`的变量。权重是个向量，向量的模与特征大小相同，偏差是个标量。
+2. 接下来，本节定义回归器需要训练的参数，这些参数也是`tensorflow`的变量。权重是个向量，向量的模与特征大小相同，而偏差是个标量。
 
 > 读者需注意，初始化权重时，本节使用截断正态分布，这样既有接近零的值，又不至于太极端（可以作为普通正态分布输出）；而偏置项则设置为零。
->
-> 同样的，读者可以更改初始化方式，来调整模型性能：
+
+同样的，读者可以更改初始化方式，来调整模型性能：
 
 ```python
   weights = tf.Variable(tf.truncated_normal([feat_dimension, 1], mean=0.0, stddev=1.0), name="weights")
   biases = tf.Variable(tf.zeros([1, 1]), name="bias")
 ```
 
-1. 最后，本节展示如何在`tensorflow`中计算预测结果（本例较简单，模型的输出就是预测结果）、误差（本例使用MSE），以及如何进行模型训练（利用之前设置的优化器和学习率来最小化MSE）：
+3. 最后，本节展示如何在`tensorflow`中计算预测结果（本例较简单，模型的输出就是预测结果）、误差（本例使用MSE），以及如何进行模型训练（利用之前设置的优化器和学习率来最小化MSE）：
 
 ```python
   y_pred = regression_ANN(X_tf, weights, biases)
@@ -342,7 +346,7 @@ def regression_ANN(x, weights, biases):
 
    接下来进入`tensorflow`部分，来介绍如何训练模型。
 
-1. 首先进行变量初始化。接下来，写一个循环，把训练集喂给`tensorflow`（用占位符）。每轮迭代后，输出训练集上的MSE:
+4. 首先进行变量初始化。接下来，写一个循环，把训练集喂给`tensorflow`（用占位符）。每轮迭代后，输出训练集上的MSE:
 
 ```python
   with tf.Session() as sess:
@@ -368,9 +372,9 @@ def regression_ANN(x, weights, biases):
 	  plt.show()
 ```
 
-训练完毕后，我们在测试集上评估了MSE，并为读者展示模型的性能。
+训练完毕后，读者可以看到测试集上MSE评估结果，另外，本节还为读者展示模型的性能。
 
-直接用脚本中设置的默认值来训练模型，其效果不如非建模方式的效果。随着参数的调整，效果在提升。例如，设置学习率为0.1，训练的epoch设置为1000，脚本的输出会与以下结果类似：
+直接用脚本中设置的默认值来训练模型，其效果不如非建模方式的效果。随着迭代次数的增加，即各个参数的调整，效果也在提升。例如，把设置学习率为0.1，训练的epoch设置为1000，脚本的输出会与以下结果类似：
 
 ```
   Training iteration 0 MSE 4.39424
@@ -378,26 +382,30 @@ def regression_ANN(x, weights, biases):
   Training iteration 2 MSE 1.28591
   Training iteration 3 MSE 1.84253
   Training iteration 4 MSE 1.66169
-  Training iteration 5 MSE 0.993168 ...
+  Training iteration 5 MSE 0.993168 
+  ...
   ...
   Training iteration 998 MSE 0.00363447
   Training iteration 999 MSE 0.00363426
-  Test dataset: 0.00454513 Evaluation of the predictions:
+  Test dataset: 0.00454513 
+  Evaluation of the predictions:
   MSE: 0.00454513 mae: 0.0568501
   Benchmark: if prediction == last feature
-  MSE: 0.964302 mae: 0.793475
+  MSE: 0.964302 
+  mae: 0.793475
 ```
 
-在训练集和测试集上的模型表现很相近(因此，模型没有过拟合)，MSE和MAE这两个指标都比不用模型的预测要好。
-下图展示了在每个时间点上预测错误率情况。可以看出错误率在正负0.15之内，且并没有随着时间的变化而形成升高或降低的趋势。请回想一下，本章人工为余弦波信号引入的噪声值在正负0.1之内均匀分布：
+读者可以看到，模型在训练集和测试集上的表现很相近(因此，模型没有过拟合)，MSE和MAE这两个指标均优于非模型预测。
+
+下图展示了模型在每个时间点上预测错误率情况。可以看出错误率在正负0.15之内，且没有随着时间的变化而形成升高或降低的趋势。这是因为，在本章的开头，为余弦波信号引入的噪声值在正负0.1之内均匀分布：
 <img src="E:\我的\翻译\124_1.jpg" style="zoom:55%" align="center" />
 
-最后一个图显示了模型预测的时间序列与真实的时间序列会重叠在一起。对一个简单的线性回归来说，这个结果是不错的。
+最后一个图显示了模型预测的时间序列与真实的时间序列会重叠在一起。对一个简单的线性回归来说，这个结果不错。
 <img src="E:\我的\翻译\125_1.jpg" style="zoom:55%" align="center" />
 
-接下来，本章在股票价格上使用同样的模型。建议读者把当前文件的代码复制到一个新的文件中，并命名为`3_regression_stock_price.py`。这里只需要改变导入的包名，其余的不用改动。
+接下来，本章在股票价格上使用同样的模型。建议读者把接下来的代码保存到一个新的文件中，并命名为`3_regression_stock_price.py`。这里只需要改变导入的包名，其余的不用改动。
 
-下例用的是微软的股票价格，其股票代码是“`MSFT`”。获取微软2015年和2016年的股票价格，并把价格数据格式化为观测矩阵很简单。代码如下，下面代码仍包含float32数据类型转换和训练集/测试集划分。本例应用2015年的数据进行训练，来预测2016年的股票价格：
+下例用的是微软的股票价格，其股票代码是“`MSFT`”。由于本章开头的函数，可以轻松获取微软2015年和2016年的股票价格，并把价格数据格式化为观测矩阵。下面代码仍包含float32数据类型转换和训练集/测试集划分。本例应用2015年的数据进行训练，来预测2016年的股票价格：
 
 ```python
   symbol = "MSFT" feat_dimension = 20
@@ -438,13 +446,16 @@ def regression_ANN(x, weights, biases):
   ...
   Training iteration 19998 MSE 0.577189
   Training iteration 19999 MSE 0.57704
-  Test dataset: 0.539493 Evaluation of the predictions:
+  Test dataset: 0.539493 
+  Evaluation of the predictions:
   MSE: 0.539493 mae: 0.518984
   Benchmark: if prediction == last feature
-  MSE: 33.7714 mae: 4.6968
+  MSE: 33.7714 
+  mae: 4.6968
 ```
 
-这个例子中，模型依然没有过拟合，简单的回归模型一定比不用模型的效果好。开始训练的时候，损失特别高，但是随着迭代次数的增加，损失会趋于0。同样的，因为本例预测的是美元，所以很容易解释为什么用mae分数。有了模型，就可以预测一天后的股票价格，这个价格与真实价格平均差0.5美元；不做任何学习的价格与真实价格相差9倍之多。
+这个例子中，模型依然没有过拟合，简单的回归模型一定比不用模型的效果好。开始训练的时候，损失特别高，但是随着迭代次数的增加，损失会趋于0。同样的，因为本例预测的是美元，所以用mae分数作为评估。基于模型预测的第二天的股票价格，与真实价格平均差0.5美元；而不做任何学习的价格与真实价格相差9倍之多。
+
 接下来，本章直观地评估模型的性能，下图是模型预测的值：
 <img src="E:\我的\翻译\127_1.jpg" style="zoom:150%" align="center" />
 下图是绝对误差，点线代表绝对误差的趋势：
@@ -456,7 +467,7 @@ def regression_ANN(x, weights, biases):
 
 ### 长短期记忆神经网络—LSTM 101
 
-**长短期记忆神经网络**（**Long Short-Term Memory **, *LSTM*）模型是**递归神经网络**（**Recurrent Neural Networks **, *RNNs*）的特例。对其全面、严谨的介绍超出了本书的范围，故不再赘述。本节将只讲述其本质。
+**长短期记忆神经网络**（**Long Short-Term Memory **, *LSTM*）模型是**递归神经网络**（**Recurrent Neural Networks **, *RNNs*）的特例。由于对其全面、严谨的描述超出了本书的范围，故不再赘述。本节将只讲述其本质。
 
 > 读者若有兴趣，可参考Packt所著以下书籍：
 > `https://www.packtpub.com/big-data-and-business-intelligence/neural-network-programming-tensorflow`
