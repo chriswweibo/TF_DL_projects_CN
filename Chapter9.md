@@ -1,83 +1,52 @@
 ## 第9章 构建TensorFlow推荐系统
 
-A recommender system is an algorithm that makes personalized suggestions to users based
-on their past interactions with the software. The most famous example is the "customers
-who bought X also bought Y" type of recommendation on Amazon and other e-commerce
-websites.
-In the past few years, recommender systems have gained a lot of importance: it has become
-clear for the online businesses that the better the recommendations they give on their
-websites, the more money they make. This is why today almost every website has a block
-with personalized recommendations.
-In this chapter, we will see how we can use TensorFlow to build our own recommender
-system.
-In particular, we will cover the following topics:
+推荐系统是基于用户与系统的历史交互信息，给用户提供个性化建议一类算法。最著名的例子是，亚马逊和其他电商网站上“买了产品X的用户也买了产品Y”的推荐。 
 
-- Basics of recommender systems
+在过去几年中，推荐系统显现出重要的意义：在线网站的推荐做的越好，钱就赚的越多，这个道理越来越明显。这也是为什么今天几乎所有的网站都有个性化推荐的模块。
 
-- Matrix Factorization for recommender systems
-- Bayesian Personalized Ranking
-- Advanced recommender systems based on Recurrent Neural Nets
+在本章中，我们会看到如何使用TensorFlow构建推荐系统。
 
-By the end of this chapter, you will know how to prepare data for training a recommender
-system, how to build your own models with TensorFlow, and how to perform a simple
-evaluation of the quality of these models.
+具体说来，我们会介绍以下几个话题：
 
-[ 213 ]
+- 推荐系统基础
+
+- 推荐系统的矩阵分解
+- 贝叶斯个性化排序
+- 基于递归神经网络的高级推荐系统
+
+在本章结束，读者会知道如何为训练推荐系统准备数据，如何使用TensorFlow构建自己的模型，以及如何对这些模型进行简单的评估。
 
 ### 推荐系统
 
-The task of a recommender system is to take a list of all possible items and rank them
-according to preferences of particular users. This ranked list is referred to as a personalized
-ranking, or, more often, as a recommendation.
-For example, a shopping website may have a section with recommendations where users
-can see items that they may find relevant and could decide to buy. Websites selling tickets
-to concerts may recommend interesting shows, and an online music player may suggest
-songs that the user is likely to enjoy. Or a website with online courses, such as
-Coursera.org, may recommend a course similar to ones the user has already finished:
+**推荐系统（recommender system）**的任务是列出所有可能的选项，并根据具体用户的偏好进行排序。这个有序列表就是一个个性化的排序，或者更常见的，指的就是**推荐（recommendation）**。
+
+例如，一个购物网站会设计一个推荐区域，用户可以看到相关物品并决定是否购买。售卖音乐会的门票的网站会推荐有意思的表演，在线音乐播放器会建议用户可能喜欢的歌曲。一个在线课程的网站，例如Coursera.org，会推荐与用户已完成课程类似的课程：
 
 ![174_1](figures\213_1.png)
 
-Course recommendation on website
-The recommendations are typically based on historical data: the past transaction history,
-visits, and clicks that the users have made. So, a recommender system is a system that takes
-this historical data and uses machine learning to extract patterns in the behavior of the users
-and based on that comes up with the best recommendations.
-Companies are quite interested in making the recommendations as good as possible: this
-usually makes users engaged by improving their experience. Hence, it brings the revenue
-up. When we recommend an item that the user otherwise would not notice, and the user
-buys it, not only do we make the user satisfied, but we also sell an item that we would not
-otherwise have sold.
+*网站上课程推荐*
 
-[ 214 ]
-This chapter project is about implementing multiple recommender system algorithms using
-TensorFlow. We will start with classical time-proven algorithms and then go deeper and try
-a more complex model based on RNN and LSTM. For each model in this chapter, we will
-first give a short introduction and then we implement this model in TensorFlow.
-To illustrate these ideas, we use the Online Retail Dataset from the UCI Machine Learning
-repository. This dataset can be downloaded from http:/ / archive. ics. uci. edu/ ml/
-datasets/ online+retail.
-The dataset itself is an Excel file with the following features:
+推荐通常会基于历史数据：过去的交易历史，网页访问，以及用户的点击。因此，一个推荐系统会利用历史数据和机器学习来抽取用户的行为模式，并基于此给出最优推荐。
 
-- `InvoiceNo`: The invoice number, which is used to uniquely identify each
+企业对于尽可能的做出最优推荐很感兴趣：这个任务经常会促使用户来参与改善体验。所以，它最终会提高收入。当我们给出的推荐用户以前却从来没有注意到，而这次他买了下来，这意味着我们不仅满足可用户，还卖出了以前不会卖掉的商品。
 
-  transaction
+本章的对项目会介绍如何使用TensorFlow实现对个推荐系统。首先我们会介绍经典算法，然后继续尝试基于RNN和LSTM的复杂模型。对于每一个模型，我们会首先给出简要介绍，然后给出TensorFlow实现。
 
-- `StockCode`: The code of the purchased item
+为了解释这些思想，我们使用来自UCI机器学习仓库的在线销售数据集。这个数据集可以从http://archive.ics.uci.edu/ml/datasets/online+retail下载。
 
-- `Description`: The name of the product
+数据集本身是一个Excel文件，有以下特点：
 
-- `Quantity`: The number of times the item is purchased in the transaction
+- `InvoiceNo`：发票号，用来唯一标示每一笔交易
+- `StockCode`：购买物品的编号
+- `Description`：产品名称
+- `Quantity`：交易中物品的购买次数
+- `UnitPrice`：物品单价
+- `CustomerID`：客户编号
+- `Country`：客户的国家名称
 
-- `UnitPrice`: Price per item
+数据集包含25,900表交易，每笔交易大约包含20个物品。因此一共约有540,000个物品。所有交易由2010年12月到2011年12月的4,300名客户生成。
 
-- `CustomerID`: The ID of the customer
-
-- `Country`: The name of the customer's country of the customer
-
-It consists of 25,900 transactions, with each transaction containing around 20 items. This
-makes approximately 540,000 items in total. The recorded transactions were made by 4,300
-users starting from December 2010 up until December 2011.
-To download the dataset, we can either use the browser and save the file or use wget:
+要下载数据集，我们可以使用浏览器下载保存，也可以使用`wget`：
 
 ```
 wget
@@ -86,27 +55,24 @@ ail.xlsx
 ```
 
 
-For this project, we will use the following Python packages:
+对于这个项目，我们会使用下列Python程序包：
 
-- `pandas` for reading the data
-- `numpy` and `scipy` for numerical data manipulations
-- `tensorflow` for creating the models
-- `implicit` for the baseline solution
-- [optional]` tqdm` for monitoring the progress
-- [optional] `numba` for speeding up the computations
+- `pandas`，用于读取数据
+- `numpy`和`scipy`用于数值运算
+- `tensorflow`，用于创建模型
+- `implicit`，用于构建基准方案
+- [可选]` tqdm`，用于监控过程
+- [可选]`numba`用于加速计算
 
 
-[ 215 ]
-If you use Anaconda, then you should already have `numba` installed, but if not, a simple `pip install numba` will get this package for you. To install `implicit`, we again use `pip`:
+如果读者使用Anaconda，`numba`就已经装好了。否则，使用`pip install numba`获取程序包。要安装implicit`，也可以使用`pip`：
 
 ```
 pip install implicit
 ```
 
 
-Once the dataset is downloaded and the packages are installed, we are ready to start. In the
-next section, we will review the Matrix Factorization techniques, then prepare the dataset,
-and finally implement some of them in TensorFlow.
+完成数据集下载和程序包安装，我们就可以开始了。在下一节中，我们会回顾矩阵分解技术，然后准备数据集，最后使用TensorFlow进行实现。
 
 ### 推荐系统下的矩阵分解
 
@@ -1674,7 +1640,7 @@ Let us execute this function and look at its performance:
   personalized, that is, tailored for a particular user.
   Right now our X_train matrix contains only items. We should include another input, for
   example U_train, which contains the user IDs:
- 
+
 
 ```python
 X_train = []
@@ -1696,7 +1662,7 @@ U_train = np.array(U_train, dtype='int32')
   Let us change the model now. The easiest way to incorporate user features is to stack
   together user vectors with item vectors and put the stacked matrix to LSTM. It is quite easy
   to implement, we just need to modify a few lines of the code:
-  
+
 
 ```python
 def user_model(config, is_training):
@@ -1838,7 +1804,7 @@ def user_model_epoch(session, model, X, U, Y, batch_size):
 ```
 
   Let us train this new model for one epoch:
-  
+
 
 ```python
 session = tf.Session(config=None, graph=graph)
@@ -1852,7 +1818,7 @@ user_model_epoch(session, train_model, X_train, U_train, Y_train,
 
 
   The way we use the model is also almost the same as previous:
-  
+
 
 ```python
 def generate_prediction_user_model(uid, indptr, items, model, k):
