@@ -76,17 +76,15 @@ pip install implicit
 
 ### 推荐系统下的矩阵分解
 
-In this section, we will go over traditional techniques for recommending systems. As we
-will see, these techniques are really easy to implement in TensorFlow, and the resulting
-code is very flexible and easily allows modifications and improvements.
-For this section, we will use the Online Retail Dataset. We first define the problem we want
-to solve and establish a few baselines. Then we implement the classical Matrix factorization
-algorithm as well as its modification based on Bayesian Personalized Ranking.
+在这一节中，我们会介绍推荐系统的传统技术。我们会看到，用TensorFlow实现这些技术都很简单，最终代码也很灵活，允许修改和优化。
+
+我们会在这一节中使用在线销售数据集。我们首先定义要解决的问题，建立基线性能。然后实现经典的矩阵分解算法，并给予贝叶斯个性化排序做一些修改。
 
 #### 数据集准备和基线
 
-Now we are ready to start building a recommender system.
-First, declare the imports:
+现在我们开始构建推荐系统。
+
+首先，声明需要引入的库：
 
 ```python
 import tensorflow as tf
@@ -97,17 +95,13 @@ from tqdm import tqdm
 ```
 
 
-Let us read the dataset:
+读入数据集：
 
 ```python
 df = pd.read_excel('Online Retail.xlsx')
 ```
 
-
-
-[ 216 ]
-Reading `xlsx` files may take a while. To save time when we next want to read the file, we
-can save the loaded copy into a `pickle` file:
+读取 `xlsx`文件要花些时间。要为下次读入文件节省时间，我们可以把读入的文件复制到`pickle` 文件中：
 
 ```python
 import pickle
@@ -116,7 +110,7 @@ with open('df_retail.bin', 'wb') as f_out:
 ```
 
 
-This file is a lot faster to read, so for loading, we should use the pickled version:
+这个文件读起来要快很多，因此我们应该使用这个版本的数据：
 
 ```python
 with open('df_retail.bin', 'rb') as f_in:
@@ -124,56 +118,38 @@ with open('df_retail.bin', 'rb') as f_in:
 ```
 
 
-Once the data is loaded, we can have a look at the data. We can do this by invoking the
-head function:
+数据加载完成后，我们可以看一下数据。使用`head`函数进行查看：
 
 ```python
 df.head()
 ```
 
+我们可以看到下表：
 
-We then see the following table:
+![](figures/216_1.png)
 
-|      |      |      |      |      |      |      |      |      |
-| ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
-| 0    |      |      |      |      |      |      |      |      |
-| 1    |      |      |      |      |      |      |      |      |
-| 2    |      |      |      |      |      |      |      |      |
-| 3    |      |      |      |      |      |      |      |      |
-| 4    |      |      |      |      |      |      |      |      |
+进一步查看数据，我们可以注意到以下问题：
 
-If we take a closer look at the data, we can notice the following problems:
+- 列名都是大写。这有点不自然，因此我们把它们改成小写。
 
-- The column names are in capital letters. This is a bit unusual, so we may
+- 一些交易是还款：这些数据并不是我们感兴趣的，因此应该过滤掉。
 
-  lowercase them.
+- 最后，一些交易来自于未知用户。我们可以指定一些公共ID，例如-1。而且，未知用户都被编码成
 
-- Some of the transactions are returns: they are not of interest to us, so we should
-
-  filter them out.
-
-- Finally, some of the transactions belong to unknown users. We can assign some
-
-  common ID for these users, for example, -1. Also, unknown users are encoded as
-
-  `NaNs`, this is why the `CustomerID` column is encoded as float—so we need to
-
-  convert it to an integer.
+  `NaN`，这也是为什么`CustomerID`被编码成浮点型。我们需要把它们转换为整型。
 
 
-[ 217 ]
-These problems can be fixed with the following code:
+
+这些问题可以通过一下代码解决：
 
 ```python
 df.columns = df.columns.str.lower()
-df =
-df[~df.invoiceno.astype('str').str.startswith('C')].reset_index(drop=True)
+df = df[~df.invoiceno.astype('str').str.startswith('C')].reset_index(drop=True)
 df.customerid = df.customerid.fillna(-1).astype('int32')
 ```
 
 
-Next, we should encode all item IDs (`stockcode`) with integers. One of the ways to do it is
-to build a mapping from each code to some unique index number:
+接着，我们把所有的产品ID（`stockcode`）编码成整数。一个方法是构建每一个编码到唯一索引号的映射：
 
 ```python
 stockcode_values = df.stockcode.astype('str')
@@ -185,21 +161,15 @@ df.stockcode = stockcode_values.map(stockcodes).astype('int32')
 ```
 
 
-Now after we have encoded the items, we can split the dataset into train, validation, and
-test parts. Since we have e-commerce transactions data, the most sensible way to do the
-split is based on time. So we will use:
+编码完成后，我们可以把数据集分成训练集，验证集合测试集。由于我们已经有了电商交易数据，最好的办法是根据时间划分。因此我们使用：
 
-- **Training set**: before 2011.10.09 (around 10 months of data, approximately 378,500
+- **训练集**：2011.10.09以前的数据（大约10个月，378,500行）
 
-  rows)
+- **验证集**：2011.10.09和2011.11.09之间的数据（大约1个月，64,500行）
 
-- **Validation set**: between 2011.10.09 and 2011.11.09 (one month of data,
+- **测试集**：2011.11.09之后的数据（大约1个月89,000行）
 
-  approximately 64,500 rows)
-
-- **Test set**: after 2011.11.09 (also one month, approximately 89,000 rows)
-
-For that we just filter the dataframes:
+过滤数据框：
 
 ```python
 df_train = df[df.invoicedate < '2011-10-09']
