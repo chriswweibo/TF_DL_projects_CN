@@ -179,33 +179,23 @@ df_test = df[df.invoicedate >= '2011-11-09']
 ```
 
 
-In this section, we will consider the following (very simplified) recommendation scenario:
+在这一节中，我们会考虑下列（简化的）推荐场景：
 
-1. The user enters the website.
+1. 用户来到网站。
 
-2. We present five recommendations.
+2. 给出5个推荐。
 
-3. The user assesses the lists, maybe buys some things from there, and then
-  continues shopping as usual.
+3. 用户评估推荐列表，可能购买其中的几样，然后继续一般购买行为。
 
-So we need to build a model for the second step. To do so, we use the training data and then
-simulate the second and third steps using the validation set. To evaluate whether our
-recommendation was good or not, we count the number of recommended items that the
-user has actually bought.
+我们需要为第二个场景构建模型。我们使用训练数据，然后用验证集模拟第二个和第三个步骤。要验证我们的推荐质量如何，我们可以统计用户购买的推荐物品的数量。
 
-  [ 218 ]
-  Our evaluation measure is then the number of successful recommendations (the items the
-  user has actually bought) divided by the number of total recommendations we made. This
-  is called precision—a common measure of evaluating the performance of machine learning
-  models.
-  For this project we use precision. Of course, it is a rather simplistic way of evaluating the
-  performance, and there are different ways of doing this. Other metrics you may want to use
-  include MAP (Mean Average Precision), NDCG (Normalized Discounted Cumulative
-  Gain), and so on. For simplicity, however, we do not use them in this chapter.
-  Before we jump into using machine learning algorithm for this task, let us first establish a
-  basic baseline. For example, we can calculate how many times each item was bought, then
-  take the most frequent five items, and recommend these items to all the users.
-  With pandas it is easy to do:
+我们的评估方案是成功推荐的数量（用户购买的商品量）除以全部推荐数量，也就是准确率——机器学习模型常用的评估性能的方法。
+
+这是一种非常简单的评估性能的方法，有许多不同的实现方案。其它可能的方案有**平均精度均值（MAP，Mean Average Precision）**, **归一化折损累积增益（NDCG，Normalized Discounted Cumulative Gain）**等。 简单起见，我们在这一章中不使用这些方法。
+
+开始机器学习算法之前，首先建立基准表现。例如，我们可以计算每一个物品被购买了多少次，取最常购买的前5个物品，然后推荐给所有用户：
+
+使用pandas很容易实现：
 
 
 ```python
@@ -213,18 +203,16 @@ top = df_train.stockcode.value_counts().head(5).index.values
 ```
 
 
-  This gives us an array of integers—`stockcode` codes:
+这行代码给出一个整数数组——`stockcode`编码：
 
 
 ```python
 array([3527, 3506, 1347, 2730, 180])
 ```
 
+现在我们使用这个数组，给所有用户做推荐。重复`top`数组，次数与验证集中的交易数一样，然后使用这个数组作为推荐，计算准确率评估推荐质量。
 
-  Now we use this array to recommend it to all the users. So we repeat the `top` array as many
-  times as there are transactions in the validation dataset, and then we use this as the
-  recommendations and calculate the precision metric to evaluate the quality.
-  For repeating we use the `tile` function from numpy:
+我们使用numpy中的`tile`函数进行重复：
 
 
 ```python
@@ -233,8 +221,7 @@ baseline = np.tile(top, num_groups).reshape(-1, 5)
 ```
 
 
-  The tile function takes in an array and repeats it `num_group` times. After reshaping, it
-  gives us the following array:
+ `tile`函数的输入是一个数组，重复`num_group`次。重塑之后，最终数组如下：
 
 ```python
   array([[3527, 3506, 1347, 2730, 180],
@@ -247,50 +234,34 @@ baseline = np.tile(top, num_groups).reshape(-1, 5)
 ```
 
 
-  Now we are ready to calculate the precision of this recommendation.
+现在我们可以计算推荐的准确率。
 
-  [ 219 ]
-  However, there is a complication: the way the items are stored makes it difficult to calculate
-  the number of correctly classified elements per group. Using groupby from pandas is one
-  way of solving the problem:
+然后，还有一个困难。物品存储的方式使得每组正确分类物品的个数难以计算。使用pandas的`groupby` 函数可以解决这个问题：
 
--   Group by `invoiceno` (this is our transaction ID)
+- 按照`invoiceno`（也是我们的交易ID）分组
 
--   For each transaction make a recommendation
--   Record the number of correct predictions per each group
--   Calculate the overall precision
+- 为每一次交易做推荐
 
-  However, this way is often very slow and inefficient. It may work fine for this particular
-  project, but for slightly larger datasets it becomes a problem.
-  The reason it is slow is the way `groupby` is implemented in pandas: it internally performs
-  sorting, which we do not need. However, we can improve the speed by exploiting the way
-  the data is stored: we know that the elements of our dataframe are always ordered. That is,
-  if a transaction starts at a certain row number i, then it ends at the number i + k, where k
-  is the number of items in this transaction. In other words, all the rows between i and i + k
-  belong to the same `invoiceid`.
-  So we need to know where each transaction starts and where it ends. For this purpose, we
-  keep a special array of length n + 1, where n is the number of groups (transactions) we
-  have in our dataset.
-  Let us call this array `indptr`. For each transaction `t`:
+- 记录每组中正确预测的数量
 
-- `indptr[t]` returns the number of the row in the dataframe where the transaction
+- 计算整体准确率
 
-  starts
+但是，这个方法很慢，很低效。它也许在这个项目中可用，但是当数据集变大时，它就成问题了。，
 
--  `indptr[t + 1]` returns the row where it ends
+变慢的原因来自于pandas中`groupby`的实现方式：它会迭代地执行排序，而我们并不需要这个功能。我们可以通过改善数据排序的方式来提升速度：我们知道数据框中的元素都是按顺序存储的。也就是说，如果一次交易从某一行`i`开始，那么会在第`i + k`行结束，其中`k`是交易中物品数量。换句话说，所有`i`和`i + k`之间的行都属于同一个`invoiceid`。
 
->   This way of representing the groups of various length is inspired by the
->   CSR algorithm—Compressed Row Storage (sometimes Compressed
->   Sparse Row). It is used to represent sparse matrices in memory. You can
->   read about it more in the Netlib documentation—http://netlib.org/linalg/html_templates/node91.html. You may also recognize this name
->   from scipy—it is one of the possible ways of representing matrices in the
->   `scipy.sparse` package: https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.sparse.csr_matrix.html.
+因此我们需要知道每一次交易开始和结束的信息。我们可以专门维护一个长度为`n + 1`的数组，其中`n`是数据集中的组数（交易数）。
 
-  [ 220 ]
-  Creating such arrays is not difficult in Python: we just need to see where the current
-  transaction finishes and the next one starts. So at each row index, we can compare the
-  current index with the previous one, and if it is different, record the index. This can be done
-  efficiently using the shift method from pandas:
+设这个数组为`indptr`。对于每一次交易`t`：
+
+- `indptr[t]`返回数据框中交易开始的行数
+
+- `indptr[t + 1]`返回交易结束的行数
+
+> 表示边长分组的方法，受到CSR（行压缩存储，Compressed Row Storage，或Compressed
+> Sparse Row）算法的启发。它用于表示内存中的稀疏矩阵。读者可以从Netlib文档中获取更多信息—http://netlib.org/linalg/html_templates/node91.html，也可以从scipy中看到这个名字—它是`scipy.sparse`程序包中表示矩阵的一种方法：https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.sparse.csr_matrix.html。
+
+使用Python创建这些数组并不难：我们只需要知道当前交易在哪里结束，以及下一次交易从哪里开始。所以在每一个行索引中，我们可以比较当前索引和上一个索引，如果二者不同，则记录这个索引。这一步骤可以使用pandas中的`shift`方法实现：
 
 ```python
   def group_indptr(df):
@@ -299,14 +270,14 @@ baseline = np.tile(top, num_groups).reshape(-1, 5)
         return indptr
 ```
 
-This way we get the pointers array for the validation set: 
+我们获取验证集的指针数组： 
 
 ```python
  val_indptr = group_indptr(df_val)
 ```
 
 
-  Now we can use it for the `precision` function:
+我们可以定义`precision` 函数：
 
 ```python
   from numba import njit
@@ -331,23 +302,12 @@ This way we get the pointers array for the validation set:
 ```
 
 
-  Here the logic is straightforward: for each transaction we check how many items we
-  predicted correctly. The total amount of correctly predicted items is stored in tp. At the end
-  we divide tp by the total number of predictions, which is the size of the prediction matrix,
-  that is, number of transactions times five in our case.
+其中的逻辑很直接：对于每一次交易，我们都记录有多少物品被正确预测。正确预测的总量存储在`tp`。最后，用`tp`除以预测总量，即预测矩阵的规模，也就是交易次数乘以5。 
 
-  [ 221 ]
-  Note the `@njit` decorator from numba. This decorator tells numba that the code should be
-  optimized. When we invoke this function for the first time, numba analyzes the code and
-  uses the just-in-time (JIT) compiler to translate the function to native code. When the
-  function is compiled, it runs multiple orders of magnitude faster—comparable to native
-  code written in C.
-> Numba's `@jit` and `@njit` decorators give a very easy way to improve the
-  speed of the code. Often it is enough just to put the `@jit` decorator on a
-  function to see a significant speed-up. If a function takes time to compute,
-  numba is a good way to improve the performance.
+需要注意numba中的`@njit`装饰器。这个装饰器告诉numba代码需要优化。当第一次调用这个函数的时候，numba会分析代码，使用**准时化（just-in-time，JIT）**编译器把函数翻译成本地代码。函数编译好后，它的运行速度会比C语言代码相比提升几个数量级。
+> Numba的`@jit`和`@njit` 装饰器提供了非常简单的提升代码速度的方法。通常，只用在函数中放置`@jit`装饰器已经足够看到速度提升。如果函数的运算时间较长，numba是改善性能的好方法。
 
-Now we can check what is the precision of this baseline:
+现在我们可以检测基准表现的准确率：
 
 ```python
  val_items = df_val.stockcode.values
@@ -355,12 +315,9 @@ Now we can check what is the precision of this baseline:
 ```
 
 
-  Executing this code should produce 0.064. That is, in 6.4% of the cases we made the correct
-  recommendation. This means that the user ended up buying the recommended item only in
-  6.4% cases.
+执行上述代码可以得到0.064。也就是说，6.4%的情况作出了正确推荐。这意味着，用户只在6.4%的情况下结束了推荐物品的购买。
 
-Now when we take a first look at the data and establish a simple baseline, we can proceed
-  to more complex techniques such as matrix factorization.
+现在，我们初步查看了数据并建立了基准表现，接着我们可以继续学习更负责的技术，例如矩阵分解。
 
 #### 矩阵分解
 
