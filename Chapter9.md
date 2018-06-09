@@ -321,57 +321,50 @@ baseline = np.tile(top, num_groups).reshape(-1, 5)
 
 #### 矩阵分解
 
-  In 2006 Netflix, a DVD rental company, organized the famous Netflix competition. The goal
-  of this competition was to improve their recommender system. For this purpose, the
-  company released a large dataset of movie ratings. This competition was notable in a few
-  ways. First, the prize pool was one million dollars, and that was one of the main reasons it
-  became famous. Second, because of the prize, and because of the dataset itself, many
-  researchers invested their time into this problem and that significantly advanced the state of
-  the art in recommender systems.
-  It was the Netflix competition that showed that recommenders based on matrix
-  factorization are very powerful, can scale to a large number of training examples, and yet
-  are not very difficult to implement and deploy.
-  The paper Matrix factorization techniques for recommender systems by Koren and others
-  (2009) nicely summarizes the key findings, which we will also present in this chapter.
+​        2006年，DVD租赁公司Netflix组织了著名的Netflix竞赛。竞赛的目的是改进他们的推荐系统。为此，公司公开了电影评分的大型数据集。从多方面讲，这个竞赛很出名。首先，奖金池高达100万美元，这也是赛事出名的主要原因。其次，由于奖金和数据集的诱惑，许多研究人员都在上面花费了不少精力。这也推动了推荐系统的前沿研究。
 
-  [ 222 ]
-  Imagine we have the rating of a movie rated by user . We can model this rating by:
-  .
-  Here we decompose the rating into four factors:
+也正是Netflix的竞赛，证明了基于矩阵分解的推荐系统很强大，并且可以扩展到大规模的训练集上，同时实现和部署也并不困难。
 
--   is the global bias
+ Koren及其合作人员的文章《Matrix factorization techniques for recommender systems》（2009）很好的总结了一些主要观察结果，本章也给出。
 
--   is the bias of the item (in case of Netflix—movie)
--   is the bias of the user
--   is the inner product between the user vector and the item vector
+假设我们拿到了用户$u$对电影$i$的评分$r_{ui}$ 。我们可以通过下列方式建模：
 
-  The last factor—the inner product between the user and the item vectors—is the reason this
-  technique is called Matrix Factorization.
-  Let us take all the user vectors , and put them into a matrix as rows. We then will
-  have an matrix, where is the number of users and is the dimensionality of
-  the vectors. Likewise, we can take the item vectors and put them into a matrix as
-  rows. This matrix has the size , where is the number of items, and is again
-  the dimensionality of the vectors. The dimensionality is a parameter of the model, which
-  allows us to control how much we want to compress the information. The smaller is, the
-  less information is preserved from the original rating matrix.
-  Lastly, we take all the known ratings and put them into a matrix —this matrix is of
-  size. Then this matrix can be factorized as
-  .
-  Without the biases part, this is exactly what we have when we compute in the
-  preceding formula.
+$$\hat{r}_{ui}=\mu+b_i+b_u+q^T_i p_u$$ 
 
-  [ 223 ]
-  To make the predicted rating as close as possible to the observed rating rating , we
-  minimize the squared error between them. That is, our training objective is the following:
+我们把评分分成了4个因素：
+
+- $$\mu$$是全局偏置
+
+- $$b_i$$是物品的偏置（就是Netflix中电影分类的偏置）
+
+- $$b_u$$是用户的偏置
+
+- $$q^T_i p_u$$是用户向量和物品向量的内积
+
+最后一个因素，用户向量和物品向量的内积，是矩阵分解叫法的来源。
+
+设所有的用户向量是$q_u$，存放在矩阵$U$的每一行中。我们有$n_u\times k$的矩阵，其中$n_u$是用户数量，$k$是向量维度。类似的，我们可以获取物品向量$p_i$，放在矩阵$I$的每一行中。这个矩阵是$n_i\times k$的，其中$n_i$是物品数量，$k$还是向量维度。维度$k$是模型的参数，支持我们控制信息压缩的多少。$k$越小，原始评分矩阵的信息保留的越少。
+
+最后，我们得到所有的评分，并存在矩阵$R$中。这个矩阵是$n_u \times n_i$的。这个矩阵可以分解为：
+
+$$R \approx U^TI$$
+
+不考虑偏置部分，这个就是我们在之前的公式中计算$\hat{r}_{ui}$的结果。
+
+要让预测的评分$\hat{r}_{ui}$与观察到的评分$r_{ui}$尽可能的接近，我们需要最小化二者之间的误差平方和。因此，我们的训练目标函数如下：
+
+$$minimize\sum(r_{ui}-\hat{r}_{ui})^2+\lambda(\lVert p_u \rVert ^2 +\lVert q_i \rVert ^2 )$$
+
+
   This way of factorizing the rating matrix is sometimes called SVD because it is inspired by
   the classical Singular Value Decomposition method—it also optimizes the sum of squared
   errors. However, the classical SVD often tends to overfit to the training data, which is why
   here we include the regularization term in the objective.
   After defining the optimization problem, the paper then talks about two ways of solving it:
 
--  Stochastic Gradient Descent (SGD)
+- Stochastic Gradient Descent (SGD)
 
--  Alternating Least Squares (ALS)
+- Alternating Least Squares (ALS)
 
   Later in this chapter, we will use TensorFlow to implement the SGD method ourselves and
   compare it to the results of the ALS method from the implicit library.
