@@ -355,62 +355,36 @@ $$R \approx U^TI$$
 
 $$minimize\sum(r_{ui}-\hat{r}_{ui})^2+\lambda(\lVert p_u \rVert ^2 +\lVert q_i \rVert ^2 )$$
 
+评分矩阵的分解方法有时也叫作**SVD**，因为这种方法受经典的奇异值分解方法启发，其也优化误差平方和。但是，经典的SVD方法容易在训练集上过拟合，这也是为什么我们在目标函数上加上一个正则项。
 
-  This way of factorizing the rating matrix is sometimes called SVD because it is inspired by
-  the classical Singular Value Decomposition method—it also optimizes the sum of squared
-  errors. However, the classical SVD often tends to overfit to the training data, which is why
-  here we include the regularization term in the objective.
-  After defining the optimization problem, the paper then talks about two ways of solving it:
+定义好要优化的问题后，文章又讨论了两种解决方法：
 
-- Stochastic Gradient Descent (SGD)
+- **随机梯度下降（Stochastic Gradient Descent ，SGD）**
 
-- Alternating Least Squares (ALS)
+- **交替最小二乘法（Alternating Least Squares，ALS）**
 
-  Later in this chapter, we will use TensorFlow to implement the SGD method ourselves and
-  compare it to the results of the ALS method from the implicit library.
-  However, the dataset we use for this project is different from the Netflix competition
-  dataset in a very important way—we do not know what the users do not like. We only
-  observe what they like. That is why next we will talk about ways to handle such cases.
+下面，我们会亲自使用TensorFlow实现SGD方法，然后与`implict`库中ALS方法的结果作比较。
 
- ####模糊反馈数据集
+这个项目的数据集与Netflix竞赛的数据集不同。这很关键。因为我们不知道用户不喜欢什么。我们只观察到用户喜欢什么。这也是为什么我们会接着讨论解决此类问题的原因。
 
-  In case of the Netflix competition, the data there relies on the explicit feedback given by the
-  users. The users went to the website and explicitly told them how much they like the movie
-  by giving it a rating from 1 to 5.
-  Typically it is quite difficult to make users do that. However, just by visiting the website
-  and interacting with it, the users already generated a lot of useful information, which can be
-  used to infer their interests. All the clicks, page visits, and past purchases tell us about the
-  preferences of the user. This kind of data is called implicit - the users do not explicitly tell
-  us what they like, but instead, they indirectly convey this information to us by using the
-  system. By collecting this interaction information we get implicit feedback datasets.
-  The Online Retail Dataset we use for this project is exactly that. It tells us what the users
-  previously bought, but does not tell us what the users do not like. We do not know if the
-  users did not buy an item because they did not like it, or just because they did not know the
-  item existed.
+ ####隐式反馈数据集
 
-  [ 224 ]
-  Luckily for us, with minor modification, we still can apply the Matrix Factorization
-  techniques to implicit datasets. Instead of the explicit ratings, the matrix takes values of 1
-  and 0—depending on whether there was an interaction with the item or not. Additionally, it
-  is possible to express the confidence that the value 1 or 0 is indeed correct, and this is
-  typically done by counting how many times the users have interacted with the item. The
-  more times they interact with it, the larger our confidence becomes.
-  So, in our case all values that the user has bought get the value 1 in the matrix, and all the
-  rest are 0's. Thus we can see this is a binary classification problem and implement an SGDbased
-  model in TensorFlow for learning the user and item matrices.
-  But before we do that, we will establish another baseline have stronger than the previous
-  one. We will use the implicit library, which uses ALS.
->Collaborative Filtering for Implicit Feedback Datasets by Hu et al (2008) gives a
-> good introduction to the ALS method for implicit feedback datasets. We
-> do not focus on ALS in this chapter, but if you want to learn how ALS is
-> implemented in libraries such as `implicit`, this paper is definitely a great
-> source. At the time of writing, the paper was accessible via http://yifanhu.net/PUB/cf.pdf.
+在Netflix竞赛的例子中，数据依赖于用户给出的显式反馈。用户登录网站，明确的以1分到5分的形式告诉系统他们对电影的喜欢程度。
 
-First, we need to prepare the data in the format `implicit` expects—and for that we need to
-  construct the user-item matrix X. For that we need to translate both users and items to IDs,
-  so we can map each user to a row of X, and each item—to the column of X.
-  We have already converted items (the column stockcode) to integers. How we need to
-  perform the same on the user IDs (the column `customerid`):
+事实上，让用户做到这些很难。然而，仅仅访问和与网站做交互，已经产生了大量的有用信息，支持进一步对兴趣进行推断。所有的点击，网页访问，历史购买记录可以展示用户的偏好。这一类数据叫做**隐式数据（implicit）**，即用户不会显式的告诉我们喜欢什么，相反，他们会间接的通过使用系统传递这个信息。通过收集这些交互信息，我们可以获取隐式反馈数据集。
+
+项目中使用的在线零售数据集就是这类数据集。它告诉我们用户之前买过什么，但是不会告诉我们用户不喜欢什么。我们不知道用户是不是真的不喜欢某个物品才不买它，而不是不知道物品的存在，才没有买它。
+
+幸运的是，我们做了小小的改动，依然可以在隐式数据集上使用矩阵分解技术。我们不再使用显式评分，而改让矩阵存储0和1的值，记录用户是否和物品有交互。另外，我们也可以对0和1的取值表达一定的置信度，这通常可以通过统计用户去物品交互的次数来实现。交互的次数越多，我们的置信度越高。
+
+所以，在这个例子中，有购买行为的用户在矩阵中会对应1。其他的位置都是0。进而，我们可以当做是一个二分类问题，使用TensorFlow中的SGD模型学习用户兴趣和物品矩阵。
+
+开始之前，我们首先建立另一个基准模型，它要比之前的模型强大。我们使用`implicit`库，以便使用ALS。
+>Hu的2008年的文章《Collaborative Filtering for Implicit Feedback Datasets》 给出了ALS在隐式反馈数据集使用的介绍。再本章中，我们不会关注ALS，但是如果读者对ALS的实现，例如`implicit`很感兴趣，这篇文章非常推荐。成书之时，这篇文章可以在http://yifanhu.net/PUB/cf.pdf下载。
+
+首先，我们需要准备`implicit` 期望格式的数据，因此我们需要构建用户-物品矩阵。我们要把用户和物品ID进行转换，以便把每一个用户映射Wie矩阵X的行，每一个物品映射为矩阵X的列。
+
+我们已经把物品（`stockcode`列）转换为整数。同样，也需要对用户ID（`customerid`列）进行操作：
 
 ```python
   df_train_user = df_train[df_train.customerid != -1].reset_index(drop=True)
@@ -422,17 +396,14 @@ First, we need to prepare the data in the format `implicit` expects—and for th
 ```
 
 
-  Note that in the first line we perform the filtering and keep only known users there—these
-  are the users we will use for training the model afterward. Then we apply the same
-  procedure to the users in the validation set:
+ 需要注意，在第一行代码中，我们仅仅过滤保留了已知用户，这些用户会子啊后面的模型训练汇总用到。我们也会在验证集中执行同样的过程：
 
 
 ```python
  df_val.customerid = df_val.customerid.apply(lambda c: customers.get(c, -1))
 ```
 
-  [ 225 ]
-  Next we use these integer codes to construct the matrix X:
+接着，我们使用整数编码构建矩阵X:
 
 ```python
   uid = df_train_user.customerid.values.astype('int32')
@@ -443,17 +414,10 @@ First, we need to prepare the data in the format `implicit` expects—and for th
 ```
 
 
-  The `sp.csr_matrix` is a function from the `scipy.sparse` package. It takes in the rows
-  and column indicies plus the corresponding value for each index pair, and constructs a
-  matrix in the Compressed Storage Row format.
-> Using sparse matrices is a great way to reduce the space consumption of
-> data matrices. In recommender systems there are many users and many
-> items. When we construct a matrix, we put zeros for all the items the user
-> has not interacted with. Keeping all these zeros is wasteful, so sparse
-> matrices give a way to store only non-zero entries. You can read more
-> about them in the `scipy.sparse` package documentation at https://docs.scipy.org/doc/scipy/reference/sparse.html.
+`sp.csr_matrix` 是`scipy.sparse` 包中的函数。它以行列索引，以及每一个索引对的值作为输入，构建一个压缩行存储（Compressed Storage Row）格式的矩阵。
+> 使用稀疏矩阵是减少数据矩阵空间消耗的有效方法。在推荐系统中，有许多用户和物品。构建矩阵的时候，我们把所有与用户没有交互的物品设置为0。保存所有的0值是很浪费空间的，所以稀疏矩阵只给非零数据提供了存储空间。读者可以通过`scipy.sparse`的文档获得更多的信息：https://docs.scipy.org/doc/scipy/reference/sparse.html。
 
-Now let us use `implicit` to factorize the matrix X and learn the user and item vectors:
+使用`implicit` 分解矩阵X，学习用户和物品向量：
 
 ```python
   from implicit.als import AlternatingLeastSquares
@@ -464,33 +428,24 @@ Now let us use `implicit` to factorize the matrix X and learn the user and item 
 ```
 
 
-  To use ALS we use the `AlternatingLeastSquares` class. It takes two parameters:
+要使用ALS，需要使用`AlternatingLeastSquares`类。它需要两个参数：
 
--   `factors`: this is the dimensionality of the user and item vectors, which we called
+- `factors`：用户和物品向量的维度，即之前的k
 
-    previously k
+- `regularization`：L2正则化参数，以避免过拟合
 
--   `regularization`: the L2 regularization parameter to avoid overfitting
-
-  Then we invoke the `fit` function to learn the vectors. Once the training is done, these
-  vectors are easy to get:
+然后我们调用`fit`函数，来学习向量。一旦训练结束，这些向量很容易获取：
 
 ```python
   als_U = als.user_factors
   als_I = als.item_factors
 ```
 
+得到$U$ 和$I$矩阵后，我们就可以做推荐了。我们只用计算每个矩阵两个行之间的内积就可以。后面马上可以看到。
 
-  After getting the U and I matrices, we can use them to make recommendations to the user,
-  and for that, we simply calculate the inner product between the rows of each matrix. We
-  will see soon how to do it.
+矩阵分解方法有一个问题：它不能处理新用户。要解决这个问题，我们只需要把这个方法和基线方法结合在一起：用基线方法给新的未知用户做推荐，用矩阵分解给已知用户做推荐。
 
-  [ 226 ]
-  Matrix factorization methods have a problem: they cannot deal with new users. To
-  overcome this problem, we can simply combine it with the baseline method: use the
-  baseline to make a recommendation to new and unknown users, but apply Matrix
-  Factorization to known users.
-  So, first we select the IDs of known users in the validation set:
+因此，首先选取验证集中已知用户的ID：
 
 ```python
   uid_val = df_val.drop_duplicates(subset='invoiceno').customerid.values
@@ -499,8 +454,7 @@ Now let us use `implicit` to factorize the matrix X and learn the user and item 
 ```
 
 
-  We will make recommendations only to these users. Then we copy the baseline solution,
-  and replace the prediction for the known users by values from ALS:
+我们只会对这些用户做推荐。然后，复制基线方案，替换ALS下给已知用户做的推荐。 
 
 ```python
   imp_baseline = baseline.copy()
@@ -512,11 +466,9 @@ Now let us use `implicit` to factorize the matrix X and learn the user and item 
   prevision(val_indptr, val_items, imp_baseline)
 ```
 
+我们得到验证集中每个用户ID的向量，然后乘以所有的物品向量。对于每一个用户，选取分数最高的5个物品。
 
-  Here we get the vectors for each user ID in the validation set and multiply them with all the
-  item vectors. Next, for each user we select top five items according to the score.
-  This outputs 13.9%. This is a lot stronger baseline than our previous baseline of 6%. This
-  should be a lot more difficult to outperform, but next, we nonetheless try to do it.
+输出结果是13.9%。这个结果比之前基准结果6%好了不少。同时，这个结果应该很难超越了。但是接下来，我们还是愿意尝试一下。
 
 ### 基于SGD的矩阵分解
 
