@@ -1,3 +1,29 @@
+# 关系概念译法统一（按音序），大家有不同意见，或者需要添加，可以提出来讨论
+* accuracy: 准确率
+* batch：批
+* batch normalization： 批归一化
+* benchmark：基准，基准表现
+* boosting: 提升
+* cnn：卷积神经网络
+* compressed storage row：压缩行存储
+* dense layer: 全连接层
+* dropout: dropout
+* embedding: 词嵌入
+* epoch：轮
+* in order to: 为了，以便
+* library：库
+* logistic regression：logistic回归
+* package：程序包
+* pooling: 池化
+* pool size：池化大小
+* session: 会话
+* testing set: 测试集
+* TF-IDF: 词频-逆文档频率
+* tokenization: 切词
+* validation set: 验证集
+* we：我们，本书
+* you：读者
+
 # TF_DL_projects_CN
 1. 注意语句书面化，例如：
 这一章---本章

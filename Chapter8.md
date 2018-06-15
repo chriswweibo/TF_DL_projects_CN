@@ -1147,10 +1147,11 @@ for i in range(no_epochs):
     print('batch %02d, accuracy: %0.3f' % (i, np.mean(y_val == y_pred)))
 ```
 
-经过10轮训练，模型给出了82.5%的准确率。这比之前的基准表现提高了不少。 Of course, the model could be improved further by using better preprocessing and tokenization. More epochs (up to 200) could also help raise the accuracy a bit more. Stemming and lemmatization may also definitely help to get near the state-of-the-art accuracy of 88% reported by Quora on its blog. 
-Having completed the training, we can use the in-memory session to test some question evaluations. We try with two questions about the duplicated questions on Quora, but the procedure works with any pair of questions you would like to test the algorithm on.
+经过10轮训练，模型给出了82.5%的准确率。这比之前的基准表现提高了不少。当然，模型还可以通过更好的预处理和切词进一步提升效果。多训练几轮（至200轮）也可以提升准确率。词干提取和词形还原也可以把效果提升到Quora博客中当前最好的88%的效果。
 
-> As with many machine learning algorithms, this one depends on the distribution that it has learned. Questions completely different from the ones it has been trained on could prove difficult for the algorithm to guess.
+训练完成后，我们可以使用内存会话测试一些问题的评估。我们使用两个重复问题，但是处理过程对于任何一对问题都是有效的。
+
+> 对于许多机器学习算法，其依赖于训练集上的数据分布，而真实问题的分布可能和训练集上的分布完全不同，这样使得算法预测变得更加困难。
 
 ```python
 def convert_text(txt, tokenizer, padder):    
@@ -1174,13 +1175,14 @@ print("Answer: %0.2f" % isduplicated(a, b))
 ```
 
 
-After running the code, the answer should reveal that the questions are duplicated (answer:
-1.0).
+运行上面的代码，结果会给出这是重复问题（answer : 1.0)。
 
 ### 小结
 
-In this chapter, we built a very deep neural network with the help of TensorFlow in order to detect duplicated questions from the Quora dataset. The project allowed us to discuss, revise, and practice plenty of different topics previously seen in other chapters: TF-IDF, SVD, classic machine learning algorithms,  Word2vec and GloVe embeddings, and LSTM models.
-In the end, we obtained a model whose achieved accuracy is about 82.5%, a figure that is higher than traditional machine learning approaches and is also near other state-of-the-art deep learning solutions, as reported by the Quora blog.  
-It should also be noted that the models and approaches discussed in this chapter can easily be applied to any semantic matching problem.
+在这一章里，我们通过TensorFlow构建了一个深度神经网络，以便监测Quora数据集上的重复问题。这个项目带着我们讨论，修改，实操了之前章节中学到的各个操作：TF-IDF，SVD，经典机器学习算法，Word2vec和GloVe词嵌入和LSTM模型。
+
+最后，我们得到了一个准确率在82.5%的模型，这比传统的机器学习方法眼好，也很接近当前Quora博客中报出的最好结果。
+
+需要注意的是，本章的模型和方法可以应用到任何语义匹配问题上。
 
 ---
