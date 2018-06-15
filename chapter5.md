@@ -473,15 +473,17 @@ def regression_ANN(x, weights, biases):
 > `https://www.packtpub.com/big-data-and-business-intelligence/neural-network-programming-tensorflow`
 > 也可参考这个页面`https://www.packtpub.com/big-data-and-business-intelligence/neural-networks-r`
 
-简单来说，RNN适用于序列数据： 以多维信号作为输入，并生成多维输出信号。下图是一个RNN的例子，这个RNN模型能够处理五个时间步长（每个时间步长是一个输入）。下图的下半部分是RNN的输入，上半部分是输出。每个输入或输出都包含一个N维的特征：
+简单来说，RNN适用于序列数据： 以多维信号作为输入，并生成多维输出信号。下图是一个RNN的例子，这个RNN模型能够处理五个时间步长（每个时间步长是一个输入）。图的下半部分是RNN的输入，上半部分是输出。每个输入或输出都包含一个N维的特征：
 <img src="E:\我的\翻译\130_1.jpg" style="zoom:100%" align="center" />
-在RNN的内部存在许多时间阶段；每个阶段与它本身的输入和输出相连，也与上一阶段的输出相连。由于这种设置，每个当前阶段的输出不再仅是当前输入的函数，还依赖于上一阶段的输出（上一阶段的输出依赖于上一阶段的输入和上上阶段的输出，以此类推）。这种设置保证了每个输入可以影响到接下来的所有输出，换句话说，每个输出都是前面所有输入及当前输入的函数。
+在RNN的内部存在许多时间阶段；每个阶段不仅与它本身的输入和输出相连，也与上一阶段的输出相连。所以，每个当前阶段的输出不再仅是当前输入的函数，还依赖于上一阶段的输出（上一阶段的输出依赖于上一阶段的输入和上上阶段的输出，以此类推）。这种设置保证了每个输入可以影响到接下来的所有输出，换句话说，每个输出都是前面所有输入及当前输入的函数。
 
-> 读者需注意，并不是所有的输出都会被使用。例如，在一个情感分析任务中，给定一个句子（时间序列输入信号），判定其情感倾向（积极/消极），只有最后一个输出被认为是最终输出，其他的输出不会被作为输出使用。谨记，因为只有最后的一个输出包含了整个句子所有的情感信息，所以只会使用最后一个输出。
+> 读者需注意，并不是所有的输出都会被使用。例如，在一个情感分析任务中，给定一个句子（时间序列输入信号），需要判定其情感倾向（积极/消极），这时，只有最后一个输出被认为是最终输出，其他的输出不会被作为输出使用。谨记，因为只有最后的一个输出包含了整个句子所有的情感信息，所以只会使用最后一个输出。
 
-LSTM模型是RNNs的演化：RNNs中文本过长时，训练阶段可能会有非常小或巨大的梯度在整个网络中反向传播，从而导致权重为零或无穷大：这种情况经常表述为梯度消失/梯度爆炸。为了解决这一问题，LSTMs在每个阶段都有两个输出：一个是模型的真正输出，而另一个是内部状态，被称作记忆。
-每个输出都会再次作为输出进入接下来的阶段中，降低梯度消失或梯度爆炸的可能。当然，这种做法会有额外的开销：复杂度（需要训练的权重）和模型占用的内存空间更大，这就是为什么本书强烈建议用GPU设备来训练RNN模型，因为可以大大加速模型！
-与回归模型不同，RNNs需要用三维信号作为输入。Tensorflow 规定数据需要按以下格式输入：
+LSTM模型是RNNs的演化：RNNs中文本过长时，在训练阶段，可能导致极小或巨大的梯度在整个网络中进行反向传播，从而致使权重为零或无穷大：这种情况经常表述为梯度消失/梯度爆炸。为了解决这一问题，LSTMs在每个阶段都有两个输出：一个是模型的真正输出，而另一个是内部状态，被称作记忆。
+
+上述的每个输出都会再次作为输入进入接下来的阶段中，这就降低了梯度消失或梯度爆炸的可能。当然，这种做法会有额外的开销：复杂度（需要训练的权重）和模型占用的内存空间更大，所以本书强烈建议用GPU设备（它可以大大加速训练过程）来训练RNN模型！
+
+与回归模型不同，RNNs需要用三维信号作为输入。Tensorflow 规定，数据需要按以下格式输入：
 
 - 样本
 - 时间步长
@@ -491,107 +493,107 @@ LSTM模型是RNNs的演化：RNNs中文本过长时，训练阶段可能会有�
 
 ### 利用LSTM进行股票价格预测
 
-LSTM可以方便我们探测信号中所包含的时间冗余信息。上一节向读者介绍了观测矩阵需要格式化成3维的张量，三个轴分别是：
+LSTM可以方便我们探测信号中所包含的时间冗余信息。上一节向读者介绍了观测矩阵需要格式化成3维的张量，三个坐标轴分别是：
 
-- 第一个轴包含数据样本
-- 第二个周包含时间序列
-- 第三个周包含输入的特征
+- 第一个坐标轴包含数据样本
+- 第二个坐标轴包含时间序列
+- 第三个坐标轴包含输入的特征
 
-由于本章处理的是一维的信号数据，LSTM的输入张量则格式化为（None, `time_dimension`, 1）,其中`time_dimention`是时间窗口的长度。以下是代码，依然先从余弦信号开始。建议读者将文件命名为`4_rnn_cosine.py`。
+由于本章处理的是一维的信号数据，故，将LSTM的输入张量格式化为（None, `time_dimension`, 1）,其中`time_dimention`是时间窗口的长度。以下是代码，依然先从余弦信号开始。建议读者将文件命名为`4_rnn_cosine.py`。
 
 1. 首先，引入包：
 
 ```python
-  import matplotlib.pyplot as plt
-  import numpy as np
-  import tensorflow as tf
-  from evaluate_ts import evaluate_ts
-  from tensorflow.contrib import rnn
-  from tools import fetch_cosine_values, format_dataset
-  tf.reset_default_graph()
-  tf.set_random_seed(101)
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+from evaluate_ts import evaluate_ts
+from tensorflow.contrib import rnn
+from tools import fetch_cosine_values, format_dataset
+tf.reset_default_graph()
+tf.set_random_seed(101)
 ```
 
-1. 接下来，设置窗口大小来给信号分块。此操作与创建观测矩阵类似。
+2. 接下来，设置窗口大小来给信号分块。此操作与创建观测矩阵类似。
 
 ```python
-  time_dimension = 20
-  train_size = 250
-  test_size = 250
+time_dimension = 20
+train_size = 250
+test_size = 250
 ```
 
-1. 然后，对Tensorflow进行一些设置。在这一步，本节先用默认的值来进行实验：
+3. 然后，对Tensorflow进行一些设置。在这一步，本章先用默认的值来进行实验：
 
 ```python
-  learning_rate = 0.01
-  optimizer = tf.train.AdagradOptimizer
-  n_epochs = 100
-  n_embeddings = 64
+learning_rate = 0.01
+optimizer = tf.train.AdagradOptimizer
+n_epochs = 100
+n_embeddings = 64
 ```
 
-1. 接下来，生成有噪声的余弦信号，并把这些数据重塑为3D张量格式 （None， `time_dimension`， 1）。代码如下：
+4. 接下来，生成有噪声的余弦信号，并把这些数据重塑为3D张量格式 （None， `time_dimension`， 1）。代码如下：
 
 ```python
-  cos_values = fetch_cosine_values(train_size + test_size + time_dimension)
-  minibatch_cos_X, minibatch_cos_y = format_dataset(cos_values, time_dimension)
-  train_X = minibatch_cos_X[:train_size, :].astype(np.float32)
-  train_y = minibatch_cos_y[:train_size].reshape((-1, 1)).astype(np.float32)
-  test_X = minibatch_cos_X[train_size:, :].astype(np.float32) test_y = minibatch_cos_y[train_size:].reshape((-1, 1)).astype(np.float32)
-  train_X_ts = train_X[:, :, np.newaxis]
-  test_X_ts = test_X[:, :, np.newaxis]
+cos_values = fetch_cosine_values(train_size + test_size + time_dimension)
+minibatch_cos_X, minibatch_cos_y = format_dataset(cos_values, time_dimension)
+train_X = minibatch_cos_X[:train_size, :].astype(np.float32)
+train_y = minibatch_cos_y[:train_size].reshape((-1, 1)).astype(np.float32)
+test_X = minibatch_cos_X[train_size:, :].astype(np.float32) 
+test_y = minibatch_cos_y[train_size:].reshape((-1, 1)).astype(np.float32)
+train_X_ts = train_X[:, :, np.newaxis]
+test_X_ts = test_X[:, :, np.newaxis]
 ```
 
-1. 为Tensorflow定义占位符：
+5. 为Tensorflow定义占位符：
 
 ```python
-  X_tf = tf.placeholder("float", shape=(None, time_dimension, 1), name="X")
-  y_tf = tf.placeholder("float", shape=(None, 1), name="y")
+X_tf = tf.placeholder("float", shape=(None, time_dimension, 1), name="X")
+y_tf = tf.placeholder("float", shape=(None, 1), name="y")
 ```
 
-1. 接下来定义模型。本节会为用拥有不同数目embeddings的LSTM来实验。如前面章节所述，本节只使用通过线性回归后（全连接层）的最后一个输出以作为预测结果：
+6. 接下来定义模型。embedding层不同的神经元个数会对模型性能产生不同的影响，故本节会用不同神经元数目的embedding层来进行实验。如前面小节所述，本节只使用通过线性回归后（全连接层）的最后一个输出以作为预测结果：
 
 ```python
-  def RNN(x, weights, biases):
-	  x_ = tf.unstack(x, time_dimension, 1)
-	  lstm_cell = rnn.BasicLSTMCell(n_embeddings)
-	  outputs, _ = rnn.static_rnn(lstm_cell, x_, dtype=tf.float32)
-	  return tf.add(biases, tf.matmul(outputs[-1], weights))
+def RNN(x, weights, biases):
+	x_ = tf.unstack(x, time_dimension, 1)
+	lstm_cell = rnn.BasicLSTMCell(n_embeddings)
+	outputs, _ = rnn.static_rnn(lstm_cell, x_, dtype=tf.float32)
+	return tf.add(biases, tf.matmul(outputs[-1], weights))
 ```
 
-1. 接下来，设置`可训练的`变量（`weights`），并设置损失函数和训练操作：
+7. 接下来，设置`trainable`变量（`weights`），并设置`cost`函数和训练操作：
 
 ```python
-  weights = tf.Variable(tf.truncated_normal([n_embeddings, 1], mean=0.0,
-  stddev=1.0), name="weights")
-  biases = tf.Variable(tf.zeros([1]), name="bias")
-  y_pred = RNN(X_tf, weights, biases)
-  cost = tf.reduce_mean(tf.square(y_tf - y_pred))
-  train_op = optimizer(learning_rate).minimize(cost)
+weights = tf.Variable(tf.truncated_normal([n_embeddings, 1], mean=0.0, stddev=1.0), name="weights")
+biases = tf.Variable(tf.zeros([1]), name="bias")
+y_pred = RNN(X_tf, weights, biases)
+cost = tf.reduce_mean(tf.square(y_tf - y_pred))
+train_op = optimizer(learning_rate).minimize(cost)
   
-  # Exactly as before, this is the main loop. 
-  with tf.Session() as sess: 
-	  sess.run(tf.global_variables_initializer())
+# Exactly as before, this is the main loop. 
+with tf.Session() as sess: 
+	sess.run(tf.global_variables_initializer())
        
-	  # For each epoch, the whole training set is feeded into the tensorflow graph
-	  for i in range(n_epochs):
-		  train_cost, _ = sess.run([cost, train_op], feed_dict={X_tf: train_X_ts, y_tf: train_y})
-		  if i%100 == 0:
-			  print("Training iteration", i, "MSE", train_cost)
+	# For each epoch, the whole training set is feeded into the tensorflow graph
+	for i in range(n_epochs):
+		train_cost, _ = sess.run([cost, train_op], feed_dict={X_tf: train_X_ts, y_tf: train_y})
+		if i%100 == 0:
+			print("Training iteration", i, "MSE", train_cost)
                
-	  # After the training, let's check the performance on the test set
-	  test_cost, y_pr = sess.run([cost, y_pred], feed_dict={X_tf: test_X_ts, y_tf: test_y})
-	  print("Test dataset:", test_cost)
+	# After the training, let's check the performance on the test set
+	test_cost, y_pr = sess.run([cost, y_pred], feed_dict={X_tf: test_X_ts, y_tf: test_y})
+	print("Test dataset:", test_cost)
 
-	  # Evaluate the results
-	  evaluate_ts(test_X, test_y, y_pr)
+	# Evaluate the results
+	evaluate_ts(test_X, test_y, y_pr)
         
-	  # How does the predicted look like?
-	  plt.plot(range(len(cos_values)), cos_values, 'b')
-	  plt.plot(range(len(cos_values)-test_size, len(cos_values)), y_pr, 'r--')
-	  plt.xlabel("Days")
-	  plt.ylabel("Predicted and true values")
-	  plt.title("Predicted (Red) VS Real (Blue)")
-	  plt.show()
+	# How does the predicted look like?
+	plt.plot(range(len(cos_values)), cos_values, 'b')
+	plt.plot(range(len(cos_values)-test_size, len(cos_values)), y_pr, 'r--')
+	plt.xlabel("Days")
+	plt.ylabel("Predicted and true values")
+	plt.title("Predicted (Red) VS Real (Blue)")
+	plt.show()
 ```
 
 经过超参数优化后，输出如下：
@@ -611,125 +613,125 @@ LSTM可以方便我们探测信号中所包含的时间冗余信息。上一节�
 
 ```
 
-模型的表现与本章用简单线性回归得到的模型表现很相近。那么，在股票价格这种不那么可预测的信号数据上，LSTM是否会表现的更好一些呢？接下来，本节会用之前小节中获取的时间序列数据，来比较模型的性能。
-接下来，对之前的代码进行修改，把获取余弦数据替换成获取股票价格数据。修改几行以加载股票价格数据：
+模型的表现与本章用简单线性回归得到的模型表现很相近。那么，在股票价格这种不那么可预测的信号数据上，LSTM是否会表现的更好一些呢？接下来，本节会用之前小节中获取的时间序列数据进行实验，来比较模型的性能。
+首先需要对之前的代码进行修改，从获取余弦数据修改为获取股票价格数据。只需要修改几行就可以加载股票价格数据：
 
 ```python
-  stock_values = fetch_stock_price(symbol, datetime.date(2015, 1, 1), datetime.date(2016, 12, 31))
-  minibatch_cos_X, minibatch_cos_y = format_dataset(stock_values, time_dimension)
-  train_X = minibatch_cos_X[:train_size, :].astype(np.float32)
-  train_y = minibatch_cos_y[:train_size].reshape((-1, 1)).astype(np.float32)
-  test_X = minibatch_cos_X[train_size:, :].astype(np.float32)
-  test_y = minibatch_cos_y[train_size:].reshape((-1, 1)).astype(np.float32)
-  train_X_ts = train_X[:, :, np.newaxis]
-  test_X_ts = test_X[:, :, np.newaxis]
+stock_values = fetch_stock_price(symbol, datetime.date(2015, 1, 1), datetime.date(2016, 12, 31))
+minibatch_cos_X, minibatch_cos_y = format_dataset(stock_values, time_dimension)
+train_X = minibatch_cos_X[:train_size, :].astype(np.float32)
+train_y = minibatch_cos_y[:train_size].reshape((-1, 1)).astype(np.float32)
+test_X = minibatch_cos_X[train_size:, :].astype(np.float32)
+test_y = minibatch_cos_y[train_size:].reshape((-1, 1)).astype(np.float32)
+train_X_ts = train_X[:, :, np.newaxis]
+test_X_ts = test_X[:, :, np.newaxis]
 ```
 
-由于这个信号的振动范围更广，故还需要调整生成初始权重时的分布。建议读者设置为：
+由于这个信号的振动范围更广，故还需要调整初始权重的分布。建议读者做如下设置：
 
 ```python
-  weights = tf.Variable(tf.truncated_normal([n_embeddings, 1], mean=0.0, stddev=10.0), name="weights")
+weights = tf.Variable(tf.truncated_normal([n_embeddings, 1], mean=0.0, stddev=10.0), name="weights")
 ```
 
 经过几次测试，我们发现将参数作如下设置，模型的表现会最好：
 
 ```
-  learning_rate = 0.1
-  n_epochs = 5000
-  n_embeddings = 256
-
+learning_rate = 0.1
+n_epochs = 5000
+n_embeddings = 256
 ```
 
 使用上述参数，模型的输出如下：
 
 ```
-  Training iteration 200 MSE 2.39028
-  Training iteration 300 MSE 1.39495
-  Training iteration 400 MSE 1.00994 ...
-  Training iteration 4800 MSE 0.593951
-  Training iteration 4900 MSE 0.593773
-  Test dataset: 0.497867
-  Evaluation of the predictions:
-  MSE: 0.497867
-  mae: 0.494975
-
-
+Training iteration 200 MSE 2.39028
+Training iteration 300 MSE 1.39495
+Training iteration 400 MSE 1.00994 ...
+Training iteration 4800 MSE 0.593951
+Training iteration 4900 MSE 0.593773
+Test dataset: 0.497867
+Evaluation of the predictions:
+MSE: 0.497867
+mae: 0.494975
 ```
 
-LSTM的结果相比于之前的模型，有8%的提升（在测试集上的MSE）。读者需谨记，模型的结果是预测的价格！越多的参数需要训练也意味着需要比之前的模型更耗费时间（需要在有GPU的笔记本上花费几分钟）。
+LSTM的结果相比于之前的模型，有8%的提升（在测试集上的MSE）。读者需谨记，模型的输出是预测的价格！越多的参数需要训练也意味越耗时（一般在有GPU的笔记本上需要花费几分钟）。
 
-最后，本节讲述Tensorboard的使用。为了打印日志，需要添加以下代码：
+最后讲述Tensorboard的使用。添加以下代码来打印日志：
 
-1. 在文件的开头，引入包后：
+1. 引入包后，在文件的开头作如下设置：
 
 ```python
-  import os
-  tf_logdir = "./logs/tf/stock_price_lstm" 
-  os.makedirs(tf_logdir, exist_ok=1)
+import os
+tf_logdir = "./logs/tf/stock_price_lstm" 
+os.makedirs(tf_logdir, exist_ok=1)
 ```
 
-1. RNN函数整体需要在LSTM的命名空间中，即：
+2. RNN函数整体需要在LSTM的命名空间中，即：
 
 ```python
-  def RNN(x, weights, biases):
-	  with tf.name_scope("LSTM"):
-		  x_ = tf.unstack(x, time_dimension, 1)
-		  lstm_cell = rnn.BasicLSTMCell(n_embeddings)
-		  outputs, _ = rnn.static_rnn(lstm_cell, x_, dtype=tf.float32)  
-		  return tf.add(biases, tf.matmul(outputs[-1], weights))
+def RNN(x, weights, biases):
+	with tf.name_scope("LSTM"):
+		x_ = tf.unstack(x, time_dimension, 1)
+		lstm_cell = rnn.BasicLSTMCell(n_embeddings)
+		outputs, _ = rnn.static_rnn(lstm_cell, x_, dtype=tf.float32)  
+		return tf.add(biases, tf.matmul(outputs[-1], weights))
 ```
 
-1. 类似的，损失函数也需要写在Tensorflow的范围内。同样的，本节会在`tensorflow`图中添加`mae`的计算方法：
+3. 类似的，损失函数也需要写在Tensorflow的范围内。同样的，本节会在`tensorflow`图中添加`mae`的计算方法：
 
 ```python
-  y_pred = RNN(X_tf, weights, biases)
-  with tf.name_scope("cost"):
-	  cost = tf.reduce_mean(tf.square(y_tf - y_pred))
-	  train_op = optimizer(learning_rate).minimize(cost)
-	  tf.summary.scalar("MSE", cost)
-	  with tf.name_scope("mae"):
-		  mae_cost = tf.reduce_mean(tf.abs(y_tf - y_pred))
-		  tf.summary.scalar("mae", mae_cost)
+y_pred = RNN(X_tf, weights, biases)
+with tf.name_scope("cost"):
+	cost = tf.reduce_mean(tf.square(y_tf - y_pred))
+	train_op = optimizer(learning_rate).minimize(cost)
+	tf.summary.scalar("MSE", cost)
+	with tf.name_scope("mae"):
+		mae_cost = tf.reduce_mean(tf.abs(y_tf - y_pred))
+		tf.summary.scalar("mae", mae_cost)
+```
 4. 经过上面几步，主函数如下：
-  with tf.Session() as sess:
-	  writer = tf.summary.FileWriter(tf_logdir, sess.graph)  
-	  merged = tf.summary.merge_all()
-	  sess.run(tf.global_variables_initializer())
+```python
+with tf.Session() as sess:
+	writer = tf.summary.FileWriter(tf_logdir, sess.graph)  
+	merged = tf.summary.merge_all()
+	sess.run(tf.global_variables_initializer())
   
-	  # For each epoch, the whole training set is feeded into the tensorflow graph
-	  for i in range(n_epochs):
-		  summary, train_cost, _ = sess.run([merged, cost, train_op], feed_dict={X_tf:train_X_ts, y_tf: train_y})
-		  writer.add_summary(summary, i)
-		  if i%100 == 0:
-			  print("Training iteration", i, "MSE", train_cost)
+	# For each epoch, the whole training set is feeded into the tensorflow graph
+	for i in range(n_epochs):
+		summary, train_cost, _ = sess.run([merged, cost, train_op], feed_dict={X_tf:train_X_ts, y_tf: train_y})
+		writer.add_summary(summary, i)
+		if i%100 == 0:
+			print("Training iteration", i, "MSE", train_cost)
   		  
-	  # After the training, let's check the performance on the test set
-	  test_cost, y_pr = sess.run([cost, y_pred], feed_dict={X_tf: test_X_ts, y_tf:test_y})
-	  print("Test dataset:", test_cost)
+	# After the training, let's check the performance on the test set
+	test_cost, y_pr = sess.run([cost, y_pred], feed_dict={X_tf: test_X_ts, y_tf:test_y})
+	print("Test dataset:", test_cost)
 ```
 
 这样就可以将每个块的范围分离出来，并为可训练的变量生成一份报告。
+
 接下来加载`tensorboard`：
 
 ```
   $> tensorboard --logdir=./logs/tf/stock_price_lstm
-
 ```
 
   打开浏览器，输入`localhost:6006`，读者在第一个选项卡中可以看到MSE和MAE的曲线：
   <img src="E:\我的\翻译\137_1.jpg" style="zoom:55%" align="center" /> 
-图中趋势不错，曲线在一开始下降，然后趋于平稳。读者也可以查看`tensorflow`图（在**GRAPH**选项卡中）。在这个选项卡中，读者可以看到模型的各个组成部分如何互相连接，以及所做的运算是如何相互影响的。读者也可以放大查看LSTM是如何在Tensorflow建立的：
+
+图中两条曲线的趋势不错，它们一开始在下降，然后趋于平稳。读者也可以在`tensorflow`图（在**GRAPH**选项卡中）中看到模型的各个组成部分如何互相连接，以及所做的运算是如何相互影响的。读者还可以放大查看LSTM是如何在Tensorflow建立的：
 <img src="E:\我的\翻译\138_1.jpg" style="zoom:70%" align="center" /> 
 到此为止，这个项目就结束了。
 
 ### 问题思考
 
 - 把LSTM替换成RNN，再替换成GRU。哪个表现最好？
-- 不预测收盘价格，而去预测第二天的高/低价格，读者在训练模型的时候可以用相同的特征（或者读者可以用收盘价格作为输入）。
-- 优化模型以适用于其他的股票：用一个适用于所有股票的通用模型比较好，还是为每个股票做一个模型比较好？
+- 预测第二天的高/低价格（而不去预测收盘价格），读者在训练模型的时候可以用相同的特征（或者读者可以用收盘价格作为输入）。
+- 优化模型以适用于其他的股票：用一个对所有股票都适用的通用模型比较好，还是为每个股票做一个模型比较好？
 - 调优再训练。在此例中，本章预测了一年的股票价格。如果每个月/周/天训练一次模型，模型效果有什么提升吗？
-- 如果读者有些金融背景，可以试着建立一个简单的交易模拟器，并按照预测结果来交易。初始资金是$100，一年后，你是赚了还是赔了？
+- 如果读者有些金融背景，可以试着建立一个简单的交易模拟器，并按照预测结果来交易。假如，初始资金是$100，一年后，你是赚了还是赔了？
 
-### 总结
+### 小结
 
-本章展示了如何进行时间序列的预测：具体地，本章带领读者观察到RNN在真实的股票价格数据上表现如何。下一章将讲述RNN的另一个应用，例如，如何自动地将句子从一种语言翻译成另一种语言。
+本章为读者展示了如何进行时间序列的预测。具体来说，本章使得读者看到RNN在真实的股票价格数据上表现如何。下一章会讲述RNN的另一个应用，例如，如何自动地将句子从一种语言翻译成另一种语言。
