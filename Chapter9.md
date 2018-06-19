@@ -472,24 +472,24 @@ $$minimize\sum(r_{ui}-\hat{r}_{ui})^2+\lambda(\lVert p_u \rVert ^2 +\lVert q_i \
 
 ### 基于SGD的矩阵分解
 
-  Now we are finally ready to implement the matrix factorization model in TensorFlow. Let
-  us do this and see if we can improve the baseline by implicit. Implementing ALS in
-  TensorFlow is not an easy task: it is better suited for gradient-based methods such as SGD.
-  This is why we will do exactly that, and leave ALS to specialized implementations.
-  Here we implement the formula from the previous sections:
-  .
+现在我们可以使用TensorFlow实现矩阵分解了，看看是否可以改进`implicit`的基准表现。用TensorFlow实现ALS并不容易：它更适合于基于梯度的方法，例如SGD。这也是我们把ALS做专门实现的原因。
 
-  [ 227 ]
-  Recall that the objective there was the following:
-  Note that in this objective we still have the squared error, which is no longer the case for us
-  since we model this as a binary classification problem. With TensorFlow it does not really
-  matter, and the optimization loss can easily be changed.
-  In our model we will use the log loss instead—it is better suited for binary classification
-  problems than squared error.
-  The p and q vectors make up the U and I matrices, respectively. What we need to do is to
-  learn these U and I matrices. We can store the full matrices U and I as a TensorFlow
-  Variable's and then use the embedding layer to look up the appropriate p and q vectors.
-  Let us define a helper function for declaring embedding layers:
+这里我们实现之前章节中的公式：  
+
+$$\hat{r}_{ui}=\mu+b_i+b_u+q_i^Tp_u$$ 。
+
+回忆一下目标函数：
+
+$$minimize\sum(r_{ui}-\hat{r}_{ui})^2+\lambda(\lVert p_u \rVert ^2 +\lVert q_i \rVert ^2 )$$
+
+注意，在这个目标函数中，我们依然使用误差平方和，这已经不再适合我们的二分类问题。使用TensorFlow，这些都不是问题，我们可以很容易的调整优化目标。
+
+在我们的的模型中，我们会使用对数损失。它比误差平方和更适合二分类问题。
+
+$p$ 和 $q$向量分别构成了$U$和$I$ 矩阵。我们要做的就是学习$U$和$I$ 矩阵。我们可以把完整的$U$和$I$ 矩阵存在TensorFlow的`Variable`中，并使用词嵌入层查找合适的$p$和$q$向量。
+
+假设我们定义了一个函数用了声明词嵌入层： 
+
 ```python
   def embed(inputs, size, dim, name=None):
         std = np.sqrt(2 / dim)
@@ -498,10 +498,10 @@ $$minimize\sum(r_{ui}-\hat{r}_{ui})^2+\lambda(\lVert p_u \rVert ^2 +\lVert q_i \
         return lookup
 ```
 
+这个函数创建了给定维度的矩阵，并使用随机数值初始化，最后使用查找层把用户或物品的索引转换为向量。
 
-  This function creates a matrix of the specified dimension, initializes it with random values,
-  and finally uses the lookup layer to convert user or item indexes into vectors.
-  We use this function as a part of the model graph:
+这个函数是模型图的一部分： 
+
 ```python
 # parameters of the model
 num_users = uid.max() + 1
@@ -521,6 +521,7 @@ with graph.as_default():
     place_user = tf.placeholder(tf.int32, shape=(None, 1))
     place_item = tf.placeholder(tf.int32, shape=(None, 1))
     place_y = tf.placeholder(tf.float32, shape=(None, 1))
+    
     # user features
     user_factors = embed(place_user, num_users, num_factors,
                          "user_factors")
@@ -549,48 +550,38 @@ with graph.as_default():
 ```
 
 
-The model gets three inputs:
+这个模型有三个输入：
 
-- `place_user`: The user IDs
+- `place_user`: 用户ID
 
-- `place_item`: The item IDs
-- `place_y`: The labels of each (user, item) pair
+- `place_item`: 物品ID
+- `place_y`: 每个（用户，物品）对的标签
 
-[ 229 ]
-Then we define:
+然后定义：
 
-- `user_factors`: The user matrix
+- `user_factors`：用户矩阵$U$
+- `user_bias`：每个用户的偏置$b_u$
+- `item_factors`：物品矩阵$I$
+- `item_bias`：每个物品的偏置$b_i$
+- `global_bias`：全局偏置$\mu$
 
-- `user_bias`: The bias of each user
-- `item_factors`: The item matrix
-- `item_bias`: The bias of each item
-- `global_bias`: The global bias
+我们把这个偏置都放在一起，并对用户和物品向量使用点乘。这就是我们的预测结果，可以传递sigmoid函数得到相应的概率。
 
-Then, we put together all the biases and take the dot product between the user and item
-factors. This is our prediction, which we then pass through the sigmoid function to get
-probabilities.
-Finally, we define our objective function as a sum of the data loss and regularization loss
-and use Adam for minimizing this objective.
-The model has the following parameters:
+最后，我们把目标函数定义为所有数据点损失和正则化损失的和，并使用Adam算法进行目标函数最小化。
+模型有以下参数：
 
-- `num_users` and `num_items`: The number of users (items). They specify the
+- `num_users`和`num_items`：用户（物品）数。它们分别给出了$U$和$I$ 矩阵的行数。
 
-  number of rows in U and I matrices, respectively.
+- `num_factors`：用户和物品潜在特征的数量。它给出了$U$和$I$ 矩阵的列数。
 
-- `num_factors`: The number of latent features for users and items. This specifies
+- `lambda_user`和`lambda_item`：正则化参数。
 
-  the number of columns in both U and I.
+- `lr`：优化算法的学习率。
 
-- `lambda_user` and `lambda_item`: The regularization parameters.
+- `K`：每个正样本对应的负样本的数量（具体解释在后续章节中）。
 
-- `lr`: Learning rate for the optimizer.
 
-- `K`: The number of negative examples to sample for each positive case (see the
-
-  explanation in the following section).
-
-Now let us train the model. For that, we need to cut the input into small batches. Let us use
-a helper function for that:
+现在开始训练模型。首先我们需要把输入分成几个批次。使用下列函数：
 
 ```python
 def prepare_batches(seq, step):
@@ -602,16 +593,12 @@ def prepare_batches(seq, step):
 ```
 
 
-This will turn one array into a list of arrays of specified size.
+这个函数会把一个数组变成给定大小的数组列表。
 
-[ 230 ]
-Recall that our dataset is based on implicit feedback, and the number positive
-instances—interactions that did occur—is very small compared to the number of negative
-instances—the interactions that did not occur. What do we do with it? The solution is
-simple: we use negative sampling. The idea behind it is to sample only a small fraction of
-negative examples. Typically, for each positive example, we sample K negative examples,
-and K is a tunable parameter. And this is exactly what we do here.
-So let us train the model:
+回忆一下基于隐式反馈的数据集。其中正样本的例子，也就是交互真实发生的次数，与负样本的例子（没有发生交互的次数）相比数量很少。我们应该怎么办？方法很简单：我们使用**负采样（negative sampling）**。其原理是至采集小部分负样本数据。典型的做法是，对于每一个正样本数据，我们都采集`K`个负样本，`K`是可调节的参数。这就是我们的想法。
+
+开始训练模型：
+
 ```python
 session = tf.Session(config=None, graph=graph)
 session.run(init)
@@ -631,6 +618,7 @@ for i in range(10):
         label = np.concatenate([
             np.ones(pos_samples, dtype='float32'),
             np.zeros(neg_samples, dtype='float32')]).reshape(-1, 1)
+        
         # negative sampling
         neg_users = np.random.randint(low=0, high=num_users,
                                       size=neg_samples, dtype='int32')
@@ -654,26 +642,19 @@ for i in range(10):
         print('epoch %02d: precision: %.3f' % (i+1, val_precision))
 ```
 
-We run the model for 10 epochs, then for each epoch we shuffle the data randomly and cut
-it into batches of 5000 positive examples. Then for each batch, we generate K * 5000 negative
-examples (K = 5 in our case) and put positive and negative examples together in one array.
-Finally, we run the model, and at each update step, we monitor the training loss using
-tqdm. The tqdm library provides a very nice way to monitor the training progress.
-This is the output we produce when we use the tqdm jupyter notebook widgets:
+模型训练10轮，每一轮我们都随机重洗数据，并划分成每5000个正样本一个批次。对于每一批，我们生成`K * 5000`个负样本（本例中`K`=5），并把正负样本放在一个数组中。最后，运行模型，使用`tqdm`监控每一次更新步骤的训练损失。`tqdm`库提供了非常优秀的监控训练过程的方法。
+
+下面是使用Jupyter notebook的`tqdm`插件的输出：
 
 ![](figures\231_1.png)
 
-At the end of each epoch, we calculate precision—to monitor how our model is performing
-for our defined recommendation scenario. The `calculate_validation_precision`
-function is used for that. It is implemented in a similar way to what we did previously with
-implicit:
+每一轮结束时，我们会计算准确率，监控模型在既定推荐场景上的表现。`calculate_validation_precision`函数可以实现这个功能。它与之前`implicit`中的实现方式类似：
 
-- We first extract the matrices and the biases
-- Then put them together to get the score for each (user, item) pair
-- Finally, we sort these pairs and keep the top five ones
+* 首先抽取矩阵和偏置
+* 然后放在一起，获取每一个（用户，物品）对的得分
+* 最后，对得分排序，取得分最高的5个推荐
 
-For this particular case we do not need the global bias as well as the user bias: adding them
-will not change the order of items per user. This is how this function can be implemented:
+在这个例子中，我们不需要全局偏置和用户偏置：因为即算加上它们也不会改变每个用户对应的物品排序。这个函数的实现如下：
 
 ```python
 def get_variable(graph, session, name):
@@ -696,7 +677,7 @@ def calculate_validation_precision(graph, session, uid):
     return precision(val_indptr, val_items, imp_baseline)
 ```
 
-This is the output we get:
+我们得到如下输出：
 
 ```
 epoch 01: precision: 0.064
@@ -711,13 +692,9 @@ epoch 09: precision: 0.151
 epoch 10: precision: 0.152
 ```
 
+通过6轮训练，模型就超过了之前的基准表现。10轮之后，模型准确率达到15.2%。
 
-By the sixth epoch it beats the previous baseline, and by the tenth, it reaches 15.2%.
-Matrix factorization techniques usually give a very strong baseline solution for
-recommender systems. But with a small adjustment, the same technique can produce even
-better results. Instead of optimizing a loss for binary classification, we can use a different
-loss designed specifically for ranking problems. In the next section, we will learn about this
-kind of loss and see how to make this adjustment.
+矩阵分解技术通常可以为推荐系统提供强大的基准表现。通过简单的调整，这个技术还可以产出更好的结果。不用优化二分类问题的损失函数，我们还可以使用其他面向排序问题的损失函数。在下一节中，我们会学习这一类损失函数，并看看如果作出相应的调整。
 
 ###贝叶斯个性化排序
 
