@@ -698,57 +698,36 @@ epoch 10: precision: 0.152
 
 ###贝叶斯个性化排序
 
-We use Matrix factorization methods for making a personalized ranking of items for each
-user. However, to solve this problem we use a binary classification optimization
-criterion—the log loss. This loss works fine and optimizing it often produces good ranking
-models. What if instead we could use a loss specifically designed for training a ranking
-function?
+我们使用矩阵分解的方法来为每一个用户做个性化排序。然而，要解决这个问题，我们使用了二分类问题的优化标准——对数损失。这个函数效果不错，通过对它的优化可以产生很好的排序模型。那么，如果使用专门的损失函数来训练排序模型会怎么样呢？
 
-Of course, it is possible to use an objective that directly optimizes for ranking. In the paper
-BPR: Bayesian Personalized Ranking from Implicit Feedback by Rendle et al (2012), the authors
-propose an optimization criterion, which they call BPR-Opt.
-Previously, we looked at individual items in separation from the other items. That is, we
-tried to predict the rating of an item, or the probability that the item i will be interesting to
-the user u. These kinds of ranking models are usually called "point-wise": they use
-traditional supervised learning methods such as regression or classification to learn the
-score, and then rank the items according to this score. This is exactly what we did in the
-previous section.
-BPR-Opt is different. Instead, it looks at the pairs of items. If we know that user u has
-bought item i, but never bought item j, then most likely u is more interested in i than in j.
-Thus, when we train a model, the score it produces for i should be higher than the
-score for j. In other words, for the scoring model we want .
-Therefore, for training this algorithm we need triples (user, positive item, negative item).
-For such triple (u, i, j) we define the pair-wise difference in scores as:
-where and is scores for (u, i) and (u, j), respectively.
-When training, we adjust parameters of our model in such a way that at the end item i does
-rank higher than item j. We do this by optimizing the following objective:
-Where are the differences, is the sigmoid function, and is all the parameters of
-the model.
-It is straightforward to change our previous code to optimize this loss. The way we
-compute the score for (u, i) and (u, j) is the same: we use the biases and the inner product
-between the user and item vectors. Then we compute the difference between the scores and
-feed the difference into the new objective.
+我们当然可以用一个目标函数来直接优化排序。在2012年Rendle等人的文章《BPR: Bayesian Personalized Ranking from Implicit Feedback》中，作者提出了优化标准，即**BPR-Opt**。
 
-The difference in the implementation is also not large:
+以前，我们会把每一个物品都分开处理，与其他物品并没有关系。也就是说，我们总是会尝试预测一个物品的得分，或物品$i$以多大概率吸引到用户$u$。这样的排序模型通常叫做“点排序”：它们使用传统的监督式学习方法，例如回归或者分类来学习得分，然后根据得分进行排序。这就是在之前的章节中所讲到的。
 
-- For BPR-Opt we do not have place_y, but instead, we will have
+BPR-Opt方法则不同。它关注物品对。如果我们知道用户$u$已经买了物品$i$ ，但是从来没有买过物品$j$，那么$u$很有可能对$i$更感兴趣。所以当我们训练模型的时候，分数$\hat{x}_{ui}$应该比分数$\hat{x}_{uj}$要高。换句话说，打分模型应该满足$\hat{x}_{ui}-\hat{x}_{uj}>0$。
 
-  place_item_pos and place_item_neg for the positive and the negative items,
+因此，要训练这个算法，我们需要三元组（用户，正物品样本，负物品样本）。对于这样的三元组$(u,i,j)$我们可以定义基于物品对的分数差异，如下：
 
-  respectively.
+$$\hat{x}_{uij}=\hat{x}_{ui}-\hat{x}_{uj}$$
 
-- We no longer need the user bias and the global bias: when we compute the
+其中$\hat{x}_{ui}$和$\hat{x}_{uj}$分别是$(u,i)$和$(u,j)$的分数。
 
-  difference, these biases cancel each other out. What is more, they are not really
+在训练过程中，我们要调整模型参数，保证物品$i$最终要比物品$j$的排序要高。我们可以通过优化下列目标函数来实现：
 
-  important for ranking—we have noted that previously when computing the
+$$minimize-\sum ln\sigma(\hat{x}_{uij})+\lambda \parallel W \parallel ^2$$
 
-  predictions for the validation data.
+其中$\hat{x}_{uij}$是差异，$\sigma$是sigmoid函数，$W$是模型的所有参数。
 
-Another slight difference in implementation is that because we now have two inputs items,
-and these items have to share the embeddings, we need to define and create the
-embeddings slightly differently. For that we modify the embed helper function, and
-separate the variable creation and the lookup layer:
+把之前的代码稍作简单改变就可以优化这个损失函数。计算$(u,i)$和$(u,j)$分数的方法是一样的：我们使用偏置和用户与物品向量之间的内积。然后计算分数之间的差异，并输入给新的目标函数。
+
+实现上的差别也并不大：
+
+- 对于BPR-Opt，我们不用`place_y`，而是使用`place_item_pos`和`place_item_neg`来表示正物品和负物品。
+
+- 我们不再需要用户偏置和全局偏置：然我们计算差异的时候，这些偏置会互相抵消。而且，它们对于排序并不重要。之前，我们在计算验证集上的预测时也注意到了这个事实。
+
+
+另外一个小的实现上的差别是，由于我们有两个物品输入，并且公用embedding层，所以我需要对embedding层进行稍微改变，完成新的定义和创建。因此，我们修改`embed`函数，并且分别创建变量和查找层：
 
 ```python
 def init_variable(size, dim, name=None):
@@ -762,7 +741,7 @@ def embed(inputs, size, dim, name=None):
 ```
 
 
-Finally, let us see how it looks in the code:
+最终，代码如下：
 
 ```python
 num_factors = 128
@@ -779,6 +758,7 @@ with graph.as_default():
     place_item_pos = tf.placeholder(tf.int32, shape=(None, 1))
     place_item_neg = tf.placeholder(tf.int32, shape=(None, 1))  
     # no place_y
+    
     user_factors = embed(place_user, num_users, num_factors,
                          "user_factors")
     # no user bias anymore as well as no global bias
@@ -786,11 +766,13 @@ with graph.as_default():
                                  "item_factors")
     item_factors_pos = tf.nn.embedding_lookup(item_factors, place_item_pos)
     item_factors_neg = tf.nn.embedding_lookup(item_factors, place_item_neg)
+    
     item_bias = init_variable(num_items, 1, "item_bias")
     item_bias_pos = tf.nn.embedding_lookup(item_bias, place_item_pos)
     item_bias_pos = tf.reshape(item_bias_pos, [-1, 1])
     item_bias_neg = tf.nn.embedding_lookup(item_bias, place_item_neg)
     item_bias_neg = tf.reshape(item_bias_neg, [-1, 1])
+    
     # predictions for each item are same as previously
     # but no user bias and global bias
     pred_pos = item_bias_pos + tf.reduce_sum(user_factors * item_factors_pos, axis=2)
@@ -813,11 +795,9 @@ with graph.as_default():
     init = tf.global_variables_initializer()
 ```
 
-The way to train this model is also slightly different. The authors of the BPR-Opt paper
-suggest using the bootstrap sampling instead of the usual full-pass over all the data, that is,
-at each training step we uniformly sample the triples (user, positive item, negative item)
-from the training dataset.
-Luckily, this is even easier to implement than the full-pass:
+训练模型的方法也有些许不同。BPR-Opt文章的作者建议使用bootstrap采样，而不是常规的全体数据采样，也就是在每一步中，训练集都对三元组（用户，正物品样本，负物品样本）进行均匀采样。
+
+幸运的是，建议的采样要比全体数据采样要更容易实现：
 
 ```python
 session = tf.Session(config=None, graph=graph)
@@ -847,13 +827,9 @@ for i in range(75):
         print('epoch %02d: precision: %.3f' % (i+1, val_precision))
 ```
 
-After around 70 iterations it reaches the precision of around 15.4%. While it is not
-significantly different from the previous model (it reached 15.2%), it does open a lot of
-possibilities for optimizing directly for ranking. More importantly, we show how easy it is
-to adjust the existent method such that instead of optimizing the point-wise loss it
-optimizes a pair-wise objective.
-In the next section, we will go deeper and see how recurrent neural networks can model
-user actions as sequences and how we can use them as recommender systems.
+经过70次迭代后，算法可以达到大约15.4%的准确率。然而这和之前的模型（15.2%的准确率）比并不突出。这种方法确实提出了一种直接优化排序的可能。更重要的是，我们可以看到调整现有方法，以优化物品对目标函数而不是点排序损失，也很容易。 
+
+在下一节中，我们会进一步看到递归神经网络如何使用序列建模用户行为，以及如何在推荐系统中使用它。
 
 ###面向推荐系统的RNN
 
