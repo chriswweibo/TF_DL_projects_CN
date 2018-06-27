@@ -833,52 +833,28 @@ for i in range(75):
 
 ###面向推荐系统的RNN
 
-A recurrent neural networks (RNN) is a special kind of neural network for modeling
-sequences, and it is quite successful in a number applications. One such application is
-sequence generation. In the article The Unreasonable Effectiveness of Recurrent Neural
-Networks, Andrej Karpathy writes about multiple examples where RNNs show very
-impressive results, including generation of Shakespeare, Wikipedia articles, XML, Latex,
-and even C code!
+**递归神经网络（recurrent neural networks，RNN）**是专门建模序列的神经网络，它有许多很成功的应用。其中一个应用就是序列生成。在文章《The Unreasonable Effectiveness of Recurrent Neural
+Networks》中，Andrej Karpathy介绍了几个RNN展现优良结果的例子，包括莎士比亚的，维基百科的，XML的，Latex的，甚至C代码的序列生成。
 
-[ 237 ]
-Since they have proven useful in a few applications already, the natural question to ask is
-whether we can apply RNNs to some other domains. What about recommender systems,
-for example? This is the question the authors of the recurrent neural networks Based
-Subreddit Recommender System report have asked themselves (see https:/ / cole- maclean.
-github. io/ blog/ RNN- Based- Subreddit- Recommender- System/ ). The answer is yes, we can
-use RNNs for that too!
-In this section, we will try to answer this question as well. For this part we consider a
-slightly different recommendation scenario than previously:
-1. The user enters the website.
-2. We present five recommendations.
-3. After each purchase, we update the recommendations.
+RNN已经证明在一些应用中很成功，那么很自然的问题是：在其他领域中呢？比如在推荐系统中？这是递归神经网络的作者在《Based Subreddit Recommender System》报告中向自己提出的问题（参考https://cole-maclean.github.io/blog/RNN-Based-Subreddit-Recommender-System/）。答案是肯定的，RNN当然可以用。
 
-This scenario needs a different way of evaluating the results. Each time the user buys
-something, we can check whether this item was among the suggested ones or not. If it was,
-then our recommendation is considered successful. So we can calculate how many
-  successful recommendations we have made. This way of evaluating performance is called
-  Top-5 accuracy and it is often used for evaluating classification models with a large number
-  of target classes.
-  Historically RNNs are used for language models, that is, for predicting what will be the
-  most likely next word given in the sentence so far. And, of course, there is already an
-  implementation of such a language model in the TensorFlow model repository located at
-  https:/ / github. com/ tensorflow/ models (in the tutorials/rnn/ptb/ folder). Some of
-  the code samples in the remaining of this chapter are heavily inspired by this example.
-  So let us get started.
+在这一节中，我们也会回答这问题。我们会考虑一个与之前不一样的推荐场景：
+
+1. 用户访问网站。
+2. 我们给出5个推荐。
+3. 每次购买完成后，我们会更新推荐。
+
+这个场景需要不同方法来评估结果。每一次用户购买后，我们可以购买的物品是否在之前的推荐列表中。如果在的话，可以认为推荐是成功的。所以我们可以计算完成了多少次成功的推荐。这种评估性能的方法叫做
+Top-5准确率。它经常用在评估包含大量类别的分类模型上。
+
+早期，RNN是用在语言模型上的，也就是说，给定一个句子预测下一个最有可能的词语。当然，这个语言模型已经可以通过TensorFlow中的模型仓库进行实现：https://github.com/tensorflow/models（在tutorials/rnn/ptb/ 文件夹下）。本章中的一些代码示例也是受到这个例子的很大启发。 
 
 ####数据准备和基准
 
-  Like previously, we need to represent the items and users as integers. This time, however,
-  we need to have a special placeholder value for unknown users. Additionally, we need a
-  special placeholder for items to represent "no item" at the beginning of each transaction. We
-  will talk more about it later in this section, but for now, we need to implement the encoding
-  such that the 0 index is reserved for special purposes
+和以前一样，我们需要使用整数表示物品和用户。但是，这一次，我们需要为未知用户设置特殊的占位取值。另外，我们需要专门的占位取值来表示每次交易开始的“无物品”状态。之后我们会在本节提供更多讨论。但是现在，我们需要实现编码，保证0索引可以预留给专门的用途。
 
-  Previously we were using a dictionary, but this time let us implement a special
-
-
-```python
- class, LabelEncoder, for this purpose:
+之前，我们使用字典，到那时这次我们使用特殊的类`LabelEncoder`：:
+ ```python
         class LabelEncoder:
             def fit(self, seq):
                 self.vocab = sorted(set(seq))
@@ -897,13 +873,11 @@ then our recommendation is considered successful. So we can calculate how many
             
             def vocab_size(self):
                 return len(self.vocab) + 1
-```
+ ```
 
+这个实现很直接，大部分都是之前代码的重复。但是，这次我们封装在一个类中，并且保留了0用于特殊用途——例如，训练集中的缺失数据。
 
-  The implementation is straightforward and it largely repeats the code we used previously,
-  but this time it is wrapped in a class, and also reserves 0 for special needs—for example, for
-  elements that are missing in the training data.
-  Let us use this encoder to convert the items to integers:
+使用这个编码器把物品转换为整数：
 
 ```python
  item_enc = LabelEncoder()
@@ -911,10 +885,9 @@ then our recommendation is considered successful. So we can calculate how many
  df.stockcode = df.stockcode.astype('int32')
 ```
 
+然后，分成训练集，验证集和测试集：前10个月用于训练，1个月用于验证，最后1个月用于测试。
 
-  Then we perform the same train-validation-test split: first 10 months we use for training,
-  one for validation and the last one—for testing.
-  Next, we encode the user ids:
+接着，编码用户ID：
 
 
 ```python
@@ -925,12 +898,9 @@ df_train.customerid = user_enc.transfrom(df_train.customerid)
 df_val.customerid = user_enc.transfrom(df_val.customerid)
 ```
 
-  [ 239 ]
-  Like previously, we use the most frequently bought items for the baseline. However, this
-  time the scenario is different, which is why we also adjust the baseline slightly. In
-  particular, if one of the recommended items is bought by the user, we remove it from the
-  future recommendations.
-  Here is how we can implement it:
+和之前一样，我们使用购买最多的物品作为基准数据。然而，这次的场景不太一样，一次需要稍微调整一下基准算法。具体说来，如果用户购买了其中一个推荐的物品，我们就把它移出未来的推荐列表。  
+
+实现如下：
 
 
 ```python
@@ -960,18 +930,16 @@ def baseline(uid, indptr, items, top, k=5):
     return pred_all
 ```
 
+在上述代码中，`indptr`是指针数组——和之前实现`precision`函数中的一样。
 
-  In the preceding code, indptr is the array of pointers—the same one that we used for
-  implementing the precision function previously.
-  So now we apply this to the validation data and produce the results:
+我们可以把这个代码用到验证集上，看看结果：
 
 ```python
 iid_val = df_val.stockcode.values
 pred_baseline = baseline(uid_val, indptr_val, iid_val, top_train, k=5)
 ```
 
-
-  The baseline looks as follows:
+基准表现如下：
 
 ```python
   array([[3528, 3507, 1348, 2731, 181],
@@ -983,14 +951,14 @@ pred_baseline = baseline(uid_val, indptr_val, iid_val, top_train, k=5)
          [1348, 2731, 181, 454, 1314]], dtype=int32
 ```
 
-  Now let us implement the top-k accuracy metric. We again use the @njit decorator from
-  numba to speed this function up:
+现在，让我实现top-k准确度评估。我们再次使用`numba`中的`@njit`装饰器来加速函数：
 
 
 ```python
 @njit
 def accuracy_k(y_true, y_pred):
     n, k = y_pred.shape
+    
     acc = 0
     for i in range(n):
         for j in range(k):
@@ -1001,19 +969,16 @@ def accuracy_k(y_true, y_pred):
 ```
 
 
-  To evaluate the performance of the baseline, just invoke with the true labels and the
-  predictions:
+要评估基准表现，只需要调用真实标记和预测：
 
 
 ```python
  accuracy_k(iid_val, pred_baseline)
 ```
 
+结果是0.012。也就是说只在1.2%的情况下做出了成功的推荐。看起来，我们提升的空间还很大！ ca
 
-  It prints 0.012, that is, only in 1.2% cases we make a successful recommendation. Looks
-  like there is a lot of room for improvement!
-  The next step is breaking the long array of items into separate transactions. We again can
-  reuse the pointer array, which tells us where each transaction starts and where it ends:
+接下来是把物品数组分成不同的交易。我们再次使用指针数组，可以返回每次交易开始和结束的信息：
 
 ```python
 def pack_items(users, items_indptr, items_vals):
@@ -1029,7 +994,7 @@ def pack_items(users, items_indptr, items_vals):
 ```
 
 
-  Now we can unwrap the transactions and put them into a separate dataframe:
+现在我们可以封装交易，并把物品放在不同的数据框中。
 
 
 ```python
@@ -1041,7 +1006,7 @@ df_train_wrap['customerid'] = uid_train
 df_train_wrap['items'] = train_items
 ```
 
-  To have a look at what we have at the end, use the head function:
+要查看最终结果，使用`head`函数：
 
 
 ```python
@@ -1049,20 +1014,22 @@ df_train_wrap.head()
 ```
 
 
-  This shows the following:
+结果如下：
 
-|      |      |      |
-| ---- | ---- | ---- |
-| 0    |      |      |
-| 1    |      |      |
-| 2    |      |      |
-| 3    |      |      |
-| 4    |      |      |
+|      | 客户ID | 物品                                               |
+| ---- | ------ | -------------------------------------------------- |
+| 0    | 3439   | [3528, 2792, 3041, 2982, 2981, 1662, 800]          |
+| 1    | 3439   | [1547, 1546]                                       |
+| 2    | 459    | [3301, 1655, 1658, 1659, 1247, 3368, 1537, 153...] |
+| 3    | 459    | [1862, 1816, 1815, 1817]                           |
+| 4    | 459    | [818]                                              |
 
-  These sequences have varying lengths, and this is a problem for RNNs. So, we need to
-  convert them into fixed-length sequences, which we can easily feed to the model later.
-  In case the original sequence is too short, we need to pad it with zeros. If the sequence is too
-  long, we need to cut it or split it into multiple sequences.
+这些序列长度不同，这对RNN来说是个问题。所以我们需要把他们转成定长的序列。这样我们就可以方便的给模型输入数据了。 
+
+对于初始序列太短的情形，我们需要使用0补全。如果序列太长，我们需要把他们分成多个序列。
+
+最后，
+
   Lastly, we also need to represent the state when the user has entered the website but has not
   bought anything yet. We can do this by inserting the dummy zero item—an item with index
   0, which we reserved for special purposes, just like this one. In addition to that, we can also
