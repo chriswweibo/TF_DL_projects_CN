@@ -1028,41 +1028,52 @@ df_train_wrap.head()
 
 对于初始序列太短的情形，我们需要使用0补全。如果序列太长，我们需要把他们分成多个序列。
 
-最后，
+最后，我们还需要一个状态，表示用户来到网站但是什么都没有买。我们可以插入一个哑物品——它的索引为0，也就是之前为特殊目的保留的取值。另外，我们还可以使用哑物品补全太短的序列。
 
-  Lastly, we also need to represent the state when the user has entered the website but has not
-  bought anything yet. We can do this by inserting the dummy zero item—an item with index
-  0, which we reserved for special purposes, just like this one. In addition to that, we can also
-  use this dummy item to pad the sequences that are too small.
-  We also need to prepare the labels for the RNN. Suppose we have the following sequence:
-  We want to produce a sequence of fixed length 5. With padding in the beginning, the
-  sequence we use for training will look as follows:
-  Here we pad the original sequence with zero at the beginning and do not include the last
-  element—the last element will only be included in the target sequence. So the target
-  sequence—the output we want to predict—should look as follows:
+我们还需要准备RNN的标注。假设我们有以下序列：
 
-  [ 242 ]
-  It may look confusing at the beginning, but the idea is simple. We want to construct the
-  sequences in such a way that for the position i in X, the position i in Y contains the element
-  we want to predict. For the preceding example we want to learn the following rules:
+$$S=[e_1,e_2,e_3,e_4,e_5]$$  
 
-- both are at the position 0 in X and Y
-- —both are at the position 1 in X and Y
-- and so on
+我们希望产生一个长度为5的序列，使用之前的补全策略，用于训练的序列会有以下形式：
 
-Now imagine we have a smaller sequence of length 2, which we need to pad to a sequence
-  of length 5:
-  In this case, we again pad the input sequence with 0 in the beginning, and also with some
-  zeros at the end:
-  .
-  We transform the target sequence Y similarly:
-  .
-  If the input is too long, for example , we can cut it into multiple
-  sequences:
-  To perform such a transformation, we write a function pad_seq. It adds the needed
-  amount of zeros at the beginning and at the end of the sequence. Then we pad_seq in
-  another function - prepare_training_data—the function that creates the matrices X and
-  Y for each sequence:
+$$X=[0,e_1,e_2,e_3,e_4]$$  
+
+这里我们给原始序列的开始补上一个0，这样最后一个元素就被挤出。最后一个元素应该只存放在目标序列中。所以，目标序列，也就是预测结果，应该有以下形式：
+
+$$Y=[e_1,e_2,e_3,e_4,e_5]$$ 
+
+第一眼看上去有些奇怪，但是思想很简单。我们希望用这种方式构建序列，保证$X$和$Y$中的$i$位置包含要预测的元素。我们希望学习到以下规则：
+
+* $0 \to e_1$ 二者都位于$X$和$Y$的0位置
+*  $e_1 \to e_2$ 二者都位于$X$和$Y$的1位置
+
+现在假设我们有一个长度为2的序列，需要补全为长度为5：
+
+$$S=[e_1,e_2]$$
+
+在下面的例子中，我们依然后在开始的时候用0补全序列，同时也在末尾用0补全：
+
+$$X=[0,e_1,e_2,0,0]$$  
+
+类似的，我们也会把目标序列$Y$做一下转换： 
+
+$$Y=[e_1,e_2,0,0,0]$$ 
+
+如果输入太长，比如$$[e_1,e_2,e_3,e_4,e_5,e_6,e_7]$$  ，我们可以把它分成几个序列：
+$$
+X=\begin{cases}
+[0,e_1,e_2,e_3,e_4] \\ 
+[e_1,e_2,e_3,e_4,e_5]\\ 
+[e_2,e_3,e_4,e_5,e_6]
+\end{cases}
+
+和Y=\begin{cases}
+[e_1,e_2,e_3,e_4,e_5]\\ 
+[e_2,e_3,e_4,e_5,e_6]\\
+[e_3,e_4,e_5,e_6,e_7]
+\end{cases}
+$$
+要执行上述转换，我们需要函数`pad_seq`。这个函数可以在开始的位置和结束的位置补全所需的0。然后，另一个函数`prepare_training_data`会调用这个函数。第二个函数可以创建每个序列的$X$和$Y$矩阵。
 
 
 ```python
@@ -1090,8 +1101,7 @@ def prepare_train_data(data, num_steps):
 ```
 
 
-What is left to do is invoking the `prepare_training_data` function for each sequence in
-the training history, and then put the results together in `X_train` and `Y_train` matrices:
+剩下的工作就是在训练过程中调用函数`prepare_training_data` ，并把结果放在`X_train` 和 `Y_train` 矩阵中：
 
 ```python
 train_items = df_train_wrap['items']
@@ -1108,26 +1118,15 @@ X_train = np.array(X_train, dtype='int32')
 Y_train = np.array(Y_train, dtype='int32')
 ```
 
-
-
-At this point, we have finished data preparation. Now we are ready to finally create an
-RNN model that can process this data.
+现在，我们已经完成了数据准备，可以构建RNN模型来处理数据了。
 
 ###使用TensorFlow搭建RNN推荐系统
 
-The data preparation is done and now we take the produced matrices X_train and
-Y_train and use them for training a model. But of course, we need to create the model
-first. In this chapter, we will use a recurrent neural network with LSTM cells (Long Short-
-Term Memory). LSTM cells are better than plain RNN cells because they can capture longterm
-dependencies better.
-A great resource to learn more about LSTMs is the blog post
-"Understanding LSTM Networks" by Christopher Olah, which is available
-at https:/ / colah. github. io/ posts/ 2015- 08- Understanding- LSTMs/ . In
-this chapter, we do not go into theoretical details about how LSTM and
-RNN work and only look at using them in TensorFow.
-Let us start with defining a special configuration class that holds all the important training
-parameters:
+数据准备好后，我们可以使用矩阵`X_train`和`Y_train`，训练模型。模型当然要事先准备好。在这一章中，我们会使用带有LSTM（长短期记忆，Long Short-Term Memory）单元的递归神经网络。 LSTM单元要比一般的RNN单元效果要好，因为它可以更好的捕捉长期依赖关系。
 
+> 一个学习LSTM的很棒的资源是Christopher Olah的博客"Understanding LSTM Networks" 。地址是https://colah.github.io/posts/2015-08-Understanding-LSTMs/ 。在本章中，我们不会介绍LSTM和RNN的理论知识，只会关注它们在TensorFow中的实现。
+
+首先定义具体的配置信息类，其保存了重要的训练参数：
 ```python
 class Config:
     num_steps = 5
@@ -1147,24 +1146,20 @@ config = Config()
 ```
 
 
-Here the `Config` class defines the following parameters:
-- `num_steps`—This is the size of the fixed-length sequences
-- `num_items`—The number of items in our training data (+1 for the dummy 0 item)
-- `num_items`—The number of items in our training data (+1 for the dummy 0 item)
-- `num_users`—The number of users (again +1 for the dummy 0 user)
-- `init_scale`—Scale of the weights parameters, needed for the initialization
-- `learning_rate`—The rate at which we update the weights
-- `max_grad_norm`—The maximally allowed norm of the gradient, if the gradient
-exceeds this value, we clip it
-- `num_layers`—The number of LSTM layers in the network
+`Config`类定义了下列参数：
+- `num_steps`——定长序列的大小
+- `num_items`——训练数据中物品的数量（为哑物品0加1）
+- `num_users`——训练数据中用户的数量（为哑用户0加1）
+- `init_scale`——初始化中权重参数的大小
+- `learning_rate`——更新权重的速率
+- `max_grad_norm`——梯度归一的最大值，如果超过这个值，将被截断
+- `num_layers`——网络中LSTM的层数
 
-- `hidden_size`—The size of the hidden dense layer that converts the output of
-LSTM to output probabilities
-- `embedding_size`—The dimensionality of the item embeddings
-- `batch_size`—The number of sequences we feed into the net in a single training step
+- `hidden_size`——隐层的规模，用于把LSTM的输出转换为概率
+- `embedding_size`——物品embedding层的规模
+- `batch_size`——一次训练步骤中输入给模型的序列多少
 
-Now we finally implement the model. We start off by defining two useful helper
-functions—we will use them for adding the RNN part to our model:
+进一步完成模型的最终构建。首先我们定义两个有用的函数，给模型添加RNN部件：
 
 ```python
 def lstm_cell(hidden_size, is_training):
@@ -1184,7 +1179,7 @@ def rnn_model(inputs, hidden_size, num_layers, batch_size, num_steps,
 ```
 
 
-Now we can use the `rnn_model` function to create our model:
+我们可以使用`rnn_model`函数创建模型：
 
 ```python
 def model(config, is_training):
@@ -1231,28 +1226,18 @@ def model(config, is_training):
     return out
 ```
 
-In this model there are multiple parts, which is described as follows:
+这个模型包含许多模块，具体如下：
 
-1. First, we specify the inputs. Like previously, these are IDs, which later we convert
-  to vectors by using the embeddings layer.
-2. Second, we add the RNN layer followed by a dense layer. The LSTM layer learns
-  the temporary patters in purchase behavior, and the dense layer converts this
-  information into a probability distribution over all possible items.
-3. Third, since our model is multi-class classification model, we optimize the
-  categorical cross-entropy loss.
-4. Finally, LSTMs are known to have problems with exploding gradients, which is
-  why we perform gradient clipping when performing the optimization.
-  
-The function returns all the important variables in a dictionary—so, later on, we will be able
-to use them when training and validating the results.
-  The reason this time we create a function, and not just global variables like previously, is to
-  be able to change the parameters between training and testing phases. During training, the
-  batch_size and num_steps variables could take any value, and, in fact, they are tunable
-  parameters of the model. On the contrary, during testing, these parameters could take only
-  one possible value: 1. The reason is that when the user buys something, it is always one
-  item at a time, and not several, so num_steps is one. The batch_size is also one for the
-  same reason.
-  For this reason, we create two configs: one for training, and one for validation:
+1. 首先定义输入。和之前一样，ID会通过embedding层转成向量。
+2. 其次，添加RNN层以及全连接层。LSTM层会学习购买行为的临时模式，并通过全连接层转化成全部物品上的概率分布。
+3. 然后，因为我们的模型解决多分类问题，我们使用分类交叉熵损失函数。
+4. 最后，由于LSTM存在梯度爆炸的风险，我们使用梯度裁剪来优化损失函数。
+
+这个函数以字典形式返回所有重要的变量。所有，在后面的训啦和验证中可以方便的使用。
+
+这次我们之所以创建函数，而不像以前定义全局变量，是因为这样允许我们在训练和测试阶段改变参数。 在训练阶段，`batch_size`和`num_steps`变量可以取任何值，它们实际上是可以调节的。相反，在测试阶段，这些参数只能取唯一可能的值1。原因是当用户购买物品的时候，一次只能买一个，而不是多个，所以`num_steps`是1。同样的原因，`batch_size`也是1。
+
+因此，我么你创建两组配置信息。一个用于训练，一个用于验证：
 
 ```python
   config = Config()
@@ -1262,11 +1247,7 @@ to use them when training and validating the results.
 ```
 
 
-  Now let us define the computational graph for the model. Since we want to learn the
-  parameters during training, but then use them in a separate model with different
-  parameters during testing, we need to make the learned parameters shareable. These
-  parameters include embeddings, LSTM, and the weights of the dense layer. To make both
-  models share the parameters, we use a variable scope with `reuse=True`:
+ 现在，给模型定义计算图。由于我们希望在训练阶段学习到参数，但是在测试阶段用不同的参数和模型进行预测，所以我们需要学到的参数可以共享。这些参数包括embedding层，LSTM以及全连接层的权重。为了让两个模型共享参数，我们使用`reuse=True`的scope变量：
 
 
 ```python
@@ -1287,8 +1268,7 @@ with graph.as_default():
     init = tf.global_variables_initializer()
 ```
 
-  The graph is ready. Now we can train the model, and for this purpose, we create
-  a `run_epoch` helper function:
+ 计算图准备好了。我们可以开始训练。创建一个`run_epoch`函数:
 
 
 ```python
@@ -1324,22 +1304,17 @@ def run_epoch(session, model, X, Y, batch_size):
     progress.update(1)
     progress.set_description('%.3f' % loss)
     
- progress.close()
+  progress.close()
 ```
 
 
-  The initial part of the function should already be familiar to us: it first creates a dictionary of
-  variables that we are interested to get from the model and also shuffle the dataset.
+函数的开始已经很熟悉了：首先创建模型中重要变量的字典，并且重洗数据。
 
-  [ 249 ]
-  The next part is different though: since this time we have an RNN model (LSTM cell, to be
-  exact), we need to keep its state across runs. To do it we first get the initial state—which
-  should be all zeros—and then make sure the model gets exactly these values. After each
-  step, we record the final step of the LSTM and re-enter it to the model. This way the model
-  can learn typical behavior patterns.
-  Again, like previously, we use tqdm to monitor progress, and we display both how many
-  steps we have already taken during the epoch and the current training loss.
-  Let us train this model for one epoch:
+接下来有点不同：这次我们使用RNN模型（确切的说是LSTM单元），所以我们需要记录运行间的状态。为此，我们首先获取初始状态，也就是所有状态为0，并确保模型可以获得这些状态。每完成一步训练，我们都记录LSTM的最终状态，并再次输入给模型。通过这种方式，模型可以学习到典型的行为模式。 
+
+依然和之前一样，使用`tqdm`监控过程。我们会展示一轮训练中已经运行了多少步，以及当前的训练损失。
+
+首先训练模型一轮：
 
 
 ```python
@@ -1351,9 +1326,7 @@ run_epoch(session, train_model, X_train, Y_train, batch_size=config.batch_size)
 ```
 
 
-  One epoch is enough for the model to learn some patterns, so now we can see whether it
-  was actually able to do it. For that we first write another helper function, which will
-  emulate our recommendation scenario:
+一轮训练已经足够学习到一些模式，我们可以看一下是否真的做到了。首先完成另一个函数，用于评估我们的推荐场景：
 
 
 ```python
@@ -1398,40 +1371,27 @@ def generate_prediction(uid, indptr, items, model, k):
 return pred_all
 ```
 
-  What we do here is the following:
-1. First, we initialize the prediction matrix, its size like in the baseline, is the number
-  of items in the validation set times the number of recommendations.
-2. Then we run the model for each transaction in the dataset.
-3. Each time we start with the dummy zero item and the empty zero LSTM state.
-4. Then one by one we predict the next possible item and put the actual item the
-  user bought as the previous item—which we will feed into the model on the next
-  step.
-5. Finally, we take the output of the dense layer and get top-k most likely
-  predictions as our recommendation for this particular step.
+这里，我们要实现：
+1. 首先，初始化预测矩阵，其大小是验证集中物品的数量乘以推荐物品的数量。
+2. 然后，运行数据集中的每一个交易场景。
+3. 每次我们从哑物品开始，并且LSTM为空的0状态。
+4. 然后逐个预测下一个可能的物品，并把用户真实购买的物品当做上一步的物品，这样我们可以把真实物品当做模型下一步的输入。
+5. 最后，我们获取全连接层的输出，并拿到最可能的top-k预测结果作为这一步的推荐结果。
 
-Let us execute this function and look at its performance:
+执行这个函数，查看性能结果：
 
 ```python
-  pred_lstm = generate_prediction(uid_val, indptr_val, iid_val, val_model,
-                                  k=5)
+  pred_lstm = generate_prediction(uid_val, indptr_val, iid_val, val_model, k=5)
   accuracy_k(iid_val, pred_lstm)
 ```
 
+我们可以看到输出为7.1%。这个结果比基准结果好了7倍。
 
-  We see the output 7.1%, which is seven times better than the baseline.
-  This is a very basic model, and there is definitely a lot of room for improvement: we can
-  tune the learning rate and train for a few more epochs with gradually decreasing learning
-  rate. We can change the batch_size, num_steps, as well as all other parameters. We also
-  do not use any regularization—neither weight decay nor dropout. Adding it should be
-  helpful.
+这是一个非常简单的模型，提升空间也很大：我们可以调节学习率，多训练几轮，并使用梯度下降学习率。我们可以改变`batch_size`，`num_steps`以及其他参数。我们也可以不使用任何正则化，既不衰减权重也不dropout。这些策略都可能有用。
 
-  [ 251 ]
-  But most importantly, we did not use any user information here: the recommendations
-  were based solely on the patterns of items. We should be able to get additional
-  improvement by including the user context. After all, the recommender systems should be
-  personalized, that is, tailored for a particular user.
-  Right now our X_train matrix contains only items. We should include another input, for
-  example U_train, which contains the user IDs:
+最重要的是，我们没有使用任何用户信息：推荐完全基于物品的模式本身。我们也可以使用用户信息做进一步的优化。毕竟，推荐系统应该是个性化的，也就是为每个用户专门定制的。
+
+当前`X_train`矩阵只包含物品。我们还应该使用其它输入，例如`U_train`，保存用户ID：
 
 
 ```python
@@ -1451,9 +1411,7 @@ U_train = np.array(U_train, dtype='int32')
 ```
 
 
-  Let us change the model now. The easiest way to incorporate user features is to stack
-  together user vectors with item vectors and put the stacked matrix to LSTM. It is quite easy
-  to implement, we just need to modify a few lines of the code:
+让我们改动一下模型。最简单的融入用户特征的方法是把用户向量和物品向量放在一起，并把这个堆叠矩阵一并输入给LSTM。这非常好实现，只需要几行代码：
 
 
 ```python
@@ -1515,21 +1473,18 @@ def user_model(config, is_training):
  return out
 ```
 
-  [ 253 ]
-  The changes between the new implementation and the previous model are shown in bold.
-  In particular, the differences are the following:
+新的实现和老的实现的差别如下：
 
--   We add `place_u`—The placeholder that takes the user ID as input
+- 添加`place_u`——使用用户ID作为输入的占位符
 
--   Rename embeddings to `item_embeddings`—not to confuse them with
+- 重命名`embeddings`为`item_embeddings`——避免和几行代码后的`user_embeddings`混淆
 
-  `user_embeddings`, which we added a few lines after that
+- 最后，把用户特征和物品特征拼接起来
 
--   Finally, we concatenate user features with item features
+模型的其它部分都是一样的！
 
-  The rest of the model code stays unchanged!
-  Initialization is similar to the previous model:
-  
+初始化和之前的模型也类似：
+
 
 ```python
 graph = tf.Graph()
@@ -1554,10 +1509,7 @@ with graph.as_default():
 ```
 
 
-  The only difference here is that we invoke a different function when creating the model. The
-  code for training one epoch of the model is very similar to the previous one. The only things
-  that we change are the extra parameters of the function, which we add into the feed_dict
-  inside:
+唯一的差别是，我们再创建模型的时候调用了不同的函数。训练模型一轮的代码和之前的也类似。唯一不同的是函数包含额外的参数。我们会把额外的参数放在`feed_dict`中：
 
 ```python
 def user_model_epoch(session, model, X, U, Y, batch_size):
@@ -1595,7 +1547,7 @@ def user_model_epoch(session, model, X, U, Y, batch_size):
     progress.close()
 ```
 
-  Let us train this new model for one epoch:
+完成新的模型一轮训练：
 
 
 ```python
@@ -1605,11 +1557,11 @@ session.run(init)
 np.random.seed(0)
 
 user_model_epoch(session, train_model, X_train, U_train, Y_train,
-                 batch_size=config.batch_size)
+                 batch_size = config.batch_size)
 ```
 
 
-  The way we use the model is also almost the same as previous:
+我们使用模型的方式也和之前的类似：
 
 
 ```python
@@ -1654,8 +1606,7 @@ def generate_prediction_user_model(uid, indptr, items, model, k):
     return pred_all
 ```
 
-  Finally, we run this function to generate the predictions for the validation set, and calculate
-  the accuracy of these recommendations:
+最后，运行这个函数，生产验证集的预测，计算推荐场景的准确率：
 
 ```python
   pred_lstm = generate_prediction_user_model(uid_val, indptr_val, iid_val,
@@ -1664,22 +1615,11 @@ def generate_prediction_user_model(uid, indptr, items, model, k):
 ```
 
 
-  The output we see is 0.252, which is 25%. We naturally expect it to be better, but the
-  improvement was quite drastic: almost four times better than the previous model, and 25
-  better than the naive baseline. Here we skip the model check on the hold-out test set, but
-  you can (and generally should) do it yourself to make sure the model does not overfit.
+我们看到，输出是0.252，即25%。我们期望提升，结果的改进已经很明显了：几乎是上一个模型的4倍，也比基准模型好了25倍。这里我们省去了模型在测试集上的计算，但是读者可以自己完成（也应该完成），确认模型没有过拟合。
 
   ###小结
-  In this chapter, we covered recommender systems. We first looked at some background
-  theory, implemented simple methods with TensorFlow, and then discussed some
-  improvements such as the application of BPR-Opt to recommendations. These models are
-  important to know and very useful to have when implementing the actual recommender
-  systems.
-  In the second section, we tried to apply the novel techniques for building recommender
-  systems based on Recurrent Neural Nets and LSTMs. We looked at the user's purchase
-  history as a sequence and were able to use sequence models to make successful
-  recommendations.
-  In the next chapter, we will cover Reinforcement Learning. This is one of the areas where
-  the recent advances of Deep Learning have significantly changed the state-of-the-art: the
-  models now are able to beat humans in many games. We will look at the advanced models
-  that caused the change and we will also learn how to use TensorFlow to implement real AI.
+在这一章中，我们介绍了推荐系统。首先，我们学习了使用TensorFlow实现简单方法的基础理论，然后讨论了一些改进方法，例如推荐系统中BPR-Opt。这些模型在推荐系统实现中很重要也很有用。
+
+在第二节中，我们尝试使用递归神经网络和LSTM，这一新的方法构建推荐系统。我们把用户的购买历史当做输入序列，并且可以使用序列模型做出成功的推荐。
+
+在下一章中，我们会介绍强化学习。这个领域是其中一个最近的深度学习进展极大的推动了前沿研究的领域：模型可以在许多游戏中打败人类。我们会学习引发变革的先进模型，也会学习如何使用TensorFlow实现真正的AI。
