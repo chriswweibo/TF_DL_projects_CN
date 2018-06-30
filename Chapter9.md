@@ -470,7 +470,7 @@ $$minimize\sum(r_{ui}-\hat{r}_{ui})^2+\lambda(\lVert p_u \rVert ^2 +\lVert q_i \
 
 输出结果是13.9%。这个结果比之前基准结果6%好了不少。同时，这个结果应该很难超越了。但是接下来，我们还是愿意尝试一下。
 
-### 基于SGD的矩阵分解
+#### 基于SGD的矩阵分解
 
 现在我们可以使用TensorFlow实现矩阵分解了，看看是否可以改进`implicit`的基准表现。用TensorFlow实现ALS并不容易：它更适合于基于梯度的方法，例如SGD。这也是我们把ALS做专门实现的原因。
 
@@ -548,12 +548,9 @@ with graph.as_default():
     step = opt.minimize(loss_total)
     init = tf.global_variables_initializer()
 ```
-
-
 这个模型有三个输入：
 
 - `place_user`: 用户ID
-
 - `place_item`: 物品ID
 - `place_y`: 每个（用户，物品）对的标签
 
@@ -582,7 +579,6 @@ with graph.as_default():
 
 
 现在开始训练模型。首先我们需要把输入分成几个批次。使用下列函数：
-
 ```python
 def prepare_batches(seq, step):
     n = len(seq)
@@ -591,8 +587,6 @@ def prepare_batches(seq, step):
         res.append(seq[i:i+step])
     return res
 ```
-
-
 这个函数会把一个数组变成给定大小的数组列表。
 
 回忆一下基于隐式反馈的数据集。其中正样本的例子，也就是交互真实发生的次数，与负样本的例子（没有发生交互的次数）相比数量很少。我们应该怎么办？方法很简单：我们使用**负采样（negative sampling）**。其原理是至采集小部分负样本数据。典型的做法是，对于每一个正样本数据，我们都采集`K`个负样本，`K`是可调节的参数。这就是我们的想法。
@@ -676,9 +670,7 @@ def calculate_validation_precision(graph, session, uid):
     
     return precision(val_indptr, val_items, imp_baseline)
 ```
-
 我们得到如下输出：
-
 ```
 epoch 01: precision: 0.064
 epoch 02: precision: 0.086
@@ -691,12 +683,11 @@ epoch 08: precision: 0.149
 epoch 09: precision: 0.151
 epoch 10: precision: 0.152
 ```
-
 通过6轮训练，模型就超过了之前的基准表现。10轮之后，模型准确率达到15.2%。
 
 矩阵分解技术通常可以为推荐系统提供强大的基准表现。通过简单的调整，这个技术还可以产出更好的结果。不用优化二分类问题的损失函数，我们还可以使用其他面向排序问题的损失函数。在下一节中，我们会学习这一类损失函数，并看看如果作出相应的调整。
 
-###贝叶斯个性化排序
+#### 贝叶斯个性化排序
 
 我们使用矩阵分解的方法来为每一个用户做个性化排序。然而，要解决这个问题，我们使用了二分类问题的优化标准——对数损失。这个函数效果不错，通过对它的优化可以产生很好的排序模型。那么，如果使用专门的损失函数来训练排序模型会怎么样呢？
 
@@ -728,7 +719,6 @@ $$minimize-\sum ln\sigma(\hat{x}_{uij})+\lambda \parallel W \parallel ^2$$
 
 
 另外一个小的实现上的差别是，由于我们有两个物品输入，并且公用embedding层，所以我需要对embedding层进行稍微改变，完成新的定义和创建。因此，我们修改`embed`函数，并且分别创建变量和查找层：
-
 ```python
 def init_variable(size, dim, name=None):
     std = np.sqrt(2 / dim)
@@ -739,10 +729,7 @@ def embed(inputs, size, dim, name=None):
     emb = init_variable(size, dim, name)
     return tf.nn.embedding_lookup(emb, inputs)
 ```
-
-
 最终，代码如下：
-
 ```python
 num_factors = 128
 lambda_user = 0.0000001
@@ -831,7 +818,7 @@ for i in range(75):
 
 在下一节中，我们会进一步看到递归神经网络如何使用序列建模用户行为，以及如何在推荐系统中使用它。
 
-###面向推荐系统的RNN
+### 面向推荐系统的RNN
 
 **递归神经网络（recurrent neural networks，RNN）**是专门建模序列的神经网络，它有许多很成功的应用。其中一个应用就是序列生成。在文章《The Unreasonable Effectiveness of Recurrent Neural
 Networks》中，Andrej Karpathy介绍了几个RNN展现优良结果的例子，包括莎士比亚的，维基百科的，XML的，Latex的，甚至C代码的序列生成。
@@ -853,8 +840,8 @@ Top-5准确率。它经常用在评估包含大量类别的分类模型上。
 
 和以前一样，我们需要使用整数表示物品和用户。但是，这一次，我们需要为未知用户设置特殊的占位取值。另外，我们需要专门的占位取值来表示每次交易开始的“无物品”状态。之后我们会在本节提供更多讨论。但是现在，我们需要实现编码，保证0索引可以预留给专门的用途。
 
-之前，我们使用字典，到那时这次我们使用特殊的类`LabelEncoder`：:
- ```python
+之前，我们使用字典，到那时这次我们使用特殊的类`LabelEncoder`：
+```python
         class LabelEncoder:
             def fit(self, seq):
                 self.vocab = sorted(set(seq))
@@ -873,7 +860,7 @@ Top-5准确率。它经常用在评估包含大量类别的分类模型上。
             
             def vocab_size(self):
                 return len(self.vocab) + 1
- ```
+```
 
 这个实现很直接，大部分都是之前代码的重复。但是，这次我们封装在一个类中，并且保留了0用于特殊用途——例如，训练集中的缺失数据。
 
@@ -888,8 +875,6 @@ Top-5准确率。它经常用在评估包含大量类别的分类模型上。
 然后，分成训练集，验证集和测试集：前10个月用于训练，1个月用于验证，最后1个月用于测试。
 
 接着，编码用户ID：
-
-
 ```python
 user_enc = LabelEncoder()
 user_enc.fit(df_train[df_train.customerid != -1].customerid)
@@ -901,8 +886,6 @@ df_val.customerid = user_enc.transfrom(df_val.customerid)
 和之前一样，我们使用购买最多的物品作为基准数据。然而，这次的场景不太一样，一次需要稍微调整一下基准算法。具体说来，如果用户购买了其中一个推荐的物品，我们就把它移出未来的推荐列表。  
 
 实现如下：
-
-
 ```python
 from collections import Counter
     
@@ -929,18 +912,14 @@ def baseline(uid, indptr, items, top, k=5):
                 
     return pred_all
 ```
-
 在上述代码中，`indptr`是指针数组——和之前实现`precision`函数中的一样。
 
 我们可以把这个代码用到验证集上，看看结果：
-
 ```python
 iid_val = df_val.stockcode.values
 pred_baseline = baseline(uid_val, indptr_val, iid_val, top_train, k=5)
 ```
-
 基准表现如下：
-
 ```python
   array([[3528, 3507, 1348, 2731, 181],
          [3528, 3507, 1348, 2731, 181],
@@ -950,10 +929,7 @@ pred_baseline = baseline(uid_val, indptr_val, iid_val, top_train, k=5)
          [1348, 2731, 181, 454, 1314],
          [1348, 2731, 181, 454, 1314]], dtype=int32
 ```
-
 现在，让我实现top-k准确度评估。我们再次使用`numba`中的`@njit`装饰器来加速函数：
-
-
 ```python
 @njit
 def accuracy_k(y_true, y_pred):
@@ -967,16 +943,11 @@ def accuracy_k(y_true, y_pred):
                 break
     return acc / n
 ```
-
-
 要评估基准表现，只需要调用真实标记和预测：
-
-
 ```python
  accuracy_k(iid_val, pred_baseline)
 ```
-
-结果是0.012。也就是说只在1.2%的情况下做出了成功的推荐。看起来，我们提升的空间还很大！ ca
+结果是0.012。也就是说只在1.2%的情况下做出了成功的推荐。看起来，我们提升的空间还很大！ 
 
 接下来是把物品数组分成不同的交易。我们再次使用指针数组，可以返回每次交易开始和结束的信息：
 
@@ -992,11 +963,7 @@ def pack_items(users, items_indptr, items_vals):
         
     return result
 ```
-
-
 现在我们可以封装交易，并把物品放在不同的数据框中。
-
-
 ```python
 train_items = pack_items(indptr_train, indptr_train,
                          df_train.stockcode.values)
@@ -1005,24 +972,13 @@ df_train_wrap = pd.DataFrame()
 df_train_wrap['customerid'] = uid_train
 df_train_wrap['items'] = train_items
 ```
-
 要查看最终结果，使用`head`函数：
-
-
 ```python
 df_train_wrap.head()
 ```
-
-
 结果如下：
 
-|      | 客户ID | 物品                                               |
-| ---- | ------ | -------------------------------------------------- |
-| 0    | 3439   | [3528, 2792, 3041, 2982, 2981, 1662, 800]          |
-| 1    | 3439   | [1547, 1546]                                       |
-| 2    | 459    | [3301, 1655, 1658, 1659, 1247, 3368, 1537, 153...] |
-| 3    | 459    | [1862, 1816, 1815, 1817]                           |
-| 4    | 459    | [818]                                              |
+![241_1](\figures\241_1.png)
 
 这些序列长度不同，这对RNN来说是个问题。所以我们需要把他们转成定长的序列。这样我们就可以方便的给模型输入数据了。 
 
@@ -1074,8 +1030,6 @@ X=\begin{cases}
 \end{cases}
 $$
 要执行上述转换，我们需要函数`pad_seq`。这个函数可以在开始的位置和结束的位置补全所需的0。然后，另一个函数`prepare_training_data`会调用这个函数。第二个函数可以创建每个序列的$X$和$Y$矩阵。
-
-
 ```python
 def pad_seq(data, num_steps):
     data = np.pad(data, pad_width=(1, 0), mode='constant')
@@ -1120,7 +1074,7 @@ Y_train = np.array(Y_train, dtype='int32')
 
 现在，我们已经完成了数据准备，可以构建RNN模型来处理数据了。
 
-###使用TensorFlow搭建RNN推荐系统
+#### 使用TensorFlow搭建RNN推荐系统
 
 数据准备好后，我们可以使用矩阵`X_train`和`Y_train`，训练模型。模型当然要事先准备好。在这一章中，我们会使用带有LSTM（长短期记忆，Long Short-Term Memory）单元的递归神经网络。 LSTM单元要比一般的RNN单元效果要好，因为它可以更好的捕捉长期依赖关系。
 
@@ -1144,8 +1098,6 @@ class Config:
     
 config = Config()
 ```
-
-
 `Config`类定义了下列参数：
 - `num_steps`——定长序列的大小
 - `num_items`——训练数据中物品的数量（为哑物品0加1）
