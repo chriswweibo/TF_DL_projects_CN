@@ -11,6 +11,7 @@
 * dropout: dropout
 * embedding: 词嵌入
 * epoch：轮
+* gradient clipping：梯度裁剪
 * in order to: 为了，以便
 * library：库
 * logistic regression：logistic回归
