@@ -4,9 +4,7 @@ This chapter will show you how to train an automatic chatbot that will be able t
 simple and generic questions, and how to create an endpoint over HTTP for providing the
 answers via an API. More specifically, we will show:
 
-- 
-  What's the corpus and how to preprocess the corpus
-
+- What's the corpus and how to preprocess the corpus
 - How to train a chatbot and how to test it
 - How to create an HTTP endpoint to expose the API
 
@@ -27,7 +25,7 @@ to understand the topic, always providing the same answer for all questions abou
 topic. For example, on a train website, the questions Where can I find the timetable of the
 City_A to City_B service? and What's the next train departing from City_A? will likely get the
 same answer, that could read Hi! The timetable on our network is available on this page: <link>.
-Train and Set up a Chatbot, Able to Discuss Like a Human Chapter 7
+
 [ 160 ]
 Basically, behind the scene, this types of chatbots use classification algorithms to
 understand the topic (in the example, both questions are about the timetable topic). Given
@@ -367,7 +365,7 @@ def build_dataset(use_stored_dictionary=False):
 
 By inserting this function into the `train_translator.py` file (from the previous chapter)
 and rename the file as `train_chatbot.py`, we can run the training of the chatbot.
-Train and Set up a Chatbot, Able to Discuss Like a Human Chapter 7
+
 [ 168 ]
 After a few iterations, you can stop the program and you'll see something similar to this
 output:
