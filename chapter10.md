@@ -1,4 +1,4 @@
-# 第10章 基于增强学习的视频游戏
+# 第10章 基于增强学习的游戏
 
 与输入输出一一对应的监督学习不同，增强学习是另一类最大化问题：在给定环境下，寻找出一个行为策略以达到回报最大化（行为会互相作用，甚至会改变环境）。增强学习算法的目标不是一个明确而严格的结果（译者注：如分类回归问题的具体值，是一个明确而固定的数值），而是最大化最终得到的回报。此类算法会通过自由的反复试错来达成目标。如同幼童学步一般，算法会在实验环境中分析行为带来的反馈，然后找出实现最优回报的方式。这也类似人类尝试新游戏的情形：尝试寻求最优策略，在此之后尝试许多方法，然后最终决定行为准则。
 
@@ -369,41 +369,373 @@ def fit(self, sess, s, r, epochs=1):
 
 `global_step`作为结果之一被返回。它是一个计数器，可以跟踪到目前为止在训练中使用的批数量，并且记录下来供以后使用。  
 
-## 创建记忆以进行经验回放  
+## 为经验回放创建记忆  
 
 在定义了大脑(TensorFlow神经网络)之后，我们的下一步是定义记忆，即数据存储，这将为DQN的学习过程提供动力。在每一个用于训练的游戏会话中，一步由一个状态和一个动作组成，与随后的状态和该会话的最终奖励一起被记录下来(最终奖励只有在该会话结束时才会知道)。  
 
-<翻译标识>
+添加一个标志告诉观察是否是终止状态就完成了记录信息的集合。其想法是将某些动作不仅与即时奖励(可能为空或非常少)关联，而且与结束奖励相关联，从而将该会话中的每一步与其关联起来。  
 
-添加一个标志，告诉观察是否是终止状态，就完成了记录信息的集合。其想法是将某些动作不仅与即时奖励(可能为空或适度)，而且与结束奖励相关联，从而将该会话中的每一步与其关联起来。  类内存只是一个具有一定大小的队列，然后该队列中充满了关于以前游戏体验的信息，并且很容易对其进行采样和提取。考虑到它的固定大小，重要的是将较老的示例从队列中推出来，从而使可用的示例始终位于最后一个示例中。  这个类包括一个初始化，其中数据结构是原始的并且它的大小是固定的，len方法(因此我们知道内存是否满了，这是很有用的，例如，为了等待任何训练，至少要等到我们有足够的训练，以便更好地随机性和学习的多样性)，添加在队列中记录的内存，以及用列表格式从它恢复所有数据的RECARE_内存： 
+`memory`类含有一个固定大小的队列，该队列中充满了以往经历的信息，我们可以很容易的对其进行采样和提取。由于它的大小固定，我们需要将较老的样本从队列中弹出，从而使可用的样本始终位于最后。  
+
+这个类包括了`__init__`方法，用于初始化双端队列并固定其大小，也包括`__len__`方法(以用来获取内存是否为满，等待数据足够丰富时才进行训练，此时样本具有更好的随机性和多样性)，`add_memory`用于在队列中添加样本，以及从记忆中恢复所有数据的`recall_memory`：
+
+```python
+class Memory:
+	"""
+	A memory class based on deque, a list-like container with
+	fast appends and pops on either end (from the collections
+	package)
+	"""
+	def __init__(self, memory_size=5000):
+		self.memory = deque(maxlen=memory_size)
+	def __len__(self):
+		return len(self.memory)
+
+    def add_memory(self, s, a, r, s_, status):
+    	"""
+    	Memorizing the tuple (s a r s_) plus the Boolean flag status,
+    	reminding if we are at a terminal move or not
+    	"""
+    	self.memory.append((s, a, r, s_, status))
+
+    def recall_memories(self):
+    	"""
+    	Returning all the memorized data at once
+    	"""
+    	return list(self.memory)
+```
 
 ## 创建智能体  
 
-下一个类是智能体，它具有初始化和维护大脑(提供近似Q函数)和内存的作用。此外，是智能体人在环境中行动。它的初始化设置了一系列的参数，这些参数大多是固定的，因为我们在优化月球登陆者游戏的学习经验。但是，在第一次初始化智能体时，可以显式更改它们：  Epsilon=1.0是勘探开发参数的初始值。1.0值迫使智能体完全依赖于探索，即随机移动。  Epsilon_min=0.01设置勘探-开发参数的最小值：值0.01表示着陆舱随机移动的可能性为1%，而不是基于Q函数反馈。这总是提供了一个最小的机会找到另一个最优的方式完成游戏，而不损害它。  epsilon_衰变=0.9994是调节epsilon减小到最小速度的衰减。在这个设置中，在大约5，000集之后，它被调整到一个最小值，平均来说，这应该为算法提供至少200万个可供学习的示例。  伽玛=0.99是奖励折现因子，Q值估计值根据当前奖励来衡量未来奖励的权重，从而允许算法根据所玩游戏的最佳方式是短视或远视(在月球着陆器中，最好是远视，因为实际的奖励只在登月吊舱着陆时才会得到)。(。)。  LearingRate=0.0001是ADAM优化器学习这批示例的学习速率。  EPOCH=1是神经网络为适应批处理样本而使用的训练周期。BUT_SEAM=32是批示例的大小。REMERY=内存(REMERY_SIZE=250000)是内存队列的大小。“内存”=“内存”。  使用预置参数，可以确保当前项目将正常工作。对于不同的OpenAI环境，您可能需要找到不同的最佳参数。  初始化还将提供定义TensorBoard日志放置位置(默认情况下是实验目录)所需的命令、学习如何估计立即下一个奖励的模型，以及存储最终奖励的权重的另一个模型。此外，将初始化一个保存程序(tf.tra.saver)，允许将整个会话序列化到磁盘，以便以后恢复它并将其用于玩真正的游戏，而不仅仅是学习如何玩它。  上述两个模型在同一个会话中初始化，使用不同的作用域名称(一个是Q，由TensorBoard监视的下一个奖励模型；另一个是Target_Q)。使用两个不同的作用域名称可以方便地处理神经元的系数，从而可以用类中的另一个方法交换它们： 
+我们要编码的下一个类是智能体。它具有初始化和维护大脑(提供近似Q函数)和记忆的作用。更重要的是，它是与环境互动的主要对象。它的初始化设置了一系列的参数，这些参数大多是固定的（根据我们以往在这个游戏中训练智能体的经验）。当然你可以在在初始化智能体时显式更改它们：  
 
-与利用网络知识相比，用于探索新解决方案的时间份额的epsilon处理不断更新epsilon_update方法，该方法只是通过将实际epsilon乘以epsilon_衰变来修改实际epsilon，除非它已经达到了允许的最小值： 
+* `epsilon = 1.0`是探索—利用参数的初始值。1.0迫使智能体完全依赖于探索，即随机移动。  
+* `epsilon_min = 0.01`设置探索—利用参数的最小值：值0.01表示着陆舱随机移动的可能性为1%，而不总是基于Q函数反馈。这意味着我们一直有一个非常小的机会找到另一个更优的方式完成游戏。  
+* `epsilon_decay = 0.9994`是调节`epsilon`减小到最小值的速度。在这个设置中，在大约5，000个游戏会话之后，它将被调整到最小值。一般来说，这个参数应该为算法提供至少200万个可供学习的样本。  
+* `gamma = 0.99`是奖励折现因子，我们近似的Q函数将根据它来衡量当前奖励和未来奖励，它控制了算法玩游戏的方式是短视或远视(在月球着陆器这个游戏中，最好是远视，因为奖励只在登月舱着陆时才会得到)。
+* `learing_rate = 0.0001`是Adam优化器学习样本的学习速率。  
+* `epochs = 1`是神经网络拟合批样本而使用的训练轮数。
+* `batch_size = 32`是批大小。
+* `memory = Memory(memory_size=250000)`是内存队列的大小。  
 
-SET_LOGER和TARGET_MODEL_UPDATE方法一起工作，用Q网络的权重来更新目标Q网络(SET_WALL是一个通用的、可重用的函数，您也可以在解决方案中使用)。由于这两个作用域的命名不同，因此很容易从可训练变量列表中枚举每个网络的变量。一旦枚举，这些变量就会加入到要由正在运行的会话执行的赋值中： 
+使用预置参数可以确保智能体在当前项目正常工作。对于不同的OpenAI环境，您可能需要经过尝试找到不同的最佳参数。  
 
-ACT方法是策略执行的核心，因为它将基于epsilon来决定是采取随机移动还是进行尽可能好的移动。如果它正朝着尽可能好的方向移动，它将要求经过训练的Q网络为每个可能的下一步动作提供一个奖励估计(通过在月球着陆器游戏中按四个按钮中的一个以二进制方式表示)，它将返回以最大预测奖励(解决方案的贪婪方法)为特征的移动： 
+初始化还将定义TensorBoard日志的放置位置(默认情况下是`experiment`目录)、用于估计下一个即时奖励的模型，以及估计最终奖励的另一个模型。此外，初始化中还将定义一个保存器(`tf.train.Saver`)，它可以将整个会话序列化后保存到磁盘，以便以后恢复它并将其用于玩真正的游戏。  
 
-重播方法完成类。这是一个关键的方法，因为它使学习的DQN算法成为可能。因此，我们将深入讨论它是如何运作的。重播方法所做的第一件事是从先前游戏场景的内存中取样一批(我们在初始化时定义了批的大小)(这些内存只是包含状态、动作、奖励、下一个状态的值的变量，以及注意观察是否是最终状态的标志变量)。随机抽样使模型能够通过对网络权值的缓慢调整，一批又一批地找出最优的系数，从而学习Q函数。  然后，该方法确定抽样召回状态是否是最终的。非最终奖励需要更新，以表示您在游戏结束时得到的奖励。这是通过使用目标网络来完成的，目标网络表示上一次学习结束时固定的Q函数网络的快照。向目标网络提供以下状态，在用伽玛因子折现后，将得到的报酬与当前报酬相加。  使用当前的Q函数可能会导致学习过程的不稳定性，而不会导致一个令人满意的Q函数网络。 
+上述两个模型在同一个会话中初始化，使用不同的域名(一个是`q`，由TensorBoard监视的估计下一个奖励的模型；另一个是`target_q`)。使用两个不同的域名可以方便地处理神经元的系数，从而可以用类中的另一个方法交换它们： 
 
-当非终端状态的奖励被更新时，批数据被输入到神经网络中进行训练。  
+```python
+class Agent:
+	def __init__(self, nS, nA, experiment_dir):
+		# Initializing
+		self.nS = nS
+		self.nA = nA
+		self.epsilon = 1.0  # exploration-exploitation ratio
+		self.epsilon_min = 0.01
+		self.epsilon_decay = 0.9994
+		self.gamma = 0.99  # reward decay
+		self.learning_rate = 0.0001
+		self.epochs = 1  # training epochs
+		self.batch_size = 32
+		self.memory = Memory(memory_size=250000)
+
+        # Creating estimators
+        self.experiment_dir =os.path.abspath\
+	        			("./experiments/{}".format(experiment_dir))
+	    self.global_step = tf.Variable(0, name='global_step',
+	    									trainable=False)
+	    self.model = Brain(nS=self.nS, nA=self.nA, scope="q",
+	    					learning_rate=self.learning_rate,
+	    					global_step=self.global_step,
+	    					summaries_dir=self.experiment_dir)
+	    self.target_model = Brain(nS=self.nS, nA=self.nA,
+	    							scope="target_q",
+	    							learning_rate=self.learning_rate,
+	    							global_step=self.global_step)
+	
+        # Adding an op to initialize the variables.
+        init_op = tf.global_variables_initializer()
+        # Adding ops to save and restore all the variables.
+        self.saver = tf.train.Saver()
+
+        # Setting up the session
+        self.sess = tf.Session()
+        self.sess.run(init_op)
+```
+
+`epsilon`表示探索与利用之间的权衡，它在`epsilon_update`方法中被更新，该方法只是通过将实际`epsilon`乘以`epsilon_decay`来修改实际的`epsilon`，除非它已经达到了允许的最小值：
+
+```python
+def epsilon_update(self, t):
+    if self.epsilon > self.epsilon_min:
+        self.epsilon *= self.epsilon_decay
+```
+
+使用`save_weights`与`load_weights`方法来保存以及恢复会话：
+
+```python
+def save_weights(self, filename):
+	"""
+	Saving the weights of a model
+	"""
+	save_path = self.saver.save(self.sess,
+								"%s.ckpt" % filename)
+	print("Model saved in file: %s" % save_path)
+
+def load_weights(self, filename):
+	"""
+	Restoring the weights of a model
+	"""
+	self.saver.restore(self.sess, "%s.ckpt" % filename)
+	print("Model restored from file")
+```
+
+`set_weight`和`target_model_update`一起用Q网络的权重来更新目标Q网络(`set_weights`是一个通用的、可重用的函数，您也可以在其他解决方案中使用)。由于这两个作用域的命名不同，因此很容易从可训练变量列表中枚举每个网络的变量。通过枚举，当前会话将对变量执行赋值： 
+
+```python
+ def set_weights(self, model_1, model_2):
+ 	"""
+ 	Replicates the model parameters of one
+ 	estimator to another.
+ 	model_1: Estimator to copy the parameters from
+ 	model_2: Estimator to copy the parameters to
+ 	"""
+ 	# Enumerating and sorting the parameters
+ 	# of the two models
+ 	model_1_params = [t for t in tf.trainable_variables() \
+ 						if t.name.startswith(model_1.scope)]
+ 	model_2_params = [t for t in tf.trainable_variables() \
+ 						if t.name.startswith(model_2.scope)]
+ 	model_1_params = sorted(model_1_params,
+ 							key=lambda x: x.name)
+ 	model_2_params = sorted(model_2_params,
+ 							key=lambda x: x.name)
+ 	# Enumerating the operations to be done
+ 	operations = [coef_2.assign(coef_1) for coef_1, coef_2 \
+ 					in zip(model_1_params, model_2_params)]
+ 	# Executing the operations to be done
+ 	self.sess.run(operations)
+
+ def target_model_update(self):
+ 	"""
+ 	Setting the model weights to the target model's ones
+ 	"""
+ 	self.set_weights(self.model, self.target_model)
+```
+
+`act`方法是执行策略的核心，因为它将基于`epsilon`来决定当前移动是随机还是采取尽可能好的操作。如果它要采取尽可能好的操作，它将要求经过训练的Q网络为每个可能的下一步动作提供一个奖励估计(通过在月球登陆器游戏中按四个按钮的二进制编码)，它将返回将会获得最大预测奖励(解决方案的贪婪方法)的操作： 
+
+```python
+def act(self, s):
+	"""
+	Having the agent act based on learned Q* function
+	or by random choice (based on epsilon)
+	"""
+	# Based on epsilon predicting or randomly
+	# choosing the next action
+	if np.random.rand() <= self.epsilon:
+		return np.random.choice(self.nA)
+	else:
+		# Estimating q for all possible actions
+		q = self.model.predict(self.sess, s)[0]
+		# Returning the best action
+		best_action = np.argmax(q)
+		return best_action
+```
+
+本类的最后一个方法是`replay`。这个方法很关键，因为它使DQN算法的学习过程变为可能。因此我们在此深入讨论它的运作原理。重播方法所做的第一件事是从先前游戏场景的记忆中取一批样(我们在初始化时定义了批的大小，这些内存只是包含状态、动作、奖励、下一个状态的变量，以及是否是最终状态的标志变量)。随机抽样使模型能够通过对网络权值的逐步调整，一批又一批地找出最优的系数，从而学到最终的Q函数近似。
+
+然后该方法观察样本的最终标志，非最终奖励需要更新，以表示您在游戏结束时得到的奖励。这是通过使用目标网络来完成的，目标网络表示上一次学习结束时固定的Q函数网络的快照。向目标网络提供以上状态，在用伽玛因子折现后，将得到的报酬与当前报酬相加。  
+
+使用当前的Q函数可能会导致学习过程的不稳定性，导致无法得到一个令人满意的Q函数网络。 
+
+```python
+ def replay(self):
+ 	# Picking up a random batch from memory
+ 	batch = np.array(random.sample(\
+ 			self.memory.recall_memories(), self.batch_size))
+ 	# Retrieving the sequence of present states
+ 	s = np.vstack(batch[:, 0])
+ 	# Recalling the sequence of actions
+ 	a = np.array(batch[:, 1], dtype=int)
+ 	# Recalling the rewards
+ 	r = np.copy(batch[:, 2])
+ 	# Recalling the sequence of resulting states
+ 	s_p = np.vstack(batch[:, 3])
+ 	# Checking if the reward is relative to
+ 	# a not terminal state
+ 	status = np.where(batch[:, 4] == False)
+ 	# We use the model to predict the rewards by
+ 	# our model and the target model
+ 	next_reward = self.model.predict(self.sess, s_p)
+ 	final_reward = self.target_model.predict(self.sess, s_p)
+    
+    if len(status[0]) > 0:
+    	# Non-terminal update rule using the target model
+    	# If a reward is not from a terminal state,
+    	# the reward is just a partial one (r0)
+        # We should add the remaining and obtain a
+        # final reward using target predictions
+        best_next_action = np.argmax(\
+        				next_reward[status, :][0], axis=1)
+        # adding the discounted final reward
+        r[status] += np.multiply(self.gamma,
+        		final_reward[status, best_next_action][0])
+
+        # We replace the expected rewards for actions
+        # when dealing with observed actions and rewards
+        expected_reward = self.model.predict(self.sess, s)
+        expected_reward[range(self.batch_size), a] = r
+        # We re-fit status against predicted/observed rewards
+        self.model.fit(self.sess, s, expected_reward,
+        				epochs=self.epochs)
+```
+
+当非最终状态的奖励被更新时，批样本被输入到神经网络中进行训练。  
 
 ## 指定环境
 
-要实现的最后一个类是环境类。实际上，环境是由健身房命令提供的，尽管您需要一个好的包装器来使它与前面的智能体类一起工作。这正是这堂课要做的。在初始化时，它启动月球着陆器游戏，并设置关键变量，如NS、NA(状态和动作的维度)、智能体和累积奖励(通过提供最后100集的平均值来测试解决方案)： 
+要实现的最后一个类是`Environment`。实际上，环境是由`gym`命令提供的，尽管您需要一个好的封装来使它与前面的`agent`类一起工作。在初始化时，它启动月球着陆器游戏，并设置关键变量，如`nS`、`nA`(状态和动作的维度)、`agent`和累积奖励(通过提供最后100步的平均值来进行测试)： 
 
- 然后，我们编写了测试、训练和增量(增量训练)方法的代码，这些方法被定义为综合学习方法的包装器。  使用增量训练是有点棘手，它需要一些注意，如果你不想破坏你已经取得的结果，从你的训练到目前为止。问题是，当我们重新启动时，大脑有预先训练过的系数，但实际上记忆是空的(我们可以称之为冷重启)。由于智能体的内存是空的，它不能支持良好的学习，因为太少和有限的例子。因此，所提供的示例的质量对于学习来说确实不是完美的(这些示例大部分是相互关联的，并且非常适合于少数几个新体验的场景)。通过使用非常低的epsilon(我们建议将其设置为最低，0.01)，可以减少破坏培训的风险：通过这种方式，网络将在大多数情况下简单地重新学习自己的权重，因为它将为每个状态建议它已经知道的操作，并且它的性能不应该恶化，而是在内存中有足够的示例之前以稳定的方式振荡，并且它将再次开始改进。  下面是发布正确的培训和测试方法的代码： 
+```python
+class Environment:    
+    def __init__(self, game="LunarLander-v2"):        
+        # Initializing        
+        np.set_printoptions(precision=2)        
+        self.env = gym.make(game)        
+        self.env = wrappers.Monitor(self.env, tempfile.mkdtemp(),                               
+                                force=True, video_callable=False)        
+        self.nS = self.env.observation_space.shape[0]        
+        self.nA = self.env.action_space.n        
+        self.agent = Agent(self.nS, self.nA, self.env.spec.id)
+        
+        # Cumulative reward        
+        self.reward_avg = deque(maxlen=100)
+```
 
-最后一种方法是学习，将所有步骤安排好，让智能体与环境交互并从中学习。该方法取epsilon值(从而覆盖智能体拥有的任何先前的epsilon值)、在环境中运行的事件数、是否对其进行了培训(布尔标志)，以及培训是否从以前的模型(另一个布尔标志)的培训中继续进行。  在第一个代码块中，如果我们想要的话，该方法为Q值近似加载先前训练的网络权重：  1.测试网络，看看它是如何工作的； .利用进一步的例子进行一些以前的训练。 然后，该方法深入到嵌套迭代中。外部迭代正在运行所需的剧集数量(每一集月球着陆器游戏已采取其结论)。而内部迭代则是经过最多1000个步骤组成的一个插曲。 在迭代的每一步中，神经网络在下一步中被询问。如果它正在测试中，它总是简单地提供下一个最佳动作的答案。如果它正在训练中，根据epsilon的值，它可能不会建议最好的动作，但它会建议随机移动。 
+ 然后，我们编写了`test`、`train`和`incremental`(增量训练)方法的代码，这些方法是`learn`方法的封装。  
 
-在移动之后，所有信息被收集(初始状态、选择的动作、获得的奖励和随后的状态)并保存到内存中。在这个时间框架中，如果内存足够大，可以为逼近Q函数的神经网络创建批处理，则运行一个培训课程。当该插曲的所有时间帧都被消耗完时，DQN的权重被存储到另一个网络中，当DQN网络从一个新插曲中学习时，作为一个稳定的参考。 
+使用增量训练需要一些技巧，以免破坏迄今为止训练已经取得的结果。导致这个问题的原因是当我们重新启动时，`Brain`有预先训练过的系数，但实际上记忆是空的(我们称之为冷重启)。由于智能体的记忆是空的，过少且具有局限性而不能良好的支持学习。因此，所提供的示例的质量对于学习来说确实不怎么样(这些示例大部分是相互关联的，并且非常局限于少数几个新体验的场景)。通过使用非常低的`epsilon`(我们建议将其设置为最低，0.01)，可以减少训练被破坏的风险：通过这种方式，网络将在大多数情况下简单地重新学习自己的权重，因为它将为每个状态建议它已经知道的操作，它的性能不应该恶化，而是在内存中有足够的示例之前以稳定的方式振荡，并且它将在具有足量数据后再次开始改进。  
+
+下面是正确的训练和测试方法的代码： 
+
+```python
+def test(self):
+    self.learn(epsilon=0.0, episodes=100,
+                trainable=False, incremental=False)
+
+def train(self, epsilon=1.0, episodes=1000):
+    self.learn(epsilon=epsilon, episodes=episodes,
+                trainable=True, incremental=False)
+
+def incremental(self, epsilon=0.01, episodes=100):
+    self.learn(epsilon=epsilon, episodes=episodes,
+                trainable=True, incremental=True)
+```
+
+最后一种方法是`learn`，它用于将智能体与环境交互学习所需的所有东西准备好，并进行学习。该方法接受`epsilon`(从而覆盖智能体拥有的任何先前的`epsilon`)、在环境中运行游戏的次数、是否对其进行训练(布尔标志)，以及训练是否从以前的模型(另一个布尔标志)的训练中继续进行。  
+
+在第一个代码块中，我们可以为Q值近似函数加载先前训练的网络权重：  
+
+1. 测试网络，看看它是如何工作的； 
+2. 利用更多样本继续进行之前的训练。 
+
+然后，该方法深入到一个嵌套迭代中。外部迭代循环运行游戏的次数(每一次运行月球着陆器游戏都将进行到结束)。而内部迭代则是经过最多1000步组成的一次游戏运行。 
+
+在迭代的每一步中，神经网络将给出下一步的动作。如果它在测试中，它总是简单地提供下一个最佳动作的答案。如果它正在训练中，根据epsilon的值，它可能不会建议最好的动作，而是随机移动。 
+
+```python
+def learn(self, epsilon=None, episodes=1000,
+           trainable=True, incremental=False):
+   """
+   Representing the interaction between the enviroment
+   and the learning agent
+   """
+   # Restoring weights if required
+   if not trainable or (trainable and incremental):
+       try:
+           print("Loading weights")
+           self.agent.load_weights('./weights.h5')
+       except:
+           print("Exception")
+           trainable = True
+           incremental = False
+           epsilon = 1.0
+
+   # Setting epsilon
+   self.agent.epsilon = epsilon
+   # Iterating through episodes
+   for episode in range(episodes):
+       # Initializing a new episode
+       episode_reward = 0
+       s = self.env.reset()
+       # s is put at default values
+       s = np.reshape(s, [1, self.nS])
+
+       # Iterating through time frames
+       for time_frame in range(1000):
+           if not trainable:
+               # If not learning, representing
+               # the agent on video
+               self.env.render()
+           # Deciding on the next action to take
+           a = self.agent.act(s)
+           # Performing the action and getting feedback
+           s_p, r, status, info = self.env.step(a)
+           s_p = np.reshape(s_p, [1, self.nS])
+
+           # Adding the reward to the cumulative reward
+           episode_reward += r
+
+           # Adding the overall experience to memory
+           if trainable:
+               self.agent.memory.add_memory(s, a, r, s_p,
+                                           status)
+           # Setting the new state as the current one
+           s = s_p
+
+           # Performing experience replay if memory length
+           # is greater than the batch length
+           if trainable:
+               if len(self.agent.memory) > \
+                       self.agent.batch_size:
+                   self.agent.replay()
+                   
+           # When the episode is completed,
+           # exiting this loop
+           if status:
+               if trainable:
+                   self.agent.target_model_update()
+               break
+
+       # Exploration vs exploitation
+       self.agent.epsilon_update(episode)
+       # Running an average of the past 100 episodes
+       self.reward_avg.append(episode_reward)
+       print("episode: %i score: %.2f avg_score: %.2f"
+               "actions %i epsilon %.2f" % (episode,
+                                           episode_reward,
+                                           np.average(self.reward_avg),
+                                           time_frame,
+                                           epsilon)
+
+   self.env.close()
+   if trainable:
+       # Saving the weights for the future
+       self.agent.save_weights('./weights.h5')
+```
+
+在行动之后，我们收集所有信息(初始状态、选择的动作、获得的奖励和随后的状态)并保存到记忆中。在这个时间帧中，如果记忆足够大，可以为逼近Q函数的神经网络创建样本批，则运行训练。当该次游戏的所有时间帧都被消耗完时，当前DQN的权重被存储到另一个网络中，在下一次游戏中学习时，作为一个稳定的参考。 
 
 ## 运行强化学习
 
-最后，在所有关于强化学习和DQN的离题之后，并编写了项目的完整代码之后，您可以使用脚本或朱庇特笔记本来运行它，利用将所有代码功能放在一起的环境类：登月_着陆器=环境(游戏=“月球着陆器-v2”)。 在实例化之后，您只需运行列车，从epsilon=1.0开始，并将目标设置为5000集(这相当于大约220万个状态、行为和奖励的链式变量示例)。我们提供的实际代码被设置为成功地完成一个经过充分训练的DQN模型，尽管考虑到GPU的可用性及其计算能力，它可能需要一些时间：登月舱(epsilon=1.0，剧集=5000)。 最后，该类将完成所需的培训，将保存的模型留在磁盘上(可以随时运行，甚至可以进行报复)。您甚至可以使用一个简单的命令来检查TensorBoard，该命令可以从shell运行：tensorboard-logdir=./test-端口6006。 这些地块将出现在您的浏览器上，并且可以在本地地址localhost：6006上查看它们： 
+最后，在扯一大堆关于强化学习和DQN的内容，并编写了项目的完整代码之后，您可以使用脚本或Jupyter Notebook来运行它。利用将所有代码功能放在一起的`Environment`类：
+
+```python
+lunar_lander = Environment(game="LunarLander-v2") 
+```
+
+在实例化之后，您只需运行`train`，从`epsilon=1.0`开始，并将目标设置为5000次游戏(这相当于大约220万个状态、行为和奖励的链式变量样本)。我们提供的实际代码被设置为成功地完成一个经过充分训练的DQN模型，尽管考虑到GPU的可用性及其计算能力，它可能需要一些时间：登月舱(epsilon=1.0，剧集=5000)。 最后，该类将完成所需的培训，将保存的模型留在磁盘上(可以随时运行，甚至可以进行报复)。您甚至可以使用一个简单的命令来检查TensorBoard，该命令可以从shell运行：tensorboard-logdir=./test-端口6006。 这些地块将出现在您的浏览器上，并且可以在本地地址localhost：6006上查看它们： 
 
 图4：沿着训练的损失趋势，峰值代表学习中的突破思想，例如在800 K的例子时，它开始安全地降落在地面上。  损失图显示，与其他项目不同的是，优化的特点仍然是损失减少，但在这一过程中出现了许多峰值和问题：  这里表示的图表是运行该项目一次的结果。由于该过程中有一个随机组件，因此在您自己的计算机上运行项目时，您可能会获得稍微不同的绘图。  图5：在批量学习会话中获得的最大Q值的趋势。  最大预测Q值和平均预测Q值说明了同样的情况。该网络在最后得到了改进，尽管它可以稍微回溯它的步骤，并在高原上停留很长一段时间：  只有在最后100个最终奖励的平均值中，您才能看到一条增量路径，这暗示了DQN网络的持续和稳步改进：  图7：每个学习阶段结束时实际获得分数的趋势，它更清楚地描述了DQN不断增长的能力。  使用来自输出的相同信息，而不是来自TensorBoard的信息，您还会发现操作的数量根据epsilon值的平均值而变化。开始时，完成一集所需的动作次数少于200次。突然，当epsilon为0.5时，平均动作数趋于稳定增长，在750左右达到峰值(着陆舱已经学会用火箭来抵消重力)。  最后，网络发现这是一个次优策略，当epsilon低于0.3时，完成一集的平均操作数也会下降。在这一阶段，DQN正在探索如何以更有效的方式成功地着陆吊舱：  图8：epsilon(勘探/开发率)与DQN网络效率之间的关系，表示为完成一集所使用的一些步骤。  如果出于任何原因，您认为网络需要更多的示例和学习，您可以使用增量方法重复学习，记住在这种情况下epsilon应该非常低：  月球着陆器.增量(插曲=25，epsilon=0.01)。  训练结束后，如果您需要查看结果并了解平均每100集DQN可以得分多少(理想的目标是分数>=200)，您可以运行以下命令：  月球着陆器.test()。  
 ## 致谢
