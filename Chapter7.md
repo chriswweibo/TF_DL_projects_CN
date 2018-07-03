@@ -1,52 +1,26 @@
 ## 第7章 训练像人类一样的聊天机器人 
 
-This chapter will show you how to train an automatic chatbot that will be able to answer
-simple and generic questions, and how to create an endpoint over HTTP for providing the
-answers via an API. More specifically, we will show:
+本章会介绍如何训练一个自动的回答简单原生问题的聊天机器人，以及如何创建HTTP端点借助API提供答案。具体说来，我们会介绍：
 
-- What's the corpus and how to preprocess the corpus
-- How to train a chatbot and how to test it
-- How to create an HTTP endpoint to expose the API
+- 什么是语料库，如何做语料库预处理
+- 如何训练聊天机器人，以及如何测试
+- 入股创建HTTP断点提供API
 
 ### 项目简介
 
-Chatbots are becoming increasingly used as a way to provide assistance to users. Many
-companies, including banks, mobile/landline companies and large e-sellers now use
-chatbots for customer assistance and for helping users in pre-sales. The Q&A page is not
-enough anymore: each customer is nowadays expecting an answer to his very own question
-which maybe is not covered or only partially covered in the Q&A. Also, chatbots are a great
-tool for companies which don't need to provide additional customer service capacity for
-trivial questions: they really look like a win-win situation!
-Chatbots have become very popular tools ever since deep learning became popular. Thanks
-to deep learning, we're now able to train the bot to provide better and personalized
-questions, and, in the last implementation, to retain a per-user context.
-Cutting it short, there are mainly two types of chatbot: the first is a simple one, which tries
-to understand the topic, always providing the same answer for all questions about the same
-topic. For example, on a train website, the questions Where can I find the timetable of the
-City_A to City_B service? and What's the next train departing from City_A? will likely get the
-same answer, that could read Hi! The timetable on our network is available on this page: <link>.
+如今，聊天机器人在帮助用户的应用上越来越广泛。许多公司，包括银行，移动通信公司，以及大型电子商务平台都使用聊天机器人帮助客户，以及售前支持。网站的问答页面不再能够满足用户：如今每个用户都希望得到针对自己问题的回答，这个问题可能并没有在问答页面中涉及。而且，聊天机器人可以帮助公司省去回答各种平凡问题的额外服务：这俨然是个双赢的方案。
 
-[ 160 ]
-Basically, behind the scene, this types of chatbots use classification algorithms to
-understand the topic (in the example, both questions are about the timetable topic). Given
-the topic, they always provide the same answer. Usually, they have a list of N topics and N
-answers; also, if the probability of the classified topic is low (the question is too vague, or
-it's on a topic not included in the list), they usually ask the user to be more specific and
-repeat the question, eventually pointing out other ways to do the question (send an email or
-call the customer service number, for example).
-The second type of chatbots is more advanced, smarter, but also more complex. For those,
-the answers are built using an RNN, in the same way that machine translation is performed
-(see the previous chapter). Those chatbots are able to provide more personalized answers,
-and they may provide a more specific reply. In fact, they don't just guess the topic, but with
-an RNN engine they're able to understand more about the user's questions and provide the
-best possible answer: in fact, it's very unlikely you'll get the same answers with two
-different questions using these types if chatbots.
-In this chapter, we will try to build a chatbot of the second type using an RNN similarly to
-what we've done in the previous chapter with the machine translation system. Also, we will
-show how to put the chatbot behind an HTTP endpoint, in order to use the chatbot as a
-service from your website, or, more simply, from your command line.
+随着深度学习的盛行，聊天机器人已经变成了非常流行的工具。借助胜读学习，我们可以训练机器人提供更好的更个性化的回答，在最终实现的时候，保留每个用户的信息。
 
-### 输入词表
+简单的说，主要有两种方式的聊天机器人：一种是简单的，试图理解主题，给所有同一主题的问题提供相同的答案。例如，在火车站网站上，问题“我在那里可以找到城市A到城市B的服务时间表？”，以及“离开城市A的下一班火车是什么时候？”很可能会得到同样的答案，可能是“服务网络的时间表在这个网页上：链接地址。”。
+
+这种聊天机器人本质上是使用分类算法理解主题（本例中，两个问题都是关于时间表的）。给定一个主题，机器人总是提供相同的答案。通常，这种聊天机器人有一个包含N个主题的列表，已经N个答案；而且如果分到的主题概率很低（问题太模糊，或者暗含的主题不在列表中），机器人通常会问一些更加具体的问题并让用户重复问题，最终给出问题的其他解决途径（例如，发送邮件或者给客服中心打电话）。
+
+第二种类型的聊天机器人更加先进，也更加复杂。其回答是使用RNN生成的，方式与机器翻译的一样（可以查看之前的章节）。这种聊天机器人可以提供更加个性化的回答，以及更加具体的回复。事实上，它们不会猜测聊天的主题，相反使用RNN就可以更好的理解用户的问题，给出最可能的答案。使用这种类型的聊天机器人回答两个不同问题，用户几乎不可能得到同一个答案。
+
+在本章中，我们会使用RNN构建第二种类型的聊天机器人。构建方法与之前章节的机器翻译系统类似。而且，我们会介绍如何把聊天机器人配置到HTTP的端点上，以便在网站上作为服务调用聊天机器人，甚至支持更简单的命令行调用。more simply, from your command line.
+
+### 输入语料库
 
 Unfortunately, we haven't found any consumer-oriented dataset that is open source and
 freely available on the Internet. Therefore, we will train the chatbot with a more generic
