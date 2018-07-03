@@ -1,6 +1,6 @@
 ## 第7章 训练像人类一样的聊天机器人 
 
-本章会介绍如何训练一个自动的回答简单原生问题的聊天机器人，以及如何创建HTTP端点借助API提供答案。具体说来，我们会介绍：
+本章会介绍如何训练一个自动回答简单的通用问题的聊天机器人，以及如何创建HTTP端点借助API提供答案。具体说来，我们会介绍：
 
 - 什么是语料库，如何做语料库预处理
 - 如何训练聊天机器人，以及如何测试
@@ -18,63 +18,51 @@
 
 第二种类型的聊天机器人更加先进，也更加复杂。其回答是使用RNN生成的，方式与机器翻译的一样（可以查看之前的章节）。这种聊天机器人可以提供更加个性化的回答，以及更加具体的回复。事实上，它们不会猜测聊天的主题，相反使用RNN就可以更好的理解用户的问题，给出最可能的答案。使用这种类型的聊天机器人回答两个不同问题，用户几乎不可能得到同一个答案。
 
-在本章中，我们会使用RNN构建第二种类型的聊天机器人。构建方法与之前章节的机器翻译系统类似。而且，我们会介绍如何把聊天机器人配置到HTTP的端点上，以便在网站上作为服务调用聊天机器人，甚至支持更简单的命令行调用。more simply, from your command line.
+在本章中，我们会使用RNN构建第二种类型的聊天机器人。构建方法与之前章节的机器翻译系统类似。而且，我们会介绍如何把聊天机器人配置到HTTP的端点上，以便在网站上作为服务调用聊天机器人，甚至支持更简单的命令行调用。
 
 ### 输入语料库
 
-Unfortunately, we haven't found any consumer-oriented dataset that is open source and
-freely available on the Internet. Therefore, we will train the chatbot with a more generic
-dataset, not really focused on customer service. Specifically, we will use the Cornell Movie
-Dialogs Corpus, from the Cornell University. The corpus contains the collection of
-conversations extracted from raw movie scripts, therefore the chatbot will be able to give
-answer more to fictional questions than real ones. The Cornell corpus contains more than
-200,000 conversational exchanges between 10+ thousands of movie characters, extracted
-from 617 movies.
+不幸的是，我们并没有在互联网上找到开源的免费使用的面向客户的数据集。因此，我们会使用通用数据集，而不是真正关注客户服务领域的数据集，来训练机器人。具体地说，我们会使用康纳尔大学的康奈尔电影对话语料库。这个语料库包含许多原始电影脚本中的对话。因此聊天机器人会为虚拟问题提供答案，而不是为真实问题提供答案。康奈尔的语料库包括来自617部电影的，1万多个电影角色的，超过20万条对话记录。
 
-> The dataset is available here: https://www.cs.cornell.edu/~cristian/Cornell_Movie-Dialogs_Corpus.html。
-> We would like to thank the authors for having released the corpus: that
-> makes experimentation, reproducibility and knowledge sharing easier.
+> 数据集的链接：https://www.cs.cornell.edu/~cristian/Cornell_Movie-Dialogs_Corpus.html。我们要感谢公开这个语料库的作者：让实验，可重复性研究和知识共享更加容易。
 
-The dataset comes as a .zip archive file. After decompressing it, you'll find several files in
-it:
+这个数据集是一个`.zip`压缩文件。解压之后，文件包含以下几个子文件：
 
-- `README.txt` contains the description of the dataset, the format of the corpora files, the details on the collection procedure and the author's contact.
+- `README.txt` 包含三数据集的介绍，语料库文件的格式，收集过程的具体信息和作者的联系方式。
 
-- `Chameleons.pdf` is the original paper for which the corpus has been released.Although the goal of the paper is strictly not around chatbots, it studies the language used in dialogues, and it's a good source of information to understanding more
+- `Chameleons.pdf` 是语料库的原始文件。尽管这个文件对聊天机器人没有多大意义，但是它介绍了对话中使用的语言，是深入理解语料库的优质信息。
 
-- `movie_conversations.txt` contains all the dialogues structure. For each conversation, it includes the ID of the two characters involved in the discussion, the ID of the movie and the list of sentences IDs (or utterances, to be more precise) in chronological order. For example, the first line of the file is:
+- `movie_conversations.txt` 包含所有对话结构。对于每一组对话，它包括两个对话角色的ID，电影的ID，和以时间顺序排列的语句（或者准确的说是，语言表达）ID列表。例如，文件的第一行是：
 
   `u0 +++$+++ u2 +++$+++ m0 +++$+++ ['L194', 'L195', 'L196', 'L197']`
 
-  That means that user u0 had a conversation with user u2 in the movie m0 and the conversation had 4 utterances: 'L194', 'L195', 'L196' and 'L197'
+  它的意思是电影`m0`中的用户`u0`与用户`u2`发生了对话，对话有4条语言表达：“`L194`”, “`L195`”, “`L196`” 和“`L197`”。
 
-- `movie_lines.txt` contains the actual text of each utterance ID and the person who produced it. For example, the utterance L195 is listed here as:
+- `movie_lines.txt` 包含每一个语言表达ID的实际文本，以及发出的人。例如，语言表达`L195`的形式如下：
 
   `L195 +++$+++ u2 +++$+++ m0 +++$+++ CAMERON +++$+++ Well, I thought we'd start with pronunciation, if that's okay with you`.
 
-  So, the text of the utterance L195 is Well, I thought we'd start with pronunciation, if
+  因此，语言表达`L195`的内容是“Well, I thought we'd start with pronunciation, if that's okay with you”。它是由角色`u2`发出的，名字是电影`m0`中的`CAMERON`。
 
-  that's okay with you. And it was pronounced by the character u2 whose name is CAMERON in the movie m0.
-
-- `movie_titles_metadata.txt` contains information about the movies, including the title, year, IMDB rating, the number of votes in IMDB and the genres. For example, the movie m0 here is described as:
+- `movie_titles_metadata.txt` 包含电影的信息，例如电影名，年份，IMDB评分，IMDB投票数和流派。例如，电影`m0`的描述如下：
 
   `m0 +++$+++ 10 things i hate about you +++$+++ 1999 +++$+++ 6.90 +++$+++ 62847 +++$+++ ['comedy', 'romance']`
 
-  So, the title of the movie whose ID is m0 is 10 things i hate about you, it's from 1999,  it's a comedy with romance and it received almost 63 thousand votes on IMDB with an average score of 6.9 (over 10.0)
+  所以ID为`m0`的电影名称为“10 things i hate about you”，拍摄于1999年，是一部浪漫喜剧。它拥有6.3万IMDB的投票，平均分为6.9（满分为10分）。
 
-* `movie_characters_metadata.txt` contains information about the movie characters, including the name the title of the movie where he/she appears, the gender (if known) and the position in the credits (if known). For example, the character “u2” appears in this file with this description:
+* `movie_characters_metadata.txt` 包含电影角色的信息，例如角色出现的电影名称，性别（如果知道的话）和影片字幕中的人物位置（如果知道的话）。例如，角色`u2`在文中的描述如下：
 
   `u2 +++$+++ CAMERON +++$+++ m0 +++$+++ 10 things i hate about you +++$+++ m +++$+++ 3`
 
-  The character `u2` is named CAMERON, it appears in the movie m0 whose title is `10 things i hate about you`, his gender is male and he's the third person appearing in the credits.
+  角色`u2`的名字为`CAMERON`，它出现在电影`m0`中，名称为“10 things i hate about you"。角色的性别为男性，影片字幕中的人物位置为第三个。
 
-- `raw_script_urls.txt` contains the source URL where the dialogues of each movie can be retrieved. For example, for the movie `m0` that's it:
+- `raw_script_urls.txt` 包含每一个电影对话的原始URL链接。例如，电影`m0`如下：
 
   `m0 +++$+++ 10 things i hate about you +++$+++`
 
   `http://www.dailyscript.com/scripts/10Things.html`
 
-  As you will have noticed, most files use the token `+++$+++` to separate the fields. Beyond that, the format looks pretty straightforward to parse. Please take particular care while parsing the files: their format is not UTF-8 but ISO-8859-1.
+  可以看到，大部分文件都使用标记`+++$+++`来分割字段。另外，文件的格式看起来也很简单，利于解析。需要在解析文件的时候注意，文件格式不是UTF-8的，而是ISO-8859-1的。
 
 ### 创建训练集
 
