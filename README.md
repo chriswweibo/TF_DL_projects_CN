@@ -1,5 +1,6 @@
 # 关系概念译法统一（按音序），大家有不同意见，或者需要添加，可以提出来讨论
 * accuracy: 准确率
+* baseline：基准表现，基准性能
 * batch：批
 * batch normalization： 批归一化
 * benchmark：基准，基准表现
@@ -10,6 +11,7 @@
 * dropout: dropout
 * embedding: 词嵌入
 * epoch：轮
+* gradient clipping：梯度裁剪
 * in order to: 为了，以便
 * library：库
 * logistic regression：logistic回归

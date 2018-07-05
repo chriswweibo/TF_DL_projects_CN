@@ -470,26 +470,26 @@ $$minimize\sum(r_{ui}-\hat{r}_{ui})^2+\lambda(\lVert p_u \rVert ^2 +\lVert q_i \
 
 输出结果是13.9%。这个结果比之前基准结果6%好了不少。同时，这个结果应该很难超越了。但是接下来，我们还是愿意尝试一下。
 
-### 基于SGD的矩阵分解
+#### 基于SGD的矩阵分解
 
-  Now we are finally ready to implement the matrix factorization model in TensorFlow. Let
-  us do this and see if we can improve the baseline by implicit. Implementing ALS in
-  TensorFlow is not an easy task: it is better suited for gradient-based methods such as SGD.
-  This is why we will do exactly that, and leave ALS to specialized implementations.
-  Here we implement the formula from the previous sections:
-  .
+现在我们可以使用TensorFlow实现矩阵分解了，看看是否可以改进`implicit`的基准表现。用TensorFlow实现ALS并不容易：它更适合于基于梯度的方法，例如SGD。这也是我们把ALS做专门实现的原因。
 
-  [ 227 ]
-  Recall that the objective there was the following:
-  Note that in this objective we still have the squared error, which is no longer the case for us
-  since we model this as a binary classification problem. With TensorFlow it does not really
-  matter, and the optimization loss can easily be changed.
-  In our model we will use the log loss instead—it is better suited for binary classification
-  problems than squared error.
-  The p and q vectors make up the U and I matrices, respectively. What we need to do is to
-  learn these U and I matrices. We can store the full matrices U and I as a TensorFlow
-  Variable's and then use the embedding layer to look up the appropriate p and q vectors.
-  Let us define a helper function for declaring embedding layers:
+这里我们实现之前章节中的公式：  
+
+$$\hat{r}_{ui}=\mu+b_i+b_u+q_i^Tp_u$$ 。
+
+回忆一下目标函数：
+
+$$minimize\sum(r_{ui}-\hat{r}_{ui})^2+\lambda(\lVert p_u \rVert ^2 +\lVert q_i \rVert ^2 )$$
+
+注意，在这个目标函数中，我们依然使用误差平方和，这已经不再适合我们的二分类问题。使用TensorFlow，这些都不是问题，我们可以很容易的调整优化目标。
+
+在我们的的模型中，我们会使用对数损失。它比误差平方和更适合二分类问题。
+
+$p$ 和 $q$向量分别构成了$U$和$I$ 矩阵。我们要做的就是学习$U$和$I$ 矩阵。我们可以把完整的$U$和$I$ 矩阵存在TensorFlow的`Variable`中，并使用词嵌入层查找合适的$p$和$q$向量。
+
+假设我们定义了一个函数用了声明词嵌入层： 
+
 ```python
   def embed(inputs, size, dim, name=None):
         std = np.sqrt(2 / dim)
@@ -498,10 +498,10 @@ $$minimize\sum(r_{ui}-\hat{r}_{ui})^2+\lambda(\lVert p_u \rVert ^2 +\lVert q_i \
         return lookup
 ```
 
+这个函数创建了给定维度的矩阵，并使用随机数值初始化，最后使用查找层把用户或物品的索引转换为向量。
 
-  This function creates a matrix of the specified dimension, initializes it with random values,
-  and finally uses the lookup layer to convert user or item indexes into vectors.
-  We use this function as a part of the model graph:
+这个函数是模型图的一部分： 
+
 ```python
 # parameters of the model
 num_users = uid.max() + 1
@@ -521,6 +521,7 @@ with graph.as_default():
     place_user = tf.placeholder(tf.int32, shape=(None, 1))
     place_item = tf.placeholder(tf.int32, shape=(None, 1))
     place_y = tf.placeholder(tf.float32, shape=(None, 1))
+    
     # user features
     user_factors = embed(place_user, num_users, num_factors,
                          "user_factors")
@@ -547,51 +548,37 @@ with graph.as_default():
     step = opt.minimize(loss_total)
     init = tf.global_variables_initializer()
 ```
+这个模型有三个输入：
+
+- `place_user`: 用户ID
+- `place_item`: 物品ID
+- `place_y`: 每个（用户，物品）对的标签
+
+然后定义：
+
+- `user_factors`：用户矩阵$U$
+- `user_bias`：每个用户的偏置$b_u$
+- `item_factors`：物品矩阵$I$
+- `item_bias`：每个物品的偏置$b_i$
+- `global_bias`：全局偏置$\mu$
+
+我们把这个偏置都放在一起，并对用户和物品向量使用点乘。这就是我们的预测结果，可以传递sigmoid函数得到相应的概率。
+
+最后，我们把目标函数定义为所有数据点损失和正则化损失的和，并使用Adam算法进行目标函数最小化。
+模型有以下参数：
+
+- `num_users`和`num_items`：用户（物品）数。它们分别给出了$U$和$I$ 矩阵的行数。
+
+- `num_factors`：用户和物品潜在特征的数量。它给出了$U$和$I$ 矩阵的列数。
+
+- `lambda_user`和`lambda_item`：正则化参数。
+
+- `lr`：优化算法的学习率。
+
+- `K`：每个正样本对应的负样本的数量（具体解释在后续章节中）。
 
 
-The model gets three inputs:
-
-- `place_user`: The user IDs
-
-- `place_item`: The item IDs
-- `place_y`: The labels of each (user, item) pair
-
-[ 229 ]
-Then we define:
-
-- `user_factors`: The user matrix
-
-- `user_bias`: The bias of each user
-- `item_factors`: The item matrix
-- `item_bias`: The bias of each item
-- `global_bias`: The global bias
-
-Then, we put together all the biases and take the dot product between the user and item
-factors. This is our prediction, which we then pass through the sigmoid function to get
-probabilities.
-Finally, we define our objective function as a sum of the data loss and regularization loss
-and use Adam for minimizing this objective.
-The model has the following parameters:
-
-- `num_users` and `num_items`: The number of users (items). They specify the
-
-  number of rows in U and I matrices, respectively.
-
-- `num_factors`: The number of latent features for users and items. This specifies
-
-  the number of columns in both U and I.
-
-- `lambda_user` and `lambda_item`: The regularization parameters.
-
-- `lr`: Learning rate for the optimizer.
-
-- `K`: The number of negative examples to sample for each positive case (see the
-
-  explanation in the following section).
-
-Now let us train the model. For that, we need to cut the input into small batches. Let us use
-a helper function for that:
-
+现在开始训练模型。首先我们需要把输入分成几个批次。使用下列函数：
 ```python
 def prepare_batches(seq, step):
     n = len(seq)
@@ -600,18 +587,12 @@ def prepare_batches(seq, step):
         res.append(seq[i:i+step])
     return res
 ```
+这个函数会把一个数组变成给定大小的数组列表。
 
+回忆一下基于隐式反馈的数据集。其中正样本的例子，也就是交互真实发生的次数，与负样本的例子（没有发生交互的次数）相比数量很少。我们应该怎么办？方法很简单：我们使用**负采样（negative sampling）**。其原理是至采集小部分负样本数据。典型的做法是，对于每一个正样本数据，我们都采集`K`个负样本，`K`是可调节的参数。这就是我们的想法。
 
-This will turn one array into a list of arrays of specified size.
+开始训练模型：
 
-[ 230 ]
-Recall that our dataset is based on implicit feedback, and the number positive
-instances—interactions that did occur—is very small compared to the number of negative
-instances—the interactions that did not occur. What do we do with it? The solution is
-simple: we use negative sampling. The idea behind it is to sample only a small fraction of
-negative examples. Typically, for each positive example, we sample K negative examples,
-and K is a tunable parameter. And this is exactly what we do here.
-So let us train the model:
 ```python
 session = tf.Session(config=None, graph=graph)
 session.run(init)
@@ -631,6 +612,7 @@ for i in range(10):
         label = np.concatenate([
             np.ones(pos_samples, dtype='float32'),
             np.zeros(neg_samples, dtype='float32')]).reshape(-1, 1)
+        
         # negative sampling
         neg_users = np.random.randint(low=0, high=num_users,
                                       size=neg_samples, dtype='int32')
@@ -654,26 +636,19 @@ for i in range(10):
         print('epoch %02d: precision: %.3f' % (i+1, val_precision))
 ```
 
-We run the model for 10 epochs, then for each epoch we shuffle the data randomly and cut
-it into batches of 5000 positive examples. Then for each batch, we generate K * 5000 negative
-examples (K = 5 in our case) and put positive and negative examples together in one array.
-Finally, we run the model, and at each update step, we monitor the training loss using
-tqdm. The tqdm library provides a very nice way to monitor the training progress.
-This is the output we produce when we use the tqdm jupyter notebook widgets:
+模型训练10轮，每一轮我们都随机重洗数据，并划分成每5000个正样本一个批次。对于每一批，我们生成`K * 5000`个负样本（本例中`K`=5），并把正负样本放在一个数组中。最后，运行模型，使用`tqdm`监控每一次更新步骤的训练损失。`tqdm`库提供了非常优秀的监控训练过程的方法。
+
+下面是使用Jupyter notebook的`tqdm`插件的输出：
 
 ![](figures\231_1.png)
 
-At the end of each epoch, we calculate precision—to monitor how our model is performing
-for our defined recommendation scenario. The `calculate_validation_precision`
-function is used for that. It is implemented in a similar way to what we did previously with
-implicit:
+每一轮结束时，我们会计算准确率，监控模型在既定推荐场景上的表现。`calculate_validation_precision`函数可以实现这个功能。它与之前`implicit`中的实现方式类似：
 
-- We first extract the matrices and the biases
-- Then put them together to get the score for each (user, item) pair
-- Finally, we sort these pairs and keep the top five ones
+* 首先抽取矩阵和偏置
+* 然后放在一起，获取每一个（用户，物品）对的得分
+* 最后，对得分排序，取得分最高的5个推荐
 
-For this particular case we do not need the global bias as well as the user bias: adding them
-will not change the order of items per user. This is how this function can be implemented:
+在这个例子中，我们不需要全局偏置和用户偏置：因为即算加上它们也不会改变每个用户对应的物品排序。这个函数的实现如下：
 
 ```python
 def get_variable(graph, session, name):
@@ -695,9 +670,7 @@ def calculate_validation_precision(graph, session, uid):
     
     return precision(val_indptr, val_items, imp_baseline)
 ```
-
-This is the output we get:
-
+我们得到如下输出：
 ```
 epoch 01: precision: 0.064
 epoch 02: precision: 0.086
@@ -710,69 +683,42 @@ epoch 08: precision: 0.149
 epoch 09: precision: 0.151
 epoch 10: precision: 0.152
 ```
+通过6轮训练，模型就超过了之前的基准表现。10轮之后，模型准确率达到15.2%。
+
+矩阵分解技术通常可以为推荐系统提供强大的基准表现。通过简单的调整，这个技术还可以产出更好的结果。不用优化二分类问题的损失函数，我们还可以使用其他面向排序问题的损失函数。在下一节中，我们会学习这一类损失函数，并看看如果作出相应的调整。
+
+#### 贝叶斯个性化排序
+
+我们使用矩阵分解的方法来为每一个用户做个性化排序。然而，要解决这个问题，我们使用了二分类问题的优化标准——对数损失。这个函数效果不错，通过对它的优化可以产生很好的排序模型。那么，如果使用专门的损失函数来训练排序模型会怎么样呢？
+
+我们当然可以用一个目标函数来直接优化排序。在2012年Rendle等人的文章《BPR: Bayesian Personalized Ranking from Implicit Feedback》中，作者提出了优化标准，即**BPR-Opt**。
+
+以前，我们会把每一个物品都分开处理，与其他物品并没有关系。也就是说，我们总是会尝试预测一个物品的得分，或物品$i$以多大概率吸引到用户$u$。这样的排序模型通常叫做“点排序”：它们使用传统的监督式学习方法，例如回归或者分类来学习得分，然后根据得分进行排序。这就是在之前的章节中所讲到的。
+
+BPR-Opt方法则不同。它关注物品对。如果我们知道用户$u$已经买了物品$i$ ，但是从来没有买过物品$j$，那么$u$很有可能对$i$更感兴趣。所以当我们训练模型的时候，分数$\hat{x}_{ui}$应该比分数$\hat{x}_{uj}$要高。换句话说，打分模型应该满足$\hat{x}_{ui}-\hat{x}_{uj}>0$。
+
+因此，要训练这个算法，我们需要三元组（用户，正物品样本，负物品样本）。对于这样的三元组$(u,i,j)$我们可以定义基于物品对的分数差异，如下：
+
+$$\hat{x}_{uij}=\hat{x}_{ui}-\hat{x}_{uj}$$
+
+其中$\hat{x}_{ui}$和$\hat{x}_{uj}$分别是$(u,i)$和$(u,j)$的分数。
+
+在训练过程中，我们要调整模型参数，保证物品$i$最终要比物品$j$的排序要高。我们可以通过优化下列目标函数来实现：
+
+$$minimize-\sum ln\sigma(\hat{x}_{uij})+\lambda \parallel W \parallel ^2$$
+
+其中$\hat{x}_{uij}$是差异，$\sigma$是sigmoid函数，$W$是模型的所有参数。
+
+把之前的代码稍作简单改变就可以优化这个损失函数。计算$(u,i)$和$(u,j)$分数的方法是一样的：我们使用偏置和用户与物品向量之间的内积。然后计算分数之间的差异，并输入给新的目标函数。
+
+实现上的差别也并不大：
+
+- 对于BPR-Opt，我们不用`place_y`，而是使用`place_item_pos`和`place_item_neg`来表示正物品和负物品。
+
+- 我们不再需要用户偏置和全局偏置：然我们计算差异的时候，这些偏置会互相抵消。而且，它们对于排序并不重要。之前，我们在计算验证集上的预测时也注意到了这个事实。
 
 
-By the sixth epoch it beats the previous baseline, and by the tenth, it reaches 15.2%.
-Matrix factorization techniques usually give a very strong baseline solution for
-recommender systems. But with a small adjustment, the same technique can produce even
-better results. Instead of optimizing a loss for binary classification, we can use a different
-loss designed specifically for ranking problems. In the next section, we will learn about this
-kind of loss and see how to make this adjustment.
-
-###贝叶斯个性化排序
-
-We use Matrix factorization methods for making a personalized ranking of items for each
-user. However, to solve this problem we use a binary classification optimization
-criterion—the log loss. This loss works fine and optimizing it often produces good ranking
-models. What if instead we could use a loss specifically designed for training a ranking
-function?
-
-Of course, it is possible to use an objective that directly optimizes for ranking. In the paper
-BPR: Bayesian Personalized Ranking from Implicit Feedback by Rendle et al (2012), the authors
-propose an optimization criterion, which they call BPR-Opt.
-Previously, we looked at individual items in separation from the other items. That is, we
-tried to predict the rating of an item, or the probability that the item i will be interesting to
-the user u. These kinds of ranking models are usually called "point-wise": they use
-traditional supervised learning methods such as regression or classification to learn the
-score, and then rank the items according to this score. This is exactly what we did in the
-previous section.
-BPR-Opt is different. Instead, it looks at the pairs of items. If we know that user u has
-bought item i, but never bought item j, then most likely u is more interested in i than in j.
-Thus, when we train a model, the score it produces for i should be higher than the
-score for j. In other words, for the scoring model we want .
-Therefore, for training this algorithm we need triples (user, positive item, negative item).
-For such triple (u, i, j) we define the pair-wise difference in scores as:
-where and is scores for (u, i) and (u, j), respectively.
-When training, we adjust parameters of our model in such a way that at the end item i does
-rank higher than item j. We do this by optimizing the following objective:
-Where are the differences, is the sigmoid function, and is all the parameters of
-the model.
-It is straightforward to change our previous code to optimize this loss. The way we
-compute the score for (u, i) and (u, j) is the same: we use the biases and the inner product
-between the user and item vectors. Then we compute the difference between the scores and
-feed the difference into the new objective.
-
-The difference in the implementation is also not large:
-
-- For BPR-Opt we do not have place_y, but instead, we will have
-
-  place_item_pos and place_item_neg for the positive and the negative items,
-
-  respectively.
-
-- We no longer need the user bias and the global bias: when we compute the
-
-  difference, these biases cancel each other out. What is more, they are not really
-
-  important for ranking—we have noted that previously when computing the
-
-  predictions for the validation data.
-
-Another slight difference in implementation is that because we now have two inputs items,
-and these items have to share the embeddings, we need to define and create the
-embeddings slightly differently. For that we modify the embed helper function, and
-separate the variable creation and the lookup layer:
-
+另外一个小的实现上的差别是，由于我们有两个物品输入，并且公用embedding层，所以我需要对embedding层进行稍微改变，完成新的定义和创建。因此，我们修改`embed`函数，并且分别创建变量和查找层：
 ```python
 def init_variable(size, dim, name=None):
     std = np.sqrt(2 / dim)
@@ -783,10 +729,7 @@ def embed(inputs, size, dim, name=None):
     emb = init_variable(size, dim, name)
     return tf.nn.embedding_lookup(emb, inputs)
 ```
-
-
-Finally, let us see how it looks in the code:
-
+最终，代码如下：
 ```python
 num_factors = 128
 lambda_user = 0.0000001
@@ -802,6 +745,7 @@ with graph.as_default():
     place_item_pos = tf.placeholder(tf.int32, shape=(None, 1))
     place_item_neg = tf.placeholder(tf.int32, shape=(None, 1))  
     # no place_y
+    
     user_factors = embed(place_user, num_users, num_factors,
                          "user_factors")
     # no user bias anymore as well as no global bias
@@ -809,11 +753,13 @@ with graph.as_default():
                                  "item_factors")
     item_factors_pos = tf.nn.embedding_lookup(item_factors, place_item_pos)
     item_factors_neg = tf.nn.embedding_lookup(item_factors, place_item_neg)
+    
     item_bias = init_variable(num_items, 1, "item_bias")
     item_bias_pos = tf.nn.embedding_lookup(item_bias, place_item_pos)
     item_bias_pos = tf.reshape(item_bias_pos, [-1, 1])
     item_bias_neg = tf.nn.embedding_lookup(item_bias, place_item_neg)
     item_bias_neg = tf.reshape(item_bias_neg, [-1, 1])
+    
     # predictions for each item are same as previously
     # but no user bias and global bias
     pred_pos = item_bias_pos + tf.reduce_sum(user_factors * item_factors_pos, axis=2)
@@ -836,11 +782,9 @@ with graph.as_default():
     init = tf.global_variables_initializer()
 ```
 
-The way to train this model is also slightly different. The authors of the BPR-Opt paper
-suggest using the bootstrap sampling instead of the usual full-pass over all the data, that is,
-at each training step we uniformly sample the triples (user, positive item, negative item)
-from the training dataset.
-Luckily, this is even easier to implement than the full-pass:
+训练模型的方法也有些许不同。BPR-Opt文章的作者建议使用bootstrap采样，而不是常规的全体数据采样，也就是在每一步中，训练集都对三元组（用户，正物品样本，负物品样本）进行均匀采样。
+
+幸运的是，建议的采样要比全体数据采样要更容易实现：
 
 ```python
 session = tf.Session(config=None, graph=graph)
@@ -870,62 +814,34 @@ for i in range(75):
         print('epoch %02d: precision: %.3f' % (i+1, val_precision))
 ```
 
-After around 70 iterations it reaches the precision of around 15.4%. While it is not
-significantly different from the previous model (it reached 15.2%), it does open a lot of
-possibilities for optimizing directly for ranking. More importantly, we show how easy it is
-to adjust the existent method such that instead of optimizing the point-wise loss it
-optimizes a pair-wise objective.
-In the next section, we will go deeper and see how recurrent neural networks can model
-user actions as sequences and how we can use them as recommender systems.
+经过70次迭代后，算法可以达到大约15.4%的准确率。然而这和之前的模型（15.2%的准确率）比并不突出。这种方法确实提出了一种直接优化排序的可能。更重要的是，我们可以看到调整现有方法，以优化物品对目标函数而不是点排序损失，也很容易。 
 
-###面向推荐系统的RNN
+在下一节中，我们会进一步看到递归神经网络如何使用序列建模用户行为，以及如何在推荐系统中使用它。
 
-A recurrent neural networks (RNN) is a special kind of neural network for modeling
-sequences, and it is quite successful in a number applications. One such application is
-sequence generation. In the article The Unreasonable Effectiveness of Recurrent Neural
-Networks, Andrej Karpathy writes about multiple examples where RNNs show very
-impressive results, including generation of Shakespeare, Wikipedia articles, XML, Latex,
-and even C code!
+### 面向推荐系统的RNN
 
-[ 237 ]
-Since they have proven useful in a few applications already, the natural question to ask is
-whether we can apply RNNs to some other domains. What about recommender systems,
-for example? This is the question the authors of the recurrent neural networks Based
-Subreddit Recommender System report have asked themselves (see https:/ / cole- maclean.
-github. io/ blog/ RNN- Based- Subreddit- Recommender- System/ ). The answer is yes, we can
-use RNNs for that too!
-In this section, we will try to answer this question as well. For this part we consider a
-slightly different recommendation scenario than previously:
-1. The user enters the website.
-2. We present five recommendations.
-3. After each purchase, we update the recommendations.
+**递归神经网络（recurrent neural networks，RNN）**是专门建模序列的神经网络，它有许多很成功的应用。其中一个应用就是序列生成。在文章《The Unreasonable Effectiveness of Recurrent Neural
+Networks》中，Andrej Karpathy介绍了几个RNN展现优良结果的例子，包括莎士比亚的，维基百科的，XML的，Latex的，甚至C代码的序列生成。
 
-This scenario needs a different way of evaluating the results. Each time the user buys
-something, we can check whether this item was among the suggested ones or not. If it was,
-then our recommendation is considered successful. So we can calculate how many
-  successful recommendations we have made. This way of evaluating performance is called
-  Top-5 accuracy and it is often used for evaluating classification models with a large number
-  of target classes.
-  Historically RNNs are used for language models, that is, for predicting what will be the
-  most likely next word given in the sentence so far. And, of course, there is already an
-  implementation of such a language model in the TensorFlow model repository located at
-  https:/ / github. com/ tensorflow/ models (in the tutorials/rnn/ptb/ folder). Some of
-  the code samples in the remaining of this chapter are heavily inspired by this example.
-  So let us get started.
+RNN已经证明在一些应用中很成功，那么很自然的问题是：在其他领域中呢？比如在推荐系统中？这是递归神经网络的作者在《Based Subreddit Recommender System》报告中向自己提出的问题（参考https://cole-maclean.github.io/blog/RNN-Based-Subreddit-Recommender-System/）。答案是肯定的，RNN当然可以用。
+
+在这一节中，我们也会回答这问题。我们会考虑一个与之前不一样的推荐场景：
+
+1. 用户访问网站。
+2. 我们给出5个推荐。
+3. 每次购买完成后，我们会更新推荐。
+
+这个场景需要不同方法来评估结果。每一次用户购买后，我们可以购买的物品是否在之前的推荐列表中。如果在的话，可以认为推荐是成功的。所以我们可以计算完成了多少次成功的推荐。这种评估性能的方法叫做
+Top-5准确率。它经常用在评估包含大量类别的分类模型上。
+
+早期，RNN是用在语言模型上的，也就是说，给定一个句子预测下一个最有可能的词语。当然，这个语言模型已经可以通过TensorFlow中的模型仓库进行实现：https://github.com/tensorflow/models（在tutorials/rnn/ptb/ 文件夹下）。本章中的一些代码示例也是受到这个例子的很大启发。 
 
 ####数据准备和基准
 
-  Like previously, we need to represent the items and users as integers. This time, however,
-  we need to have a special placeholder value for unknown users. Additionally, we need a
-  special placeholder for items to represent "no item" at the beginning of each transaction. We
-  will talk more about it later in this section, but for now, we need to implement the encoding
-  such that the 0 index is reserved for special purposes
+和以前一样，我们需要使用整数表示物品和用户。但是，这一次，我们需要为未知用户设置特殊的占位取值。另外，我们需要专门的占位取值来表示每次交易开始的“无物品”状态。之后我们会在本节提供更多讨论。但是现在，我们需要实现编码，保证0索引可以预留给专门的用途。
 
-  Previously we were using a dictionary, but this time let us implement a special
-
-
+之前，我们使用字典，到那时这次我们使用特殊的类`LabelEncoder`：
 ```python
- class, LabelEncoder, for this purpose:
         class LabelEncoder:
             def fit(self, seq):
                 self.vocab = sorted(set(seq))
@@ -946,11 +862,9 @@ then our recommendation is considered successful. So we can calculate how many
                 return len(self.vocab) + 1
 ```
 
+这个实现很直接，大部分都是之前代码的重复。但是，这次我们封装在一个类中，并且保留了0用于特殊用途——例如，训练集中的缺失数据。
 
-  The implementation is straightforward and it largely repeats the code we used previously,
-  but this time it is wrapped in a class, and also reserves 0 for special needs—for example, for
-  elements that are missing in the training data.
-  Let us use this encoder to convert the items to integers:
+使用这个编码器把物品转换为整数：
 
 ```python
  item_enc = LabelEncoder()
@@ -958,12 +872,9 @@ then our recommendation is considered successful. So we can calculate how many
  df.stockcode = df.stockcode.astype('int32')
 ```
 
+然后，分成训练集，验证集和测试集：前10个月用于训练，1个月用于验证，最后1个月用于测试。
 
-  Then we perform the same train-validation-test split: first 10 months we use for training,
-  one for validation and the last one—for testing.
-  Next, we encode the user ids:
-
-
+接着，编码用户ID：
 ```python
 user_enc = LabelEncoder()
 user_enc.fit(df_train[df_train.customerid != -1].customerid)
@@ -972,14 +883,9 @@ df_train.customerid = user_enc.transfrom(df_train.customerid)
 df_val.customerid = user_enc.transfrom(df_val.customerid)
 ```
 
-  [ 239 ]
-  Like previously, we use the most frequently bought items for the baseline. However, this
-  time the scenario is different, which is why we also adjust the baseline slightly. In
-  particular, if one of the recommended items is bought by the user, we remove it from the
-  future recommendations.
-  Here is how we can implement it:
+和之前一样，我们使用购买最多的物品作为基准数据。然而，这次的场景不太一样，一次需要稍微调整一下基准算法。具体说来，如果用户购买了其中一个推荐的物品，我们就把它移出未来的推荐列表。  
 
-
+实现如下：
 ```python
 from collections import Counter
     
@@ -1006,20 +912,14 @@ def baseline(uid, indptr, items, top, k=5):
                 
     return pred_all
 ```
+在上述代码中，`indptr`是指针数组——和之前实现`precision`函数中的一样。
 
-
-  In the preceding code, indptr is the array of pointers—the same one that we used for
-  implementing the precision function previously.
-  So now we apply this to the validation data and produce the results:
-
+我们可以把这个代码用到验证集上，看看结果：
 ```python
 iid_val = df_val.stockcode.values
 pred_baseline = baseline(uid_val, indptr_val, iid_val, top_train, k=5)
 ```
-
-
-  The baseline looks as follows:
-
+基准表现如下：
 ```python
   array([[3528, 3507, 1348, 2731, 181],
          [3528, 3507, 1348, 2731, 181],
@@ -1029,15 +929,12 @@ pred_baseline = baseline(uid_val, indptr_val, iid_val, top_train, k=5)
          [1348, 2731, 181, 454, 1314],
          [1348, 2731, 181, 454, 1314]], dtype=int32
 ```
-
-  Now let us implement the top-k accuracy metric. We again use the @njit decorator from
-  numba to speed this function up:
-
-
+现在，让我实现top-k准确度评估。我们再次使用`numba`中的`@njit`装饰器来加速函数：
 ```python
 @njit
 def accuracy_k(y_true, y_pred):
     n, k = y_pred.shape
+    
     acc = 0
     for i in range(n):
         for j in range(k):
@@ -1046,21 +943,13 @@ def accuracy_k(y_true, y_pred):
                 break
     return acc / n
 ```
-
-
-  To evaluate the performance of the baseline, just invoke with the true labels and the
-  predictions:
-
-
+要评估基准表现，只需要调用真实标记和预测：
 ```python
  accuracy_k(iid_val, pred_baseline)
 ```
+结果是0.012。也就是说只在1.2%的情况下做出了成功的推荐。看起来，我们提升的空间还很大！ 
 
-
-  It prints 0.012, that is, only in 1.2% cases we make a successful recommendation. Looks
-  like there is a lot of room for improvement!
-  The next step is breaking the long array of items into separate transactions. We again can
-  reuse the pointer array, which tells us where each transaction starts and where it ends:
+接下来是把物品数组分成不同的交易。我们再次使用指针数组，可以返回每次交易开始和结束的信息：
 
 ```python
 def pack_items(users, items_indptr, items_vals):
@@ -1074,11 +963,7 @@ def pack_items(users, items_indptr, items_vals):
         
     return result
 ```
-
-
-  Now we can unwrap the transactions and put them into a separate dataframe:
-
-
+现在我们可以封装交易，并把物品放在不同的数据框中。
 ```python
 train_items = pack_items(indptr_train, indptr_train,
                          df_train.stockcode.values)
@@ -1087,64 +972,64 @@ df_train_wrap = pd.DataFrame()
 df_train_wrap['customerid'] = uid_train
 df_train_wrap['items'] = train_items
 ```
-
-  To have a look at what we have at the end, use the head function:
-
-
+要查看最终结果，使用`head`函数：
 ```python
 df_train_wrap.head()
 ```
+结果如下：
 
+![241_1](\figures\241_1.png)
 
-  This shows the following:
+这些序列长度不同，这对RNN来说是个问题。所以我们需要把他们转成定长的序列。这样我们就可以方便的给模型输入数据了。 
 
-|      |      |      |
-| ---- | ---- | ---- |
-| 0    |      |      |
-| 1    |      |      |
-| 2    |      |      |
-| 3    |      |      |
-| 4    |      |      |
+对于初始序列太短的情形，我们需要使用0补全。如果序列太长，我们需要把他们分成多个序列。
 
-  These sequences have varying lengths, and this is a problem for RNNs. So, we need to
-  convert them into fixed-length sequences, which we can easily feed to the model later.
-  In case the original sequence is too short, we need to pad it with zeros. If the sequence is too
-  long, we need to cut it or split it into multiple sequences.
-  Lastly, we also need to represent the state when the user has entered the website but has not
-  bought anything yet. We can do this by inserting the dummy zero item—an item with index
-  0, which we reserved for special purposes, just like this one. In addition to that, we can also
-  use this dummy item to pad the sequences that are too small.
-  We also need to prepare the labels for the RNN. Suppose we have the following sequence:
-  We want to produce a sequence of fixed length 5. With padding in the beginning, the
-  sequence we use for training will look as follows:
-  Here we pad the original sequence with zero at the beginning and do not include the last
-  element—the last element will only be included in the target sequence. So the target
-  sequence—the output we want to predict—should look as follows:
+最后，我们还需要一个状态，表示用户来到网站但是什么都没有买。我们可以插入一个哑物品——它的索引为0，也就是之前为特殊目的保留的取值。另外，我们还可以使用哑物品补全太短的序列。
 
-  [ 242 ]
-  It may look confusing at the beginning, but the idea is simple. We want to construct the
-  sequences in such a way that for the position i in X, the position i in Y contains the element
-  we want to predict. For the preceding example we want to learn the following rules:
+我们还需要准备RNN的标注。假设我们有以下序列：
 
-- both are at the position 0 in X and Y
-- —both are at the position 1 in X and Y
-- and so on
+$$S=[e_1,e_2,e_3,e_4,e_5]$$  
 
-Now imagine we have a smaller sequence of length 2, which we need to pad to a sequence
-  of length 5:
-  In this case, we again pad the input sequence with 0 in the beginning, and also with some
-  zeros at the end:
-  .
-  We transform the target sequence Y similarly:
-  .
-  If the input is too long, for example , we can cut it into multiple
-  sequences:
-  To perform such a transformation, we write a function pad_seq. It adds the needed
-  amount of zeros at the beginning and at the end of the sequence. Then we pad_seq in
-  another function - prepare_training_data—the function that creates the matrices X and
-  Y for each sequence:
+我们希望产生一个长度为5的序列，使用之前的补全策略，用于训练的序列会有以下形式：
 
+$$X=[0,e_1,e_2,e_3,e_4]$$  
 
+这里我们给原始序列的开始补上一个0，这样最后一个元素就被挤出。最后一个元素应该只存放在目标序列中。所以，目标序列，也就是预测结果，应该有以下形式：
+
+$$Y=[e_1,e_2,e_3,e_4,e_5]$$ 
+
+第一眼看上去有些奇怪，但是思想很简单。我们希望用这种方式构建序列，保证$X$和$Y$中的$i$位置包含要预测的元素。我们希望学习到以下规则：
+
+* $0 \to e_1$ 二者都位于$X$和$Y$的0位置
+*  $e_1 \to e_2$ 二者都位于$X$和$Y$的1位置
+
+现在假设我们有一个长度为2的序列，需要补全为长度为5：
+
+$$S=[e_1,e_2]$$
+
+在下面的例子中，我们依然后在开始的时候用0补全序列，同时也在末尾用0补全：
+
+$$X=[0,e_1,e_2,0,0]$$  
+
+类似的，我们也会把目标序列$Y$做一下转换： 
+
+$$Y=[e_1,e_2,0,0,0]$$ 
+
+如果输入太长，比如$$[e_1,e_2,e_3,e_4,e_5,e_6,e_7]$$  ，我们可以把它分成几个序列：
+$$
+X=\begin{cases}
+[0,e_1,e_2,e_3,e_4] \\ 
+[e_1,e_2,e_3,e_4,e_5]\\ 
+[e_2,e_3,e_4,e_5,e_6]
+\end{cases}
+
+和Y=\begin{cases}
+[e_1,e_2,e_3,e_4,e_5]\\ 
+[e_2,e_3,e_4,e_5,e_6]\\
+[e_3,e_4,e_5,e_6,e_7]
+\end{cases}
+$$
+要执行上述转换，我们需要函数`pad_seq`。这个函数可以在开始的位置和结束的位置补全所需的0。然后，另一个函数`prepare_training_data`会调用这个函数。第二个函数可以创建每个序列的$X$和$Y$矩阵。
 ```python
 def pad_seq(data, num_steps):
     data = np.pad(data, pad_width=(1, 0), mode='constant')
@@ -1170,8 +1055,7 @@ def prepare_train_data(data, num_steps):
 ```
 
 
-What is left to do is invoking the `prepare_training_data` function for each sequence in
-the training history, and then put the results together in `X_train` and `Y_train` matrices:
+剩下的工作就是在训练过程中调用函数`prepare_training_data` ，并把结果放在`X_train` 和 `Y_train` 矩阵中：
 
 ```python
 train_items = df_train_wrap['items']
@@ -1188,26 +1072,15 @@ X_train = np.array(X_train, dtype='int32')
 Y_train = np.array(Y_train, dtype='int32')
 ```
 
+现在，我们已经完成了数据准备，可以构建RNN模型来处理数据了。
 
+#### 使用TensorFlow搭建RNN推荐系统
 
-At this point, we have finished data preparation. Now we are ready to finally create an
-RNN model that can process this data.
+数据准备好后，我们可以使用矩阵`X_train`和`Y_train`，训练模型。模型当然要事先准备好。在这一章中，我们会使用带有LSTM（长短期记忆，Long Short-Term Memory）单元的递归神经网络。 LSTM单元要比一般的RNN单元效果要好，因为它可以更好的捕捉长期依赖关系。
 
-###使用TensorFlow搭建RNN推荐系统
+> 一个学习LSTM的很棒的资源是Christopher Olah的博客"Understanding LSTM Networks" 。地址是https://colah.github.io/posts/2015-08-Understanding-LSTMs/ 。在本章中，我们不会介绍LSTM和RNN的理论知识，只会关注它们在TensorFow中的实现。
 
-The data preparation is done and now we take the produced matrices X_train and
-Y_train and use them for training a model. But of course, we need to create the model
-first. In this chapter, we will use a recurrent neural network with LSTM cells (Long Short-
-Term Memory). LSTM cells are better than plain RNN cells because they can capture longterm
-dependencies better.
-A great resource to learn more about LSTMs is the blog post
-"Understanding LSTM Networks" by Christopher Olah, which is available
-at https:/ / colah. github. io/ posts/ 2015- 08- Understanding- LSTMs/ . In
-this chapter, we do not go into theoretical details about how LSTM and
-RNN work and only look at using them in TensorFow.
-Let us start with defining a special configuration class that holds all the important training
-parameters:
-
+首先定义具体的配置信息类，其保存了重要的训练参数：
 ```python
 class Config:
     num_steps = 5
@@ -1225,26 +1098,20 @@ class Config:
     
 config = Config()
 ```
+`Config`类定义了下列参数：
+- `num_steps`——定长序列的大小
+- `num_items`——训练数据中物品的数量（为哑物品0加1）
+- `num_users`——训练数据中用户的数量（为哑用户0加1）
+- `init_scale`——初始化中权重参数的大小
+- `learning_rate`——更新权重的速率
+- `max_grad_norm`——梯度归一的最大值，如果超过这个值，将被截断
+- `num_layers`——网络中LSTM的层数
 
+- `hidden_size`——隐层的规模，用于把LSTM的输出转换为概率
+- `embedding_size`——物品embedding层的规模
+- `batch_size`——一次训练步骤中输入给模型的序列多少
 
-Here the `Config` class defines the following parameters:
-- `num_steps`—This is the size of the fixed-length sequences
-- `num_items`—The number of items in our training data (+1 for the dummy 0 item)
-- `num_items`—The number of items in our training data (+1 for the dummy 0 item)
-- `num_users`—The number of users (again +1 for the dummy 0 user)
-- `init_scale`—Scale of the weights parameters, needed for the initialization
-- `learning_rate`—The rate at which we update the weights
-- `max_grad_norm`—The maximally allowed norm of the gradient, if the gradient
-exceeds this value, we clip it
-- `num_layers`—The number of LSTM layers in the network
-
-- `hidden_size`—The size of the hidden dense layer that converts the output of
-LSTM to output probabilities
-- `embedding_size`—The dimensionality of the item embeddings
-- `batch_size`—The number of sequences we feed into the net in a single training step
-
-Now we finally implement the model. We start off by defining two useful helper
-functions—we will use them for adding the RNN part to our model:
+进一步完成模型的最终构建。首先我们定义两个有用的函数，给模型添加RNN部件：
 
 ```python
 def lstm_cell(hidden_size, is_training):
@@ -1264,7 +1131,7 @@ def rnn_model(inputs, hidden_size, num_layers, batch_size, num_steps,
 ```
 
 
-Now we can use the `rnn_model` function to create our model:
+我们可以使用`rnn_model`函数创建模型：
 
 ```python
 def model(config, is_training):
@@ -1311,28 +1178,18 @@ def model(config, is_training):
     return out
 ```
 
-In this model there are multiple parts, which is described as follows:
+这个模型包含许多模块，具体如下：
 
-1. First, we specify the inputs. Like previously, these are IDs, which later we convert
-  to vectors by using the embeddings layer.
-2. Second, we add the RNN layer followed by a dense layer. The LSTM layer learns
-  the temporary patters in purchase behavior, and the dense layer converts this
-  information into a probability distribution over all possible items.
-3. Third, since our model is multi-class classification model, we optimize the
-  categorical cross-entropy loss.
-4. Finally, LSTMs are known to have problems with exploding gradients, which is
-  why we perform gradient clipping when performing the optimization.
-  
-The function returns all the important variables in a dictionary—so, later on, we will be able
-to use them when training and validating the results.
-  The reason this time we create a function, and not just global variables like previously, is to
-  be able to change the parameters between training and testing phases. During training, the
-  batch_size and num_steps variables could take any value, and, in fact, they are tunable
-  parameters of the model. On the contrary, during testing, these parameters could take only
-  one possible value: 1. The reason is that when the user buys something, it is always one
-  item at a time, and not several, so num_steps is one. The batch_size is also one for the
-  same reason.
-  For this reason, we create two configs: one for training, and one for validation:
+1. 首先定义输入。和之前一样，ID会通过embedding层转成向量。
+2. 其次，添加RNN层以及全连接层。LSTM层会学习购买行为的临时模式，并通过全连接层转化成全部物品上的概率分布。
+3. 然后，因为我们的模型解决多分类问题，我们使用分类交叉熵损失函数。
+4. 最后，由于LSTM存在梯度爆炸的风险，我们使用梯度裁剪来优化损失函数。
+
+这个函数以字典形式返回所有重要的变量。所有，在后面的训啦和验证中可以方便的使用。
+
+这次我们之所以创建函数，而不像以前定义全局变量，是因为这样允许我们在训练和测试阶段改变参数。 在训练阶段，`batch_size`和`num_steps`变量可以取任何值，它们实际上是可以调节的。相反，在测试阶段，这些参数只能取唯一可能的值1。原因是当用户购买物品的时候，一次只能买一个，而不是多个，所以`num_steps`是1。同样的原因，`batch_size`也是1。
+
+因此，我么你创建两组配置信息。一个用于训练，一个用于验证：
 
 ```python
   config = Config()
@@ -1342,11 +1199,7 @@ to use them when training and validating the results.
 ```
 
 
-  Now let us define the computational graph for the model. Since we want to learn the
-  parameters during training, but then use them in a separate model with different
-  parameters during testing, we need to make the learned parameters shareable. These
-  parameters include embeddings, LSTM, and the weights of the dense layer. To make both
-  models share the parameters, we use a variable scope with `reuse=True`:
+ 现在，给模型定义计算图。由于我们希望在训练阶段学习到参数，但是在测试阶段用不同的参数和模型进行预测，所以我们需要学到的参数可以共享。这些参数包括embedding层，LSTM以及全连接层的权重。为了让两个模型共享参数，我们使用`reuse=True`的scope变量：
 
 
 ```python
@@ -1367,8 +1220,7 @@ with graph.as_default():
     init = tf.global_variables_initializer()
 ```
 
-  The graph is ready. Now we can train the model, and for this purpose, we create
-  a `run_epoch` helper function:
+ 计算图准备好了。我们可以开始训练。创建一个`run_epoch`函数:
 
 
 ```python
@@ -1404,22 +1256,17 @@ def run_epoch(session, model, X, Y, batch_size):
     progress.update(1)
     progress.set_description('%.3f' % loss)
     
- progress.close()
+  progress.close()
 ```
 
 
-  The initial part of the function should already be familiar to us: it first creates a dictionary of
-  variables that we are interested to get from the model and also shuffle the dataset.
+函数的开始已经很熟悉了：首先创建模型中重要变量的字典，并且重洗数据。
 
-  [ 249 ]
-  The next part is different though: since this time we have an RNN model (LSTM cell, to be
-  exact), we need to keep its state across runs. To do it we first get the initial state—which
-  should be all zeros—and then make sure the model gets exactly these values. After each
-  step, we record the final step of the LSTM and re-enter it to the model. This way the model
-  can learn typical behavior patterns.
-  Again, like previously, we use tqdm to monitor progress, and we display both how many
-  steps we have already taken during the epoch and the current training loss.
-  Let us train this model for one epoch:
+接下来有点不同：这次我们使用RNN模型（确切的说是LSTM单元），所以我们需要记录运行间的状态。为此，我们首先获取初始状态，也就是所有状态为0，并确保模型可以获得这些状态。每完成一步训练，我们都记录LSTM的最终状态，并再次输入给模型。通过这种方式，模型可以学习到典型的行为模式。 
+
+依然和之前一样，使用`tqdm`监控过程。我们会展示一轮训练中已经运行了多少步，以及当前的训练损失。
+
+首先训练模型一轮：
 
 
 ```python
@@ -1431,9 +1278,7 @@ run_epoch(session, train_model, X_train, Y_train, batch_size=config.batch_size)
 ```
 
 
-  One epoch is enough for the model to learn some patterns, so now we can see whether it
-  was actually able to do it. For that we first write another helper function, which will
-  emulate our recommendation scenario:
+一轮训练已经足够学习到一些模式，我们可以看一下是否真的做到了。首先完成另一个函数，用于评估我们的推荐场景：
 
 
 ```python
@@ -1478,40 +1323,27 @@ def generate_prediction(uid, indptr, items, model, k):
 return pred_all
 ```
 
-  What we do here is the following:
-1. First, we initialize the prediction matrix, its size like in the baseline, is the number
-  of items in the validation set times the number of recommendations.
-2. Then we run the model for each transaction in the dataset.
-3. Each time we start with the dummy zero item and the empty zero LSTM state.
-4. Then one by one we predict the next possible item and put the actual item the
-  user bought as the previous item—which we will feed into the model on the next
-  step.
-5. Finally, we take the output of the dense layer and get top-k most likely
-  predictions as our recommendation for this particular step.
+这里，我们要实现：
+1. 首先，初始化预测矩阵，其大小是验证集中物品的数量乘以推荐物品的数量。
+2. 然后，运行数据集中的每一个交易场景。
+3. 每次我们从哑物品开始，并且LSTM为空的0状态。
+4. 然后逐个预测下一个可能的物品，并把用户真实购买的物品当做上一步的物品，这样我们可以把真实物品当做模型下一步的输入。
+5. 最后，我们获取全连接层的输出，并拿到最可能的top-k预测结果作为这一步的推荐结果。
 
-Let us execute this function and look at its performance:
+执行这个函数，查看性能结果：
 
 ```python
-  pred_lstm = generate_prediction(uid_val, indptr_val, iid_val, val_model,
-                                  k=5)
+  pred_lstm = generate_prediction(uid_val, indptr_val, iid_val, val_model, k=5)
   accuracy_k(iid_val, pred_lstm)
 ```
 
+我们可以看到输出为7.1%。这个结果比基准结果好了7倍。
 
-  We see the output 7.1%, which is seven times better than the baseline.
-  This is a very basic model, and there is definitely a lot of room for improvement: we can
-  tune the learning rate and train for a few more epochs with gradually decreasing learning
-  rate. We can change the batch_size, num_steps, as well as all other parameters. We also
-  do not use any regularization—neither weight decay nor dropout. Adding it should be
-  helpful.
+这是一个非常简单的模型，提升空间也很大：我们可以调节学习率，多训练几轮，并使用梯度下降学习率。我们可以改变`batch_size`，`num_steps`以及其他参数。我们也可以不使用任何正则化，既不衰减权重也不dropout。这些策略都可能有用。
 
-  [ 251 ]
-  But most importantly, we did not use any user information here: the recommendations
-  were based solely on the patterns of items. We should be able to get additional
-  improvement by including the user context. After all, the recommender systems should be
-  personalized, that is, tailored for a particular user.
-  Right now our X_train matrix contains only items. We should include another input, for
-  example U_train, which contains the user IDs:
+最重要的是，我们没有使用任何用户信息：推荐完全基于物品的模式本身。我们也可以使用用户信息做进一步的优化。毕竟，推荐系统应该是个性化的，也就是为每个用户专门定制的。
+
+当前`X_train`矩阵只包含物品。我们还应该使用其它输入，例如`U_train`，保存用户ID：
 
 
 ```python
@@ -1531,9 +1363,7 @@ U_train = np.array(U_train, dtype='int32')
 ```
 
 
-  Let us change the model now. The easiest way to incorporate user features is to stack
-  together user vectors with item vectors and put the stacked matrix to LSTM. It is quite easy
-  to implement, we just need to modify a few lines of the code:
+让我们改动一下模型。最简单的融入用户特征的方法是把用户向量和物品向量放在一起，并把这个堆叠矩阵一并输入给LSTM。这非常好实现，只需要几行代码：
 
 
 ```python
@@ -1595,21 +1425,18 @@ def user_model(config, is_training):
  return out
 ```
 
-  [ 253 ]
-  The changes between the new implementation and the previous model are shown in bold.
-  In particular, the differences are the following:
+新的实现和老的实现的差别如下：
 
--   We add `place_u`—The placeholder that takes the user ID as input
+- 添加`place_u`——使用用户ID作为输入的占位符
 
--   Rename embeddings to `item_embeddings`—not to confuse them with
+- 重命名`embeddings`为`item_embeddings`——避免和几行代码后的`user_embeddings`混淆
 
-  `user_embeddings`, which we added a few lines after that
+- 最后，把用户特征和物品特征拼接起来
 
--   Finally, we concatenate user features with item features
+模型的其它部分都是一样的！
 
-  The rest of the model code stays unchanged!
-  Initialization is similar to the previous model:
-  
+初始化和之前的模型也类似：
+
 
 ```python
 graph = tf.Graph()
@@ -1634,10 +1461,7 @@ with graph.as_default():
 ```
 
 
-  The only difference here is that we invoke a different function when creating the model. The
-  code for training one epoch of the model is very similar to the previous one. The only things
-  that we change are the extra parameters of the function, which we add into the feed_dict
-  inside:
+唯一的差别是，我们再创建模型的时候调用了不同的函数。训练模型一轮的代码和之前的也类似。唯一不同的是函数包含额外的参数。我们会把额外的参数放在`feed_dict`中：
 
 ```python
 def user_model_epoch(session, model, X, U, Y, batch_size):
@@ -1675,7 +1499,7 @@ def user_model_epoch(session, model, X, U, Y, batch_size):
     progress.close()
 ```
 
-  Let us train this new model for one epoch:
+完成新的模型一轮训练：
 
 
 ```python
@@ -1685,11 +1509,11 @@ session.run(init)
 np.random.seed(0)
 
 user_model_epoch(session, train_model, X_train, U_train, Y_train,
-                 batch_size=config.batch_size)
+                 batch_size = config.batch_size)
 ```
 
 
-  The way we use the model is also almost the same as previous:
+我们使用模型的方式也和之前的类似：
 
 
 ```python
@@ -1734,8 +1558,7 @@ def generate_prediction_user_model(uid, indptr, items, model, k):
     return pred_all
 ```
 
-  Finally, we run this function to generate the predictions for the validation set, and calculate
-  the accuracy of these recommendations:
+最后，运行这个函数，生产验证集的预测，计算推荐场景的准确率：
 
 ```python
   pred_lstm = generate_prediction_user_model(uid_val, indptr_val, iid_val,
@@ -1744,22 +1567,11 @@ def generate_prediction_user_model(uid, indptr, items, model, k):
 ```
 
 
-  The output we see is 0.252, which is 25%. We naturally expect it to be better, but the
-  improvement was quite drastic: almost four times better than the previous model, and 25
-  better than the naive baseline. Here we skip the model check on the hold-out test set, but
-  you can (and generally should) do it yourself to make sure the model does not overfit.
+我们看到，输出是0.252，即25%。我们期望提升，结果的改进已经很明显了：几乎是上一个模型的4倍，也比基准模型好了25倍。这里我们省去了模型在测试集上的计算，但是读者可以自己完成（也应该完成），确认模型没有过拟合。
 
   ###小结
-  In this chapter, we covered recommender systems. We first looked at some background
-  theory, implemented simple methods with TensorFlow, and then discussed some
-  improvements such as the application of BPR-Opt to recommendations. These models are
-  important to know and very useful to have when implementing the actual recommender
-  systems.
-  In the second section, we tried to apply the novel techniques for building recommender
-  systems based on Recurrent Neural Nets and LSTMs. We looked at the user's purchase
-  history as a sequence and were able to use sequence models to make successful
-  recommendations.
-  In the next chapter, we will cover Reinforcement Learning. This is one of the areas where
-  the recent advances of Deep Learning have significantly changed the state-of-the-art: the
-  models now are able to beat humans in many games. We will look at the advanced models
-  that caused the change and we will also learn how to use TensorFlow to implement real AI.
+在这一章中，我们介绍了推荐系统。首先，我们学习了使用TensorFlow实现简单方法的基础理论，然后讨论了一些改进方法，例如推荐系统中BPR-Opt。这些模型在推荐系统实现中很重要也很有用。
+
+在第二节中，我们尝试使用递归神经网络和LSTM，这一新的方法构建推荐系统。我们把用户的购买历史当做输入序列，并且可以使用序列模型做出成功的推荐。
+
+在下一章中，我们会介绍强化学习。这个领域是其中一个最近的深度学习进展极大的推动了前沿研究的领域：模型可以在许多游戏中打败人类。我们会学习引发变革的先进模型，也会学习如何使用TensorFlow实现真正的AI。
