@@ -66,15 +66,9 @@
 
 ### 创建训练集
 
-Let's now create the training set for the chatbot. We'd need all the conversations between
-the characters in the correct order: fortunately, the corpora contains more than what we
-actually need. For creating the dataset, we will start by downloading the zip archive, if it's
-not already on disk. We'll then decompress the archive in a temporary folder (if you're
-using Windows, that should be `C:\Temp`), and we will read just the `movie_lines.txt` and
-the `movie_conversations.txt` files, the ones we really need to create a dataset of
-consecutive utterances.
-Let's now go step by step, creating multiple functions, one for each step, in the file
-`corpora_downloader.py`. The first function we need is to retrieve the file from the
+现在我们创建用于聊天机器人的训练集。我们需要以正确顺序组织角色间的所有对话。而上述语料库可以满足我们的需求。如果本地没有所需的`zip`文档，我们要先下载下来，然后把文件解压到一个临时文件夹中（Windows环境下，应该放在`C:\Temp`），我们只需读取 `movie_lines.txt和`movie_conversations.txt` 文件，用于创建连续的语言表达数据集。
+
+现在我们可以在`corpora_downloader.py`中逐步创建几个函数。第一个函数是用于本地磁盘没有保存的情况下，从因特网上获取文件。
 Internet, if not available on disk.
 
 ```python
@@ -92,16 +86,9 @@ def download_and_decompress(url, storage_path, storage_dir):
 return
 ```
 
+这个函数的功能如下：它首先检查本地是否有“`README.txt`”文件；如果没有，下载文件（借助于`urllib.request`模块的`urlretrieve`函数）,并解压`zip`文件（使用`zipfile`模块）。
 
-This function does exactly that: it checks whether the “`README.txt`” file is available locally;
-if not, it downloads the file (thanks for the urlretrieve function in the urllib.request module)
-and it decompresses the zip (using the zipfile module).
-The next step is read the conversation file and extract the list of utterance IDS. As a
-reminder, its format is: `u0 +++$+++ u2 +++$+++ m0 +++$+++ ['L194', 'L195', 'L196', 'L197']`,
-therefore what we're looking for is the fourth element of the list after we split it on the
-token `+++$+++` . Also, we'd need to clean up the square brackets and the apostrophes to
-have a clean list of IDs. For doing that, we shall import the re module, and the function will
-look like this.
+接着，读取对话文件，抽取语言表达ID的列表。注意，格式为：`u0 +++$+++ u2 +++$+++ m0 +++$+++ ['L194', 'L195', 'L196', 'L197']`，我们需要的是经过分隔符`+++$+++`分割后的第四个元素。而且，我们需要清除方括号和单引号，拿到纯粹的ID列。 因此，我们首先加载`re`模块，函数如下：
 
 ```python
 import re
@@ -114,13 +101,9 @@ def read_conversations(storage_path, storage_dir):
 ```
 
 
-As previously said, remember to read the file with the right encoding, otherwise, you'll get
-an error. The output of this function is a list of lists, each of them containing the sequence of
-utterance IDS in a conversation between characters. Next step is to read and parse the
-movie_lines.txt file, to extract the actual utterances texts. As a reminder, the file looks
-like this line:
+正如之前所说，记住使用正确的编码格式读取文件，否则会报错。函数的输出是包含列的列。每一个列都包含角色间对话的语言表达ID。然后，读取和解析`movie_lines.txt`文件，抽取语言表达的文本。记住这个文件的形式如下：
 `L195 +++$+++ u2 +++$+++ m0 +++$+++ CAMERON +++$+++ Well, I thought we'd start with pronunciation, if that's okay with you`.
-Here, what we're looking for are the first and the last chunks.
+这里，我们需要第一个和最后一个部分。
 
 ```python
 def read_lines(storage_path, storage_dir):
@@ -130,12 +113,7 @@ def read_lines(storage_path, storage_dir):
     return {line[0]: line[-1].strip() for line in lines_chunks}
 ```
 
-
-
-The very last bit is about tokenization and alignment. We'd like to have a set whose
-observations have two sequential utterances. In this way, we will train the chatbot, given
-the first utterance, to provide the next one. Hopefully, this will lead to a smart chatbot, able
-to reply to multiple questions. Here's the function:
+最后一步是关于分割和对齐。我们希望一个集合内的结果有两次语言表达的序列。这样，我们可以在给定第一次语言表达的情况下，训练聊天机器人，以便给出下一句话。最终，我们希望得到一个智能聊天机器人，可以回复多个问题。函数如下：
 
 ```python
 def get_tokenized_sequencial_sentences(list_of_lines, line_text):
@@ -145,34 +123,24 @@ def get_tokenized_sequencial_sentences(list_of_lines, line_text):
                    line_text[line[i+1]].split(" "))
 ```
 
+它的输出是一个生成器，其包含两次语句表达（右边的跟着左边的）的元组。而且每次语言表达都用空格分割。
 
-Its output is a generator containing a tuple of the two utterances (the one on the right
-follows temporally the one on the left). Also, utterances are tokenized on the space
-character.
-Finally, we can wrap up everything into a function, which downloads the file and unzip it
-(if not cached), parse the conversations and the lines, and format the dataset as a generator.
-As a default, we will store the files in the /tmp directory:
+最后，我们可以把所有逻辑都封装在一个函数中，包括（如果本地没有的话）下载文件和解压文件，解析对话和文件行，格式化数据集为生成器。最终，我们可以把文件存在/tmp目录下：
 
 ```python
 def retrieve_cornell_corpora(storage_path="/tmp",
-                             storage_dir="cornell_movie_dialogs_corpus"):
-    download_and_decompress("http://www.cs.cornell.edu/~cristian/data/cornell_movie_dialogs_corpus.zip", storage_path, storage_dir)
+                             storage_dir="cornell_movie_dialogs_corpus"):    download_and_decompress("http://www.cs.cornell.edu/~cristian/data/cornell_movie_dialogs_corpus.zip", storage_path, storage_dir)
     conversations = read_conversations(storage_path, storage_dir)
     lines = read_lines(storage_path, storage_dir)
     return tuple(zip(*list(get_tokenized_sequencial_sentences(conversations, 
                                                               lines))))
 ```
 
+现在，我们的训练集看起来和机器翻译项目中的训练集很类似。事实上，它们不仅仅相似，而且目的相同，格式相同。因此我们可以使用之前章节中相同的代码。例如，`corpora_tools.py`文件可以不加修改直接用在这里（而且，它需要`data_utils.py`）。
 
-At this point, our training set looks very similar to the training set used in the translation
-project, in the previous chapter. Actually, it's not just similar, it's the same format with the
-same goal. We can, therefore, use some pieces of code we've developed in the previous
-chapter. For example, the `corpora_tools.py` file can be used here without any change
-(also, it requires the `data_utils.py`).
-Given that file, we can dig more into the corpora, with a script to check the chatbot input.
-To inspect the corpora, we can use the `corpora_tools.py` we made in the previous
-chapter, and the file we've previously created. Let's retrieve the Cornell Movie Dialog
-Corpus, format the corpora and print an example and its length:
+有了这些文件，我们可以使用一些脚本检查聊天机器人的输入，再深入研究一下语料库。
+
+我们可以使用之前章节中的`corpora_tools.py`查看语料库。获取康奈尔电影对话语料库，格式化语料，并打印出一个例子和它的长度：
 
 ```python
 from corpora_tools import *
@@ -186,8 +154,7 @@ print(len(sen_l1))
 assert len(sen_l1) == len(sen_l2)
 ```
 
-This code prints an example of two tokenized consecutive utterances, and the number of
-examples in the dataset, that is more than 220,000:
+这些代码打印出两条被分割的连续语言表达的句子，以及数据集中的例子数量，超过22万：
 
 ```
 # Two consecutive sentences in a conversation
