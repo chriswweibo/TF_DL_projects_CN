@@ -167,9 +167,7 @@ A: ['Well,', 'I', 'thought', "we'd", 'start', 'with', 'pronunciation,',
 221616
 ```
 
-Let's now clean the punctuation in the sentences, lowercase them and limits their size to 20
-words maximum (that is examples where at least one of the sentences is longer than 20
-words are discarded). This is needed to standardize the tokens:
+清除句子中的停顿字符，把句子全部转成小写，并且限定每条句子最多20个单词（也就是说，对话序列只要包含超过20个单词的句子，就会被舍弃。）。后续的标准化分隔符如下：
 ```python
 clean_sen_l1 = [clean_sentence(s) for s in sen_l1]
 clean_sen_l2 = [clean_sentence(s) for s in sen_l2]
@@ -181,19 +179,14 @@ assert len(filt_clean_sen_l1) == len(filt_clean_sen_l2)
 ```
 
 
-This leads us to almost 140,000 examples:
+结果输出超过14万个例子：
 ```
 # Filtered Corpora length (i.e. number of sentences)
 140261
 ```
 
 
-Then, let's create the dictionaries for the two sets of sentences. Practically, they should look
-the same (since the same sentence appears once on the left side, and once in the right side)
-except there might be some changes introduced by the first and last sentences of a
-conversation (they appear only once). To make the best out of our corpora, let's build two
-dictionaries of words and then encode all the words in the corpora with their dictionary
-indexes:
+然后，创建两组句子集合的词典。实际中可以发现，两个词典看起来一样（因为出现在左边的句子也会出现在右边。），除非第一条句子和最后一条句子（都是只出现一次）使用了独特的词语。为了充分使用语料库，构建两个词典，然后使用词典对所有词语编码：
 ```python
 dict_l1 = create_indexed_dictionary(filt_clean_sen_l1, dict_size=15000,
                                     storage_path="/tmp/l1_dict.p")
@@ -207,9 +200,7 @@ print("A:", list(zip(filt_clean_sen_l2[0], idx_sentences_l2[0])))
 ```
 
 
-That prints the following output. We also notice that a dictionary of 15 thousand entries
-doesn't contain all the words and more than 16 thousand (less popular) of them don't fit
-into it:
+打印出的结果如下。我们注意到词典包含1万5千个词语，但是并没有包含所有词语，而且超过1万6千个（出现较少的）词语并没有包含其中：
 ```
 [sentences_to_indexes] Did not find 16823 words
 [sentences_to_indexes] Did not find 16649 words
@@ -223,7 +214,7 @@ A: [('not', 31), ('the', 10), ('hacking', 7309), ('and', 23), ('gagging',
 145), ('.', 4)]
 ```
 
-As the final step, let's add paddings and markings to the sentences:
+最后一步，给句子添加补全和标记信息：
 ```python
 data_set = prepare_sentences(idx_sentences_l1, idx_sentences_l2,
                              max_length_l1, max_length_l2)
@@ -236,7 +227,7 @@ print("A:", len(idx_sentences_l2[0]), "->", len(data_set[0][1]))
 ```
 
 
-And that, as expected, prints:
+和预期的一样，打印如下：
 ```
 # Prepared minibatch with paddings and extra stuff
 Q: [0, 68, 8, 9, 141, 23, 5, 83, 370, 46, 3, 8, 78, 18, 5, 12, 92, 46, 7, 4]
@@ -249,16 +240,9 @@ A: 11 -> 22
 
 ### 训练聊天机器人
 
-After we're done with the corpora, it's now time to work on the model. This project requires
-again a sequence to sequence model, therefore we can use an RNN. Even more, we can
-reuse part of the code from the previous project: we'd just need to change how the dataset is
-built, and the parameters of the model. We can then copy the training script built in the
-previous chapter, and modify the `build_dataset` function, to use the Cornell dataset.
-Mind that the dataset used in this chapter is bigger than the one used in the previous,
-therefore you may need to limit the corpora to a few dozen thousand lines. On a 4 years old
-laptop with 8GB RAM, we had to select only the first 30 thousand lines, otherwise, the
-program ran out of memory and kept swapping. As a side effect of having fewer examples,
-even the dictionaries are smaller, resulting in less than 10 thousands words each.
+处理完语料库后，我们可以开始构建模型。这个项目需要一个序列生成的模型，因此我们可以使用RNN模型。而且，我们可以重用上个项目的代码：只需要修改一下数据集构建的方法，和模型的参数。然后复制上一章中的训练脚本，修改`build_dataset`函数，方便使用康奈尔的数据集。
+
+需要注意的是，本章使用的数据集比上一章的要大，因此我们需要限制语料库大小至几万行。在一台RAM为8G的4年老笔记本上，我们需要用前3万行，否则程序会耗尽内存，一直交换空间。使用少量例子的另一个好处是，字典也会变小，每个不超过1万个词语。
 
 ```python
 def build_dataset(use_stored_dictionary=False):
@@ -292,12 +276,9 @@ def build_dataset(use_stored_dictionary=False):
 ```
 
 
-By inserting this function into the `train_translator.py` file (from the previous chapter)
-and rename the file as `train_chatbot.py`, we can run the training of the chatbot.
+把这个函数放在（上一章定义的）`train_translator.py`文件中，并重命名为文件`train_chatbot.py`，然后我们可以开始训练聊天机器人。
 
-[ 168 ]
-After a few iterations, you can stop the program and you'll see something similar to this
-output:
+几次迭代后，读者可以终止程序，并得到类似以下的输出：
 
 ```
 [sentences_to_indexes] Did not find 0 words
@@ -325,27 +306,17 @@ perplexity 2.878854805600354
 eval: perplexity 2.563583924617356
 ```
 
+如果改变参数，读者可以在不同的混淆度下终止程序。要得到最终结果，我们可以设置RNN的大小为256，层数为2，批大小为128个样本，学习率为1.0。
 
-Again, if you change the settings, you may end up with a different perplexity. To obtain
-these results, we set the RNN size to 256 and 2 layers, the batch size of 128 samples, and the
-learning rate to 1.0.
-At this point, the chatbot is ready to be tested. Although you can test the chatbot with the
-same code as in the `test_translator.py` of the previous chapter, here we would like to
-do a more elaborate solution, which allows exposing the chatbot as a service with APIs.
+现在，聊天机器人可以接受测试了。尽管我们可以使用上一章`test_translator.py`中的相同代码进行测试，但是我们还是希望可以完成一个更加精细的方案，也就是让聊天机器人通过API作为服务发布。
 
 ### 聊天机器人API
 
-First of all, we need a web framework to expose the API. In this project, we've chosen Bottle,
-a lightweight simple framework very easy to use.
+首先，我们需要一个web框架，提供API。在这个项目中，我们选择Botttle，一种非常易用的轻量化简易框架。
 
-> To install the package, run pip install bottle from the command
-> line. To gather further information and dig into the code, take a look at the
-> project webpage, https://bottlepy.org.
+> 要安装这个程序包，在命令行中运行`pip install bottle`。要获取更多信息和代码，可以查看项目网页：https://bottlepy.org。
 
-Let's now create a function to parse an arbitrary sentence provided by the user as an
-argument. All the following code should live in the test_chatbot_aas.py file. Let's start
-with some imports and the function to clean, tokenize and prepare the sentence using the
-dictionary:
+现在，创建函数，解析用户提供的任意一个句子参数。以下所有代码应该放在`test_chatbot_aas.py`文件中。首先引入一些库和函数，便于借助词典清洗，分隔，准备句子：
 
 ```python
 import pickle
@@ -366,18 +337,14 @@ return sentences, data_set
 ```
 
 
-The function `prepare_sentence` does the following:
+函数`prepare_sentence`的功能如下：
 
-- Tokenizes the input sentence
-- Cleans it (lowercase and punctuation cleanup)
-- Converts tokens to dictionary IDs
-- Add markers and paddings to reach the default length
+- 分隔输入的句子
+- 清洗句子（转成小写，清除停顿符号）
+- 把分隔结果转换成字典ID列
+- 添加标记和补全，以保证默认的长度
 
-Next, we will need a function to convert the predicted sequence of numbers to an actual
-sentence composed of words. This is done by the function `decode`, which runs the
-prediction given the input sentence and with softmax predicts the most likely output.
-Finally, it returns the sentence without paddings and markers (a more exhaustive
-description of the function is provided in the previous chapter):
+接着，我们需要一个函数把预测的序列ID转换成实际的词语序列。这个任务由函数`decode`完成，可以根据输入的句子和softmax函数预测最可能的输出。最后，代码返回不带补全和标记的句子（更全面的函数介绍在上一章）：
 
 ```python
 def decode(data_set):
@@ -396,7 +363,7 @@ def decode(data_set):
             tf.reset_default_graph()
      return " ".join([tf.compat.as_str(inv_dict_l2[output]) for output in outputs])
 ```
-Finally, the main function, that is, the function to run in the script:
+最终，主函数，即脚本中的函数：
 
 ```python
 if __name__ == "__main__":
@@ -418,28 +385,19 @@ if __name__ == "__main__":
     run(host='127.0.0.1', port=8080, reloader=True, debug=True)
 ```
 
+首先，它加载词典，并准备逆序词典。然后，使用Bottle API创建一个（基于/api的URL） HTTP GET端点。当端点接收到HTTP GET请求时，路径装饰器可以设置和丰富了函数。在这种情况下，`api()` 开始运行，它首先把句子读取为HTTP参数，然后调用`prepare_sentence`函数，最后运行解码程序。返回的结果是一个包含用户输入句子和机器人回答的词典。
 
-Initially, it loads the dictionary and prepares the inverse dictionary. Then, it uses the Bottle
-API to create an HTTP GET endpoint (under the /api URL). The route decorator sets and
-enriches the function to run when the endpoint is contacted via HTTP GET. In this case, the
-`api()` function is run, which first reads the sentence passed as HTTP parameter, then calls
-the `prepare_sentence` function, described above, and finally runs the decoding step.
-What's returned is a dictionary containing both the input sentence provided by the user and
-the reply of the chatbot.
-Finally, the webserver is turned on, on the localhost at port 8080. Isn't very easy to have a
-chatbot as a service with Bottle?
-It's now time to run it and check the outputs. To run it, run from the command line:
+最后，网络服务器打开，本地端口为port 8080。使用Bottle构建聊天机器人服务就是这么简单！
+
+现在运行服务，检查输出。在命令行中运行：
 
 ```shell
 $> python3 –u test_chatbot_aas.py
 ```
 
-Then, let's start querying the chatbot with some generic questions, to do so we can use
-CURL, a simple command line; also all the browsers are ok, just remember that the URL
-should be encoded, for example, the space character should be replaced with its encoding,
-that is, %20.
-Curl makes things easier, having a simple way to encode the URL request. Here are a
-couple of examples:
+然后，开始使用一些通用问题询问聊天机器人，我们可以使用CURL，这一简单的命令行完成这个操作。同时所有的浏览器都是可用的。只需注意URL应该经过编码，例如，空格符应该使用编码格式`%20`替代。
+
+CURL提供简单的方法编码URL请求，可以让所有操作变得更简单。下面是两个例子：
 
 ```shell
 $> curl -X GET -G http://127.0.0.1:8080/api --data-urlencode "sentence=how are you?"
@@ -455,29 +413,25 @@ $> curl -X GET -G http://127.0.0.1:8080/api --data-urlencode "sentence=how are y
 ```
 
 
-> If the system doesn't work with your browser, try encoding the URL, for example:
+> 如果浏览器没有反应，可以试试编码URL，例如：
 > ```shell
 > $> curl -X GET
 > http://127.0.0.1:8080/api?sentence=how%20are%20you?
 > {"data": [{"out": "that ' s okay .", "in": "how are you?"}]}.
 > ```
 
-Replies are quite funny; always remember that we trained the chatbox on movies, therefore
-the type of replies follow that style.
-To turn off the webserver, use Ctrl + C.
+回复也很有趣；务必注意，我们是使用电影数据训练的聊天机器人，所以回复的风格也是这类的。
+
+要关闭网络服务器，使用`Ctrl + C`。
 
 #### 课后作业
 
-Following are the home assignments:
-Can you create a simple webpage which queries the chatbot via JS?
-Many other training sets are available on the Internet; try to see the differences of
-answers between the models. Which one is the best for a customer service bot?
-Can you modify the model, to be trained as a service, that is, by passing the
-sentences via HTTP GET/POST?
+下面是课后作业：
+
+* 你可以使用JS创建一个简单网页来请求聊天机器人吗？
+* 因特网上有许多其他的训练集；试着看看模型之间答案的差异。哪一个数据集最适合客服机器人？
+* 你可以修改模型，作为服务训练吗？也就是说，使用HTTP GET/POST传递句子？
 
 ### 小结
 
-In this chapter, we've implemented a chatbot, able to respond to questions through an
-HTTP endpoint and a GET API. It's another great example of what we can do with RNN. In
-the next chapter, we're moving to a different topic: how to create a recommender system
-using Tensorflow.
+在本章汇总，我们已经实现了一个聊天机器人，可以通过HTTP端点和GET API回答问题。这是我们使用RNN所完成的有一个很棒的例子。在下一章中，我们会讨论另一个话题：如何使用TensorFlow创建推荐系统。
