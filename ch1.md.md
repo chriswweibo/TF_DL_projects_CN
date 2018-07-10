@@ -22,15 +22,15 @@
 
 限速20千米/小时:
 
-<img src="figures\7_1.jpg" />
+<img src="PATH\figures\7_1.jpg" />
 
 直行或右转：
 
-<img src="figures\7_2.jpg" />
+<img src="PATH\figures\7_2.jpg" />
 
 弯道：
 
-<img src="figures\8_1.jpg" />
+<img src="PATH\figures\8_1.jpg" />
 
 正如你所见，标志的亮度并不统一（有些很暗而有些很亮），尺寸不同，视角不同，背景不同，并且可能包含其他交通标志。
 
@@ -41,7 +41,7 @@ The CNN network
 ##CNN网络
 
 在我们的项目中，我们使用一个具有如下结构的非常简单的网络：
-<img src="figures\8_2.jpg" />
+<img src="PATH\figures\8_2.jpg" />
 在这一结构中，我们仍然有以下选择：
 
 * 二维卷积层中滤波器的个数和核大小
@@ -119,7 +119,7 @@ skimage模块使得图像的读取、转化、变形操作非常容易。在我�
 plt.imshow(dataset.X[0, :, :, :].reshape(RESIZED_IMAGE)) #sample
 print(dataset.y[0, :]) #label
 ```
-<img src="figures\11_1.jpg" />
+<img src="PATH\figures\11_1.jpg" />
 ```
  [[1. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
 
@@ -133,7 +133,7 @@ print(dataset.y[0, :]) #label
 plt.imshow(dataset.X[-1, :, :, :].reshape(RESIZED_IMAGE)) #sample
 print(dataset.y[-1, :]) #label
 ```
-<img src="F:\TF\figures\12_1.jpg" />
+<img src="F:\TF\PATH\figures\12_1.jpg" />
 ```
 [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
 
@@ -408,11 +408,11 @@ avg/total 0.99 0.99   0.99     9803
 
 下图是混淆矩阵：
 
-<img src="figures\19_1.jpg" />
+<img src="PATH\figures\19_1.jpg" />
 
 下面是log2版本进度的截屏：
 
-<img src="figures\20_1.jpg" />
+<img src="PATH\figures\20_1.jpg" />
 
 ##后续问题
 

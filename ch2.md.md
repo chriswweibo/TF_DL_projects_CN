@@ -55,7 +55,7 @@ Realistic images contain multiple objects that sometimes can hardly be distingui
 ```
 尽管`ImageNet`数据集可以展示分布在 14,197,122图像中的1000类目标（具体描述见https://gist.github.com/yrevar/942d3a0ac09ec9e5eb3a ），MSCOCO提供了较小数量的图像上目标物体的特殊特征（数据集曾用于亚马逊土耳其机器人，这是一种代价更高的方法，但也被ImageNet共享）。在这样的前提下，MS COCO图像可以被认为是上下文关系和非图标对象视图的很好的例子，因为对象被安排在现实的位置和设置中。这一点可以从前面提到的MSCOCO论文中提到的的相应的例子得到证实:
 
-<img src="figures\24_1.jpg" />
+<img src="PATH\figures\24_1.jpg" />
 
 图二：图标和非图标图像示例。来源： LIN, Tsung-Yi, et al.Microsoft coco: common objects in context.In: European conference on computer vision.Springer, Cham, 2014.p.740-755.
 
@@ -84,7 +84,7 @@ Realistic images contain multiple objects that sometimes can hardly be distingui
 
 所有这些工具也可以用于使用bounding box完成更简单的注释。它们可以帮助读者根据MSCOCO按照自己的分类重新训练一个模型（我们将在本章末尾再次提到这一点）
 
-<img src="figures\26_1.jpg" />
+<img src="PATH\figures\26_1.jpg" />
 
 ​								MSCOCO训练所用图像的像素级分割
 
@@ -720,7 +720,7 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
 
 在我们收到探测的类的结果之后得到的输出被放在图像的交叉点上，并返回给我们包含具有足够置信度的围绕着物体的边框的另一幅图像。
 
-<img src="figures\46_1.jpg" />
+<img src="PATH\figures\46_1.jpg" />
 
 ​						SSDMobileNet v1在交叉口照片上的目标检测
 
