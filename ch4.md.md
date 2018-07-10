@@ -33,7 +33,7 @@ GOODFELLOW, Ian, et al.Generative Adversarial Nets.In: Advances in Neural Inform
 
 论文中提出的一些示例，分别来自于MNIST，多伦多人脸数据集（Toronto Face Dataset，TFD），一个非公开数据集和cifar10数据集。
 
-<img src="F:\TF\figures\72_1.jpg" />
+<img src="figures\72_1.jpg" />
 
 图1：GANs的第一篇论文中采用不同数据集生成新图像的样本 a) MNIST b) TFD c) and d) CIFAR-10
 
@@ -52,7 +52,7 @@ Goodfellow用艺术伪造这一比喻来描述生成器，而判别器是侦探�
 
 下面我们讨论GANs如何运作。首先，生成器G没有线索，完全随机地生成数据（事实上它甚至不考虑原始数据），因此它会被判别器D惩罚——此时分辨真实数据和伪造数据是很容易的。from D. G承担全部责任，开始尝试不同的东西以获得更好的D反馈。这一过程也是随机完成的，因为G能看见的是随机的输入，Z，它无法接触真实的数据。在很多次尝试和失败后，在判别器的指导下，生成器最终会指出如何做并开始生成可靠的输出。最后，经过足够的时间，生成器会生成器将完全复制所有原始数据，即使它并没有见到过其中任何一个示例。
 
-<img src="F:\TF\figures\74_1.jpg" />
+<img src="figures\74_1.jpg" />
 
 ​							图2：一个简单的GAN架构如何工作的例子
 
@@ -91,7 +91,7 @@ DCGANs是GANs结构的第一个提升。DCGANs成功完成训练阶段，给出�
 
 在条件对抗生成网络conditional GANs (CGANs),中，增加一个特征向量可以控制输出并更好地引导生成器认识到应该做什么。这样一个特征向量可以编码为图像应该导出的类（图像是女人还是男人，如果我们想创建虚构的演员的面孔）或者是我们希望从图像中得到的一系列特定的特征（对于虚构的演员，可以是发型，眼睛或肤色）。这里的技巧是将信息合并到要学习的图像中并交给Z输入，这里的输入不再完全是随机的。判别器的评价不知需要从原始图像中判断出伪造图像，还需要找到伪造图像对应的标签（或特征）：
 
-<img src="F:\TF\figures\77_1.jpg" />
+<img src="figures\77_1.jpg" />
 
 ​					图3：将Z输入与Y输入结合（有标签的特征向量）允许生成受约束的图像。
 
@@ -428,7 +428,7 @@ def generator(self, z, out_channel_dim, is_train=True):
 
 这一结构与介绍CGANs的论文中画出的结构非常相似，论文中画出了如何通过大小为100的输入向量重构64*64**3的图像：
 
-<img src="F:\TF\figures\87_1.jpg" />
+<img src="figures\87_1.jpg" />
 
 ​								图4：DVGANs生成器结构
 
@@ -832,7 +832,7 @@ MNIST手写数字数据集由Yann LeCun在NYU的ourant研究所， Corinna Corte
 
 http://yann.lecun.com/exdb/mnist/
 
-<img src="F:\TF\figures\97_1.jpg" />
+<img src="figures\97_1.jpg" />
 
 ​				图5：:MNIST原始数据集的示例，帮助理解由CGAN复制的图像的质量。
 
@@ -876,7 +876,7 @@ gan.fit(learning_rate = 0.0002, beta1 = 0.35)
 
 下面的图像展示了GAN在第二轮和最后一轮生成的数字的示例：
 
-<img src="F:\TF\figures\98_1.jpg" />
+<img src="figures\98_1.jpg" />
 
 ​									图6：经过若干轮训练后GANs的结果
 
@@ -888,13 +888,13 @@ note on the evaluation of generative models.arXiv preprint arXiv:1511.01844,
 
 我们将保持评估的简单性和经验性，因此我们将使用一个由经过训练的GaN生成的图像样本来评估网络的性能，我们还将尝试检查生成器和鉴别器的训练损失，以便发现任何特定的趋势：
 
-<img src="F:\TF\figures\99_1.jpg" />
+<img src="figures\99_1.jpg" />
 
 ​	图7：对MNIST进行培训后的最终结果的样本显示，这对一个GaN网络来说是一项可完成的任务。
 
 观察下图所示的训练拟合图，我们注意到训练结束时生成器是如何达到最低误差的。判别器，在上一个峰值之后，正在努力回到它以前的性能值，指出了一个可能的生成器的突破。我们可以预期，更多的训练周期可以改善这个GaN网络的性能，但是随着输出质量的提高，可能需要花费成倍的时间。一般而言，一个很好的GaN收敛指标是判别器和生成器都有下降的趋势，这可以通过将线性回归线拟合到两个损失向量来推断：
 
-<img src="F:\TF\figures\100_1.jpg" />
+<img src="figures\100_1.jpg" />
 
 ​										图8:16轮训练的拟合情况
 
@@ -906,7 +906,7 @@ note on the evaluation of generative models.arXiv preprint arXiv:1511.01844,
 
 https://github.com/zalandoresearch/fashion-mnist
 
-<img src="F:\TF\figures\101_1.jpg" />
+<img src="figures\101_1.jpg" />
 
 ​									图9：原始Zalando 数据集的样例
 
@@ -951,13 +951,13 @@ gan.fit(learning_rate = 0.0002, beta1 = 0.35
 
 训练需要很长时间来完成所有轮，但是质量显示迅速稳定，尽管一些问题需要更多的轮来解决（例如T恤中的洞）：
 
-<img src="F:\TF\figures\103_1.jpg" />
+<img src="figures\103_1.jpg" />
 
 ​									图10： CGAN训练的各轮的变化
 
 这是64轮后的结果：
 
-<img src="F:\TF\figures\103_2.jpg" />
+<img src="figures\103_2.jpg" />
 
 ​						图11： Zalando数据集经过64轮训练后达到的结果概览
 
@@ -972,7 +972,7 @@ EMNIST数据集是从NIST特殊数据库派生的一组手写字符数字，转�
 
 读者也可以通过浏览EMNIST数据集的官方主页https://www.nist.gov/itl/iad/image- group/emnist- dataset来探索关于它的全部信息。下面是在EMNIST Balance中可以找到的字符类型的提取：
 
-<img src="F:\TF\figures\104_1.jpg" />
+<img src="figures\104_1.jpg" />
 
 ​									图11：原始EMNIST数据集的示例
 
@@ -1022,7 +1022,7 @@ gan.fit(learning_rate = 0.0002, beta1 = 0.35)
 
 下面是完成32轮训练后生成的手写字母的示例：
 
-<img src="F:\TF\figures\106_1.jpg" />
+<img src="figures\106_1.jpg" />
 
 ​						图12：在EMNIST数据集上对CGAN进行培训的结果概览
 
@@ -1067,7 +1067,7 @@ print(images.shape)
 
 在设置了要表示的目标类之后，`generate_new `被调用3次，最后一次返回的值被存在变量images中，其尺寸为 (100, 28, 28, 1) ，包含一个生成图像的numpy矩阵，它可以为我们的目标所重用。每次读者调用这一方法，都会绘制出一个网格的结果，正如下图所示：
 
-<img src="F:\TF\figures\107_1.jpg" />
+<img src="figures\107_1.jpg" />
 
 图13：所绘制的网格是所生成图像的组合，即图像本身。从左到右，图中要求一个1x1，5x5，10x10格的结果。实际图像由该方法返回并可重用。
 
