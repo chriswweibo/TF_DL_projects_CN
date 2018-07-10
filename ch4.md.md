@@ -60,7 +60,7 @@ Goodfellow用艺术伪造这一比喻来描述生成器，而判别器是侦探�
 
 正如上文提到的，关于GANs的新论文每个月都在产生（读者可以在Hindu Puravinash上查找文献列表，在本章的开头我们已经提到过）。
 
-不管怎样，除了 Goodfellow和他的同事们最初的描述实施方法的论文之外，值得注意的最著名的的实施方案是深度卷积对抗网络（DCGANs）和条件生成对抗网络（CGANs）。
+不管怎样，除了 Goodfellow和他的同事们最初的描述实施方法的论文之外，值得注意的最著名的的实施方案是**深度卷积对抗网络**（deep convolutional generative adversarial networks，*DCGANs*）和**条件生成对抗网络**（conditional GANs， *CGANs*）。
 
 * DCGANs是基于CNN结构的GANs(RADFORD, Alec; METZ, Luke;CHINTALA, Soumith.Unsupervised representation learning with deep convolutionalgenerative adversarial networks.arXiv preprint arXiv:1511.06434, 2015: https://arxiv.org/abs/1511.06434).
 
@@ -69,9 +69,9 @@ Goodfellow用艺术伪造这一比喻来描述生成器，而判别器是侦探�
 
  此外也有一些有趣的例子（我们的项目中不包括这些），给出了创造图像或提升的问题的实际解决方案：
 
-* CycleGAN，将一幅图像转化为另一幅（经典的例子是将马变为斑马: ZHU, Jun-Yan, et al.Unpaired image-	to-image translation using cycle-consistent adversarial networks.arXiv preprint arXiv:1703.10593, 2017: https://arxiv.org/abs/1703.10593)
-* StackGAN可以根据描述图像的文本生成图像 (ZHANG, Han, et al.Stackgan: Text to photo-realistic image synthesis with stacked generative adversarial networks.arXiv preprint arXiv:1612.03242, 2016: https://arxiv\.org/abs/1612.03242)
-	 DiscoveryGAN (DiscoGAN) 传递不同图像之间的风格元素，	从而可以将一个时尚品，比如背包的纹理和装饰传递到一双鞋上(KIM, Taeksoo, et al.Learning to discover cross-domain relations with generative adversarial networks.arXiv preprint arXiv:1703.05192, 2017: https://arxiv.org/abs/1703.05192)
+* **循环·对抗生成网络**（CycleGAN），将一幅图像转化为另一幅（经典的例子是将马变为斑马: ZHU, Jun-Yan, et al.Unpaired image-	to-image translation using cycle-consistent adversarial networks.arXiv preprint arXiv:1703.10593, 2017: https://arxiv.org/abs/1703.10593)
+* **堆栈对抗生成网络**（StackGAN）可以根据描述图像的文本生成图像 (ZHANG, Han, et al.Stackgan: Text to photo-realistic image synthesis with stacked generative adversarial networks.arXiv preprint arXiv:1612.03242, 2016: https://arxiv\.org/abs/1612.03242)
+* **发现对抗生成网络**（DiscoveryGAN ，*DiscoGAN*) 传递不同图像之间的风格元素，	从而可以将一个时尚品，比如背包的纹理和装饰传递到一双鞋上(KIM, Taeksoo, et al.Learning to discover cross-domain relations with generative adversarial networks.arXiv preprint arXiv:1703.05192, 2017: https://arxiv.org/abs/1703.05192)
 * SRGAN把低质量的图像转化为高分辨率图像(LEDIG, Christian, et al.Photo-realistic single image super-resolution using a generative adversarial network.arXiv preprint arXiv:1609.04802, 2016: https://arxiv.org/abs/1609.04802)
 
 
@@ -89,7 +89,7 @@ DCGANs是GANs结构的第一个提升。DCGANs成功完成训练阶段，给出�
 
 ##条件对抗生成网络
 
-在条件对抗生成网络conditional GANs (CGANs),中，增加一个特征向量可以控制输出并更好地引导生成器认识到应该做什么。这样一个特征向量可以编码为图像应该导出的类（图像是女人还是男人，如果我们想创建虚构的演员的面孔）或者是我们希望从图像中得到的一系列特定的特征（对于虚构的演员，可以是发型，眼睛或肤色）。这里的技巧是将信息合并到要学习的图像中并交给Z输入，这里的输入不再完全是随机的。判别器的评价不知需要从原始图像中判断出伪造图像，还需要找到伪造图像对应的标签（或特征）：
+在条件对抗生成网络中，增加一个特征向量可以控制输出并更好地引导生成器认识到应该做什么。这样一个特征向量可以编码为图像应该导出的类（图像是女人还是男人，如果我们想创建虚构的演员的面孔）或者是我们希望从图像中得到的一系列特定的特征（对于虚构的演员，可以是发型，眼睛或肤色）。这里的技巧是将信息合并到要学习的图像中并交给Z输入，这里的输入不再完全是随机的。判别器的评价不知需要从原始图像中判断出伪造图像，还需要找到伪造图像对应的标签（或特征）：
 
 <img src="figures\77_1.jpg" />
 
@@ -998,7 +998,7 @@ if os.path.isfile(filename):
 	os.remove(filename)
 ```
 
-为了学习这一手写数字集合，我们将一批设为32张图像，学习率为0.0002，beta1值为0.35，z_dim为96，训练10轮：
+为了学习这一手写数字集合，我们将一批设为32张图像，学习率为0.0002，`beta1`值为0.35，`z_dim`为96，训练10轮：
 
 ```python
 labels_path = '/gzip/emnist-balanced-train-labels-idx1-ubyte.gz'
@@ -1079,14 +1079,13 @@ images = gan.generate_new(target_class=nclass, rows=10, cols=10, plot=False).
 
 
 
-##使用AmazonWeb服务
+##使用亚马逊网络服务
 
-如前所述，我们热烈建议读者使用GPU来训练本章中给出的示例。仅仅使用CPU在合理的时间内获得结果确实是不可能的，而且使用GPU可能会变成等待计算机完成训练的所需要的相当长的时间。一个需要付费的解决方案是，使用AmazonElasticComputeCloud，即AmazonEC 2(https://aws.amazon.com/it/ec2/)，它是Amazon Web Services (AWS)的一部分。在EC2上，读者可以启动虚拟服务器，从读者的计算机通过网络连接来控制它。读者可以在EC2上申请强大的GPU服务器，并且使读者的Tensorflow项目生涯更加轻松。
+如前所述，我们热烈建议读者使用GPU来训练本章中给出的示例。仅仅使用CPU在合理的时间内获得结果确实是不可能的，而且使用GPU可能会变成等待计算机完成训练的所需要的相当长的时间。一个需要付费的解决方案是，使用**亚马逊弹性计算云**（AmazonElasticComputeCloud），即AmazonEC 2(https://aws.amazon.com/it/ec2/)，它是**亚马逊网络服务**（Amazon Web Services，*AWS*)的一部分。在EC2上，读者可以启动虚拟服务器，从读者的计算机通过网络连接来控制它。读者可以在EC2上申请强大的GPU服务器，并且使读者的Tensorflow项目生涯更加轻松。
 
 AmazonEC 2并不是唯一的云服务。我们向读者推荐这个服务，因为它是我们用来测试本书中的代码的服务。事实上，还有很多选择，比如谷歌云计算 (cloud.google.com)，Microsoft Azure (azure.microsoft.com) 和其他等等。
 在EC2上运行本章的代码需要有一个AWS账户。如果没有，第一步是注册aws.amazon.com，完成所有必要的表格，并开始一个免费的基本支持计划。
-在读者注册AWS之后，读者可以登陆并访问EC2页面(https://aws.amazon.com/ec2)。在这里读者将：
-1 从 EU (Ireland), Asia Pacific (Tokyo), US East (N.Virginia) 和 US West (Oregon)选择一个既离读者近又便宜并且允许我们需要的GPU实例类型的地区。
+在读者注册AWS之后，读者可以登陆并访问EC2页面(https://aws.amazon.com/ec2)。在这里读者将：从 EU (Ireland), Asia Pacific (Tokyo), US East (N.Virginia) 和 US West (Oregon)选择一个既离读者近又便宜并且允许我们需要的GPU实例类型的地区。
 
 2 https://console.aws.amazon.com/ec2/v2/home? #Limits更新读者的服务限制报告。读者需要访问一个p3.2xlarge的实例。因此，如果读者的实际限制为零，则应该使用请求限制增长表单将其至少取为1（这可能需要24小时，但在它完成之前读者无法访问该类型的实例）。
 
