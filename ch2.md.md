@@ -1,0 +1,855 @@
+# 第2章 用物体探测接口注释图像
+
+
+
+近年来，随着深度学习的发展，计算机视觉取得了巨大的飞跃，使计算机在视觉场景的理解上有了更高的水平。视觉任务中深度学习的潜力是巨大的：使计算机视觉具有感知和理解周围环境的能力，从而在可移动（例如，自动驾驶汽车可以通过车上的相机探测出物体是行人，动物，另一辆机动车并做出行动指令）与日常生活中的人机交互（例如，可以使机器人感知周围环境并做出反应）的领域打开了人工智能大门。
+
+为了实现上述的分类和定位，我们引入tensorflow的目标探测API，这是google的tensorflow模型项目中的一部分，tensorflow可以预训练一系列神经网络并包装在日常应用中。
+
+在这一章，我们主要讨论以下问题：
+
+* 在项目中用合适的数据的优势
+* tensorflow物体探测接口的简介
+* 如何为后续应用储存图像
+* 怎样使用`moviepy`处理视频
+* 怎样从网站中实时获取图像
+
+## 上下文中的微软公共对象
+
+在计算机视觉方面，深度学习经常被用于解决分类问题，如ImageNet（以及类似的数据集，例如PASCAL VOC，详见http://host.robots.ox.ac.uk/pascal/VOC/voc2012 ），以及适合解决问题的卷积网络（如Xception, VGG16, VGG19, ResNet50, InceptionV3, 以及MobileNet，这些网络在keras中都有引用，参见https://keras.io/applications/）
+
+尽管基于Imagenet数据集的深度学习技术已经登峰造极，这种网络在面对真实世界的应用时存在很多困难。事实上，在实际应用中，我们不得不处理来自imagenet的样本相当不同的数据。在Imagenet中，样本按照图像中唯一清晰的元素进行明确分类，理想情况下，待分类的物体处于图像中央位置，并且不被遮挡。在实际图像中，大量物体随机分布。所有这些物体彼此不同，会造成数据集的混乱。除此之外，常见的舞台不能准确且直接地被察觉，因为它们可能被其它物体遮盖。
+
+请参照以下图示。
+
+图1：imagenet的一例图像，它们处于可继承的结构中，允许采用一般或更精确的分类。
+
+来源： DENG, Jia, et al.Imagenet: A large-scale hierarchical image database.
+In: Computer Vision and Pattern Recognition, 2009.CVPR 2009.IEEE Conference on.IEEE, 2009.p.248-255.
+Realistic images contain multiple objects that sometimes can hardly be distinguished from a noisy background.
+
+实际情况下，含有多个物体的图像有时很难和背景噪音区分。
+
+读者通常无法只通过图像含有的拥有最高置信度的简单标签来创建有趣的项目。在实际应用中，读者需要有能力完成以下工作：
+
+* 物体识别，识别物体并分类，同一类中通常包含多种不同的物体。
+* 图像定位，找出图像中特定物体的位置。
+* 图像分割，每个像素点都具有标签，表示该点是物体还是背景，以便可以从背景中分离出感兴趣区域。
+
+    如文章LIN, Tsung-Yi, et al.Microsoft coco: common objects in context.In: European conference on computer vision.Springer, Cham, 2014.p.740-755.（文章见https://arxiv.org/abs/1405.0312.中所提到的，训练卷积网络的必要性在于能够在微软常见物体数据集（MSCOCO）上创建能够实现上述部分或全部目标的上下文。该数据集包含91类对象，采用分层排序的方式，其中82类包含5000个以上有标签的实例。数据集共含有2500000个标注对象，它们分布在32800张图像中。
+
+下面是MSCOCO数据集中可辨识的类：
+
+```python
+{1: 'person', 2: 'bicycle', 3: 'car', 4: 'motorcycle', 5: 'airplane', 6: 'bus', 7: 'train', 8: 'truck', 9: 'boat', 10: 'traffic light', 11: 'fire hydrant', 13: 'stop sign', 14: 'parking meter', 15: 'bench', 16: 'bird', 17: 'cat', 18: 'dog', 19: 'horse', 20: 'sheep', 21: 'cow', 22: 'elephant', 23: 'bear', 24: 'zebra', 25: 'giraffe', 27: 'backpack', 28: 'umbrella', 31:
+'handbag', 32: 'tie', 33: 'suitcase', 34: 'frisbee', 35: 'skis', 36:
+'snowboard', 37: 'sports ball', 38: 'kite', 39: 'baseball bat', 40:
+'baseball glove', 41: 'skateboard', 42: 'surfboard', 43: 'tennis racket', 44: 'bottle', 46: 'wine glass', 47: 'cup', 48: 'fork', 49: 'knife', 50:
+'spoon', 51: 'bowl', 52: 'banana', 53: 'apple', 54: 'sandwich', 55:
+'orange', 56: 'broccoli', 57: 'carrot', 58: 'hot dog', 59: 'pizza', 60:
+'donut', 61: 'cake', 62: 'chair', 63: 'couch', 64: 'potted plant', 65:
+'bed', 67: 'dining table', 70: 'toilet', 72: 'tv', 73: 'laptop', 74:
+'mouse', 75: 'remote', 76: 'keyboard', 77: 'cell phone', 78: 'microwave', 79: 'oven', 80: 'toaster', 81: 'sink', 82: 'refrigerator', 84: 'book', 85:
+'clock', 86: 'vase', 87: 'scissors', 88: 'teddy bear', 89: 'hair drier',
+90: 'toothbrush'}
+```
+尽管`ImageNet`数据集可以展示分布在 14,197,122图像中的1000类目标（具体描述见https://gist.github.com/yrevar/942d3a0ac09ec9e5eb3a ），MSCOCO提供了较小数量的图像上目标物体的特殊特征（数据集曾用于亚马逊土耳其机器人，这是一种代价更高的方法，但也被ImageNet共享）。在这样的前提下，MS COCO图像可以被认为是上下文关系和非图标对象视图的很好的例子，因为对象被安排在现实的位置和设置中。这一点可以从前面提到的MSCOCO论文中提到的的相应的例子得到证实:
+
+<img src="PATH\figures\24_1.jpg" />
+
+图二：图标和非图标图像示例。来源： LIN, Tsung-Yi, et al.Microsoft coco: common objects in context.In: European conference on computer vision.Springer, Cham, 2014.p.740-755.
+
+ 此外，MS COCO的图像注释特别丰富，提供了图像中存在的对象的轮廓的坐标。等高线可以很容易地转换成bounding boxes，这些框限定对象所在的图像的位置。这是一种粗糙的定位对象的方法，而不是原始的基于像素分割的训练方法。
+
+下图中，通过定义图像中的显著区域并创建这些区域的文本描述，仔细划分了拥挤的行。在机器学习中，这种方式可以转化为给图像中的每个像素分配标签，并尝试预测分割类（根据对应的文本描述）。历史上，相关工作直到2012年才随着Imagenet图像处理而完成，深度学习也被证明是一种更有效的解决方案。
+
+2012是计算机视觉的一个里程碑，因为深度学习第一次提供了比之前任何传统技术更好的结果
+
+因为第一次深度学习解决方案比KRIZHEVSKY, Alex; SUTSKEVER, Ilya; HINTON, Geoffrey E.之前使用的任何技术提供了许多优异的结果。用深度卷积神经网络对ImageNet分类详见Advances in neural information processing systems.2012.p.1097-1105 ( https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf).
+
+图像分割特别适用于各种任务，例如：
+
+* 突出图像中的重要对象，例如医学疾病检测领域的应用
+
+* 在图像中定位物体，以便机器人能够拾取或操纵它们。
+
+* 帮助自动驾驶汽车了解路况或无人驾驶汽车了解路况并完成导航。
+
+* 通过自动提取图像的部分或去除图像背景来编辑图像 。
+
+这种标注非常昂贵（这限制了MSCOCO中的实例数量），因为它必须完全手动完成，并且需要注意精度。有一些工具可以通过分割图像进行注释。读者可以在https://stackoverflow.com/questions/8317787/imagelabelling-and-annotation-tool.中看到总和列表。如果读者想要自己通过分割来注释图像，那么我们推荐下面两个工具：
+
+* Labelling https://github.com/tzutalin/labelImg
+* FastAnnotationTool https://github.com/christopher5106/FastAnnotationTool
+
+所有这些工具也可以用于使用bounding box完成更简单的注释。它们可以帮助读者根据MSCOCO按照自己的分类重新训练一个模型（我们将在本章末尾再次提到这一点）
+
+<img src="PATH\figures\26_1.jpg" />
+
+​								MSCOCO训练所用图像的像素级分割
+
+## Tensorflow目标探测接口
+
+作为提升研究社区能力的一种方式，谷歌研究科学家和软件工程师经常开发最先进的模型并且开源。正如2016年10月谷歌研究博客 https://research.googleblog.com/2017/06/supercharge-your-computer-vision-models.html 中所描述的，谷歌的内部目标探测系统在COCO探测挑战中拿到了冠军，这一比赛主要解决的是寻找图像中对象（估计对象在图像中某一位置的概率）和它们的边界框（细节参见https://arxiv.org/abs/1611.10012 ）的问题。谷歌的解决方案不仅贡献了大量论文并投入了使用（如Nest Cam_https://nest.com/cameras/nest-aware/， Image Search，https://www.blog.google/products/search/now-image-search-can-jump-start-yoursearch-style/， and Street View_https://research.googleblog.com/2017/05/updatinggoogle-maps-with-deep-learning.html ），而且在tensorflow之上建立了大量的开源框架。
+
+上述框架经常提供一些有用的功能。下面是五个不同的预训练模型（构成所谓的预训练模型动物园）：
+
+* Single Shot Multibox Detector (SSD) with MobileNets
+* SSD with Inception V2
+* Region-Based Fully Convolutional Networks (R-FCN) with Resnet 101
+* Faster R-CNN with Resnet 101
+* Faster R-CNN with Inception Resnet v2
+
+
+ 模型在检测精度和检测过程的执行速度上都在不断提高。MobileNets, Inception和Resnet指的是不同类型的卷积神经网络结构。
+
+MobileNets，Inception和ResNet是指不同类型的CNN架构（MoblieNets，顾名思义，是由于优化移动电话的网络，结构尺寸小，执行速度快）。前面的章节中我们已经讨论过卷积神经网络的结构，读者可以参考这里了解更多关于这种架构的见解。如果需要更多资料，在 Joice Xu的博客中读者可以很轻松地改变主题，博客地址：https://towardsdatascience.com/an-intuitive-guide-to-deepnetwork-architectures-65fdc477db41.
+
+  Single Shot Multibox Detector (SSD), Region-Based Fully convolutional networks (RFCN)和Faster Region-based convolutional neural networks (Faster R-CNN)是用来检测图像中多个对象的新模型。在下一段落中，我们将解释它们的工作原理。
+
+  读者可以根据具体应用选择最合适的模型（需要进行一些实验），或对多个模型进行集成以便得到更好的结果（正如谷歌研究员为了赢得COCO比赛所做的那样）。
+
+
+## 掌握R-CNN，R-FCN和SSD模型的基本知识
+
+ 即使读者清楚地知道美国有线电视新闻网如何管理图像分类，但对于神经网络来说，如何通过定义它的边界框（一个矩形包围对象本身）从而将多个对象定位成一个图像，可能不太明显。读者可以想象的第一个最简单的解决方案可能是滑动窗口并在每个窗口上应用卷积神经网络，但是对于大多数现实世界的应用来说，这可能是非常昂贵的计算（如果读者给自己驾驶的汽车提供动力，读者确实希望它能识别出障碍物并在碰撞之前停下）。
+
+读者可以在博客 https://www.pyimagesearch.com/2015/03/23/sliding-windowsfor-object-detection-with-python-and-opencv/以便更好地了解用如何滑动窗口进行目标探测。博客中给出了将其与图像金字塔结合的有效的例子。
+
+虽然滑动窗口相当直观，但其复杂性和计算冗余（在不同尺度的图像上穷举和处理）带来了诸多限制，另一种优选的区域候选算法也随即产生。这种算法采用图像分割（即根据不同区域颜色的差异将图像分为不同的部分）以枚举图像中可能存在的边界框。算法的具体细节参见Satya allik的工作：https://www.learnopencv.com/selective-search-for-object-detection-cpppython/.
+
+区域选择算法的关键是提供有限数量的边框盒，其数量远小于滑动窗口的数量。这使得它们可以应用于第一版R-CNN以及基于区域的卷积神经网络。工作原理如下：
+
+1. 在图像中，用区域选择算法找到几百到几千个感兴趣区域。
+2. 用卷积神经网络处理感兴趣区域，以便创建每个区域的特征
+3. 采用支持向量机及线性回归模型，用特征对区域进行分类，使计算得到的边框和更加精确。
+
+由R-CNN快速进化而得到的Fast R-CNN使事情变得更简单，因为：
+
+1. 它用CNN立即处理图像，转化图像并应用到区域决策。这使得CNN需要处理的区域从数千降到一。
+2. 采用多元逻辑回归和线性分类器而非支持向量机，这样使得CNN可以扩展，而不是简单地将数据传入不同模型。
+
+本质上，通过使用Fast R-CNN，我们再次创建了一个以特殊的过滤和选择层，区域决策层为特征的基于非神经网络算法的分类器。Fast R-CNN甚至改变了这些层，用区域决策神经网络取代之。这使得模型更加复杂，但也比以往任何方法都更快、效果更好。
+
+无论如何，R-FCN比R-CNN更快，因为它是全卷积网络，在卷积层之后不需要全连接层，从输入到输出是通过卷积连接的端对端的网络。这使得网络更快（比最后一层是全连接层的CNN的权值数量少）。然而，这种速度上的提升需要代价，它们不再表征图像的不变性（卷积神经网络可以识别对象的分类，无论它是否经过旋转）。FastR-CNN通过位置敏感得分图来弥补这一缺陷，这是一种检查FCN处理的原始图像的部分是否对应于要分类的类的部分的方法。 简而言之，不需要比较类，而是比较类的一部分。举例来说，他们不把狗分类，而是分为狗的左上部分，狗的右下部分等等。 这种方法可以确定图像中是否有狗，不管图中包含狗的哪一部分。显然，这种快速的方法是以较低的精度为代价的，因为位置敏感的得分地图不能补充所有原始的卷积神经网络提取的所有特征。
+
+最后，我们来看SSD （Single Shot Detector）。这里的速度甚至更快，因为网络处理图像的过程中，同时预测边框盒位置及其分类。SSD剔除了大量边框盒，但是它仍然是我们目前为止所提到的网络中需要处理最多边框盒的模型。SSD速度快的原因在于在寻找边框盒的同时进行分类，即同时完成所有任务。它具有最快的速度，虽然以相当类似的方式执行。
+
+如果读者需要了解我们讨论的上述模型的更多细节，可以参考Joice Xu的论文：https://towardsdatascience.com/deep_learning_for_object_detection_a_comprehensive_review-73930816d8d9
+
+总体来说，为了选择网络，读者必须综合考虑卷积神经网络的结构及其分类能能力和复杂度，以及不同的探测模型。在时间允许的条件下发现对象并对其进行分类，是它们共同作用的结果。
+
+如果读者渴望更多地了解我们解释的模型，读者可以参考Speed/accuracy trade-offs for modern convolutional object detectors.Huang J, Rathod V, Sun C, Zhu M, Korattikara A, Fathi A, Fischer I, Wojna Z, Song Y, Guadarrama S, Murphy K, CVPR 2017，网址是http://openaccess.thecvf.com/content_cvpr_2017/papers/Huang_SpeedAccuracy_Trade_Offs_for_CVPR_2017_paper.pdf。然而，我们建议读者自己动手实践，评价它们的性能是否足够好，执行的时间是否合理。这是一个权衡的问题，读者必须为读者的应用做出最好的决定。
+
+## 展示我们的项目计划
+
+鉴于TensorFlow提供了这样一个强大的工具，我们的计划是利用其API，通过创建一个类，读者可以在视觉上和外部文件中注释图像。通过注释，我们的意思是：
+
+* 指出图像中的物体（如同在MS COCO上训练模型所识别的那样）
+* 报告目标识别中的置信水平（我们将只考虑最小概率阈值以上的对象，基于先前提到的现代卷积对象检测器的速度/精度折衷，将其设置为0.25）。
+* 输出每个图像的包围盒的两个相对顶点的坐标 。
+* 将上述所有信息存储为JSON格式的文件。
+     如有需要，将边框盒在原始图像上可视化。
+
+  为了实现这些目标，我们需要：
+
+1. 下载一个预训练的模型（可以加上 -protobuf以支持pb格式）并放入内存作为Tensorflow会话
+2. 重新编写TensorFlow提供的帮助代码，以便于更容易地将标签、类别和可视化工具加载到一个可以很容易地导入到脚本中的类中。
+3. 准备一个简单的脚本来演示它的使用与从摄像头捕获的单个图像、视频和视频。
+
+ 我们的项目从搭建一个合适的平台开始。
+
+## 为项目搭建合适的环境
+
+读者不需要任何专门的环境来运行这个项目，尽管我们强烈建议读者安装Anaconda的conda并为项目创建一个单独的环境。如果读者的系统中conda可用，则可以进行以下操作：
+
+```shell
+conda create -n TensorFlow_api python=3.5 numpy pillow activate TensorFlow_api
+```
+
+激活环境后，读者可以安装一些需要PIP安装命令或CONDA安装命令指向其他存储库的软件包（MNPO，CONDA FAGE）：
+
+```
+pip install TensorFlow-gpu
+
+conda install -c menpo opencv
+
+conda install -c conda-forge imageio
+
+pip install tqdm, moviepy
+```
+
+如果您喜欢运行这个项目的另一种方式，请考虑读者需要numpy、pillow、TensorFlow、OpenCV、imageio、tqdm和moviepy包，以便成功运行。
+
+为了顺利运行，您还需要为项目创建目录，并且保存在Tensorflow目标探测接口项目的目标探测路径下（https://github.com/tensorflow/models/tree/master/research/object_detection).
+
+读者可以用git命令很简单地获取整个Tensorflow模型项目并选择只获取该目录。如果读者的git版本是1.7.9（2012年2月）或以上则可以进行下面的操作：
+```
+mkdir api_project
+cd api_project
+git init
+git remote add -f origin https://github.com/tensorflow/models.git
+```
+这些命令可以获取Tensorflow模型项目中的所有对象但不会进行校验。执行以下命令：
+
+```
+git config core.sparseCheckout true
+echo "research/object_detection/*" >>.git/info/sparse-checkout
+git pull origin master
+```
+现在读者拥有通过了校验的`object_detection`目录的全部内容，并且读者的文件系统中没有其他目录或文件。
+
+请注意，项目需要访问`object_detection`目录，因此，读者必须保证项目脚本存储在同一目录下。为了在其他项目中也能够使用此脚本，读者需要通过绝对路径来访问它。
+
+
+
+## 编译protobuf
+
+Tensorflow目标探测接口采用protobufs，协议缓冲——谷歌数据交换格式(https://github.com/google/protobuf),，以保证模型及训练参数。在使用框架前，必须对元库进行编译，如果读者使用Unix（Linux或Mac）或Windows操作系统，需要不同的步骤。
+
+## Winsdows安装
+
+首先，在https://github.com/google/protobuf/上找到releasesprotoc-3.2.0-win32.zip并解压到项目文件夹。现在，读者应该有一个新的protoc-3.4.0-win32文件夹，包含readme.txt和两个文件夹：bin和incude。文件夹包含协议缓冲编译程序的预编译二进制版本（protoc）。 读者需要做的是把protoc-3.4.0-win32加入系统路径。
+
+在把上班路径加入系统变量后，执行以下命令：
+```
+protoc-3.4.0-win32/bin/protoc.exe object_detection/protos/*.proto --python_out=.
+```
+这样可以使Tensoflow目标探测接口在读者的电脑上运行。
+
+## Unix安装
+
+  对于Unix环境，安装过程可以使用shell命令，具体的操作详见：
+```
+https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/installation.md
+```
+## 项目代码的提供
+
+ 我们可以通过加载必要的包来运行我们的项目脚本：tensorflow_detection.py:
+```python
+    import os
+    import numpy as np
+    import tensorflow as tf
+    import six.moves.urllib as urllib
+    import tarfile
+    from PIL import Image
+    from tqdm import tqdm
+    from time import gmtime, strftime
+    import json
+    import cv2
+```
+为了能够处理视频，除OpenCV3之外，我们还需要`moviepy`包。`moviepy`包是一个开源项目，可以从http://zulko.github.io/moviepy/下载并免费使用，许可证来自MIT。正如它的主页中描述的，`moviepy`是一个可以进行视频编辑（可以剪切，合并，插入标题）、视频合成（非线性编辑）、视频处理或加入特效的工具。
+这个包可以处理大多数常见的格式，包括GIF格式。它需要FFmped转化器（https://www.ffmpeg.org/）以便正确操作，因此在首次使用时它会启动失败并且下载FFmpeg作为插件使用`imageio`:
+```python
+try:
+    from moviepy.editor import VideoFileClip
+except:
+
+   # If FFmpeg (https://www.ffmpeg.org/) is not found
+
+   # on the computer, it will be downloaded from Internet
+
+   # (an Internet connect is needed)
+
+    import imageio
+    imageio.plugins.ffmpeg.download()
+    from moviepy.editor import VideoFileClip
+```
+最后，我们需要Tensorflow项目接口中目标探测文件夹下的两个有用的功能：
+```python
+    from object_detection.utils import label_map_util
+    from object_detection.utils import visualization_utils as vis_util
+```
+我们定义`DetectionObj`类和它的init步骤。初始化只针对一个参数和模型名（最初被设置为性能较差但速度更快、重量更轻的模型，例如 SSD MobileNet），但一些内部参数可以通过适应读者所需要的类来改变：
+
+* `self.TARGET_PATH`指出了读者想进行注释并保存的目录
+
+* `self.THRESHOLD`修正由注释过程引起的概率阈值。事实上，这套模型中的任何模型都会输出每幅图形的低概率探测。概率过低的探测通常是错误的，因此，读者需要确定一个阈值，并忽略这样的可能性。从经验上来看，0.25是一个很好的阈值，可以根据几乎所有的完全遮挡或视觉杂波来寻找不确定的目标。
+
+```python
+class DetectionObj(object):
+    """
+    DetectionObj is a class suitable to leverage
+    Google Tensorflow detection API for image annotation from
+    different sources: files, images acquired by own's webcam,
+    videos.
+    """
+    def__init__(self, model='ssd_mobilenet_v1_coco_11_06_2017'):
+        """
+        The instructions to be run when the class isinstantiated
+        """
+
+       # Path where the Python script is being run
+
+       self.CURRENT_PATH = os.getcwd()
+
+       # Path where to save the annotations (it can be modified)
+
+       self.TARGET_PATH = self.CURRENT_PATH
+
+       # Selection of pre-trained detection models
+
+       # from the Tensorflow Model Zoo
+
+       self.MODELS = ["ssd_mobilenet_v1_coco_11_06_2017",
+                        "ssd_inception_v2_coco_11_06_2017",
+                        "rfcn_resnet101_coco_11_06_2017",
+                           "faster_rcnn_resnet101_coco_11_06_2017",
+                        "faster_rcnn_inception_resnet_v2_atrous_\
+                        coco_11_06_2017"]
+
+       # Setting a threshold for detecting an object by the models
+
+       self.THRESHOLD = 0.25 # Most used threshold in practice
+
+       # Checking if the desired pre-trained detection model is available
+
+       if model in self.MODELS:
+            self.MODEL_NAME = model
+        else:
+
+            Otherwise revert to a default model
+
+            print("Model not available, reverted to default",
+                    self.MODELS[0])
+            self.MODEL_NAME = self.MODELS[0]
+
+        # The file name of the Tensorflow frozen model
+
+        self.CKPT_FILE = os.path.join(self.CURRENT_PATH,'object_detection',
+        self.MODEL_NAME,'frozen_inference_graph.pb')
+
+        # Attempting loading the detection model,
+
+        # if not available on disk, it will be
+
+        # downloaded from Internet
+
+        # (an Internet connection is required)
+
+        try:
+            self.DETECTION_GRAPH = self.load_frozen_model()
+        except:
+            print ('Couldn\'t find', self.MODEL_NAME)
+            self.download_frozen_model()
+            self.DETECTION_GRAPH = self.load_frozen_model()
+
+        # Loading the labels of the classes recognized by the detection model
+        self.NUM_CLASSES = 90
+        path_to_labels = os.path.join(self.CURRENT_PATH,
+                       'object_detection', 'data',
+                        'mscoco_label_map.pbtxt')
+        label_mapping = \
+            label_map_util.load_labelmap(path_to_labels)
+        extracted_categories = \
+            label_map_util.convert_label_map_to_categories(
+            label_mapping, max_num_classes=self.NUM_CLASSES,
+            use_display_name=True)
+        self.LABELS = {item['id']: item['name'] \
+                    for item in extracted_categories}
+        self.CATEGORY_INDEX = label_map_util.create_category_index\
+                    (extracted_categories)
+
+       # Starting the tensorflow session
+
+       self.TF_SESSION = tf.Session(graph=self.DETECTION_GRAPH)
+```
+读者有`self.LABLES`这样一个方便的变量，它包含一个对文本表示进行数字编码的字典。此外，`init`程序将加打开并准备Tensorflow会话，用作`self.TF_SESSION`。
+
+`load_frozen_model`和 `download_frozen_model`这两个函数会帮助`init`来从磁盘加载选中的冻结的模型，如果模型不可访问，则会从网上下载tar格式的模型并且解压到合适的目录（即`object_detection`目录）：
+```python
+    def load_frozen_model(self):
+            """
+         Loading frozen detection model in ckpt
+            file from disk to memory
+
+        """
+        detection_graph = tf.Graph()
+        with detection_graph.as_default():
+            od_graph_def =  tf.GraphDef()
+
+        with tf.gfile.GFile(self.CKPT_FILE, 'rb') as fid:
+            serialized_graph = fid.read()
+            od_graph_def.ParseFromString(serialized_graph)
+            tf.import_graph_def(od_graph_def, name='')
+
+       return detection_graph
+```
+函数`download_frozen_model`改变`tqdm`包从而使新模型从互联网下载的过程可以可视化。一些模型相当大（超过600MB），下载可能需要很长时间。提供可视化的反馈并且估计剩余时间可以让使用者对操作过程更有信心：
+```python
+def download_frozen_model(self):
+    """
+    Downloading frozen detection model from Internet
+    when not available on disk
+    """
+    def my_hook(t):
+        """
+        Wrapping tqdm instance in order to monitor URLopener
+        """
+        last_b = [0]
+    def inner(b=1, bsize=1, tsize=None):
+        if tsize is not None:
+            t.total = tsize
+        t.update((b_last_b[0]) * bsize)
+        last_b[0] = b
+    return inner
+
+# Opening the url where to find the model
+
+model_filename = self.MODEL_NAME + '.tar.gz'
+download_url = \
+    'http://download.tensorflow.org/models/object_detection/'
+opener = urllib.request.URLopener()
+
+Downloading the model with tqdm estimations of completion
+
+print('Downloading...')
+with tqdm() as t:
+    opener.retrieve(download_url + model_filename,
+                    model_filename, reporthook=my_hook(t))
+
+Extracting the model from the downloaded tar file
+
+print ('Extracting...')
+tar_file = tarfile.open(model_filename)
+for file in tar_file.getmembers():
+    file_name = os.path.basename(file.name)
+    if 'frozen_inference_graph.pb' in file_name:
+        tar_file.extract(file,
+                    os.path.join(self.CURRENT_PATH,
+                    'object_detection'))
+```
+ 在本项目中下面的两个函数， `load_image_from_disk` 和 `load_image_into_numpy_array`是可用的，它们对于从磁盘中选择图像并转化为适合任何Tensorflow模型处理的numpy矩阵是必要的：
+```python
+    def load_image_from_disk(self, image_path):
+        return Image.open(image_path)
+    def load_image_into_numpy_array(self, image):
+    try:
+        (im_width, im_height) = image.size
+    return np.array(image.getdata()).reshape((im_height, im_width, 3)).astype(np.uint8)
+    except:
+
+       # If the previous procedure fails, we expect the
+       # image is already a Numpy ndarray
+
+       return image
+```
+`detect`函数，是分类功能的核心。该函数期望一次性处理一系列图像。一个布尔型的标记`annotate_on_image`，告诉脚本是否对边界盒可视化并直接对给定图像进行注释。
+这样一个函数可以一个接一个地处理不同尺寸的图像，但是需要逐一处理。因此，它读取每张图像并扩展矩阵的维数，增加一个新的维度。这一过程是必要的，因为模型希望矩阵的尺寸是：图像的数量 * 高度 * 宽度 * 深度
+
+注意，我们可以将所有待预测的批处理图像打包成一个矩阵。这样可以很好地工作，并且如果所有图像的高度和深度都相同，处理速度会更快。我们的项目中不做这样的假设，因此需要对单张图像进行处理。
+之后，我们将在模型中按名称取若干张量（`detection_boxes`, `detection_scores`, `detection_classes`, `num_detections`），这是我们期望的模型输出。同时，我们把这些传送给输入张量`image_tensor`,，它会把图像标准化到对模型中每一层合适的格式。
+结果被收集到一个列表中，如有需要，图像和探测盒将被展示：
+```python
+     def detect(self, images, annotate_on_image=True):
+        """
+        Processing a list of images, feeding it
+        into the detection model and getting from it scores,
+        bounding boxes and predicted classes present
+        in the images
+        """
+
+        if type(images) is not list:
+                 images = [images]
+
+        results = list()
+
+        for image in images:
+                # the array based representation of the image will
+                # be used later in order to prepare the resulting
+                # image with boxes and labels on it.
+                image_np = self.load_image_into_numpy_array(image)
+                # Expand dimensions since the model expects images
+                # to have shape: [1, None, None, 3]
+                image_np_expanded = np.expand_dims(image_np, axis=0)
+                image_tensor = \
+                        self.DETECTION_GRAPH.get_tensor_by_name(
+                            'image_tensor:0')
+                # Each box represents a part of the image where a
+                # particular object was detected.
+                boxes = self.DETECTION_GRAPH.get_tensor_by_name(
+                            'detection_boxes:0')
+                # Each score represent how level of confidence
+                # for each of the objects.Score could be shown
+
+       # on the result image, together with the class label.
+
+        scores = self.DETECTION_GRAPH.get_tensor_by_name(
+                        'detection_scores:0')
+
+        classes = self.DETECTION_GRAPH.get_tensor_by_name(
+                        'detection_classes:0')
+                num_detections = \
+                     self.DETECTION_GRAPH.get_tensor_by_name(
+                        'num_detections:0')
+         # Actual detection happens here
+         (boxes, scores, classes, num_detections) = \
+                     self.TF_SESSION.run(
+                     [boxes, scores, classes, num_detections],
+                     feed_dict={image_tensor: image_np_expanded})
+        if annotate_on_image:
+
+            new_image = self.detection_on_image(
+                           image_np, boxes, scores, classes)
+            results.append((new_image, boxes,
+                           scores, classes, num_detections))
+
+        else:
+
+            results.append((image_np, boxes,
+                                        scores, classes, num_detections))
+
+   return results
+```
+函数`detection_on_image`的作用是处理`detect`函数的结果并返回一张包含边框的新图像，并通过`visualize_image`函数展示在屏幕上（读者可以调整延迟参数，它对应着脚本处理另一图像之前，当前图像在屏幕上停留的秒数）。
+```python
+    def detection_on_image(self, image_np, boxes, scores,
+                            classes):
+        """
+        Put detection boxes on the images over
+        the detected classes
+        """
+        vis_util.visualize_boxes_and_labels_on_image_array(
+            image_np,             np.squeeze(boxes),
+            np.squeeze(classes).astype(np.int32),
+            np.squeeze(scores),
+            self.CATEGORY_INDEX,
+            use_normalized_coordinates=True,
+            line_thickness=8)
+        return image_np
+
+```
+函数`visualize_image`提供了一些可以修改的参数，以便适应读者在本项目中的需求。首先，`image_size`提供了屏幕上展示的图像需要的尺寸。因此，过大或过小的图像可以被调整，以便部分地类似于这个规定的尺寸。延迟参数`latency`，定义了每幅图像展示在屏幕上的描述，这样可以锁定目标探测过程，直到处理下一幅图像。最后，`bluish_correction`是图像为BGR（这一格式颜色通道按蓝-绿-红的顺序被组织，这是OpenCV库中的一种标准，详见https://stackoverflow.com/questions/14556545/why-opencv-usingbgr-colour-space-instead-of-rgb）而非RGB（红-绿-蓝）格式时提供的校正。模型需要的是RGB格式。
+```python
+       def visualize_image(self, image_np, image_size=(400, 300), latency=3, bluish_correction=True):
+
+           height, width, depth = image_np.shape
+
+           reshaper = height/float(image_size[0])
+                width = int(width/reshaper)
+
+           height = int(height/reshaper)
+
+           id_img = 'preview_' + str(np.sum(image_np))
+                cv2.startWindowThread()
+                cv2.namedWindow(id_img, cv2.WINDOW_NORMAL)
+
+           cv2.resizeWindow(id_img, width, height)
+
+           if bluish_correction:
+                        RGB_img = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
+                        cv2.imshow(id_img, RGB_img)
+
+           else:
+
+               cv2.imshow(id_img, image_np)
+               cv2.waitKey(latency*1000)
+```
+注释通过`serialize_annotations`函数被准备并写入磁盘。函数为每幅图像创建一个JSON文件，数据包括检测的类，bounding box的顶点和检测的置信度。例如，这是狗的照片上检测到的结果：
+```python
+     "{"scores": [0.9092628359794617], "classes": ["dog"], "boxes": [[0.025611668825149536, 0.22220897674560547, 0.9930437803268433, 0.7734537720680237]]}"
+```
+JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的置信度）以及边框的顶点，并且给出了高度和宽度在原图中的百分比（相对值，不是绝对的像素点）：
+```python
+       def serialize_annotations(self, boxes, scores, classes, filename='data.json'):
+            """
+            Saving annotations to disk, to a JSON file
+            """
+            threshold = self.THRESHOLD
+            valid = [position for position, score in enumerate( scores[0]) if score >threshold]
+
+       if len(valid) > 0:
+
+            valid_scores = scores[0][valid].tolist()
+
+            valid_boxes  = boxes[0][valid].tolist()
+
+            valid_class = [self.LABELS[int(a_class)] for a_class in classes[0][valid]]
+
+           with open(filename, 'w') as outfile:
+
+                json_data = {'classes': valid_class,
+                             'boxes':valid_boxes,
+                             'scores': valid_scores}
+                json.dump(json_data, outfile)
+```
+函数`get_time`可以很方便地将真实时间转化为字符串并可用于文件名：
+```python
+    def get_time(self):
+        """
+        Returning a string reporting the actual date and time
+        """
+
+        return strftime("%Y-%m-%d_%Hh%Mm%Ss", gmtime())
+```
+最后，我们准备三个检测渠道，分别处理图像，视频和网络摄像头。对图像的渠道把每幅图像加载到一个列表中。视频渠道使`moviepy`中的` VideoFileClip`模型在简单通过`detect`函数之后完成大量操作并被封装在`annotate_photogram`函数中。最后，网络摄像头渠道的快照依赖于简单的函数`capture_webcam`，它依赖于 OpenCV's VideoCapture，记录从网络摄像头的返回的最后一些快照（ 操作考虑到了网络摄像头适应环境光线水平所需的必要时间）：
+
+在考虑到环境光的水平之前，该操作考虑了摄像头所需的时间。
+```python
+       def annotate_photogram(self, photogram):
+        """
+            Annotating a video's photogram with bounding boxes
+            over detected classes
+        """
+            new_photogram, boxes, scores, classes, num_detections =self.detect(photogram)[0]
+
+            return new_photogram
+```
+`capture_webcam`函数从读者的网络摄像头中用`cv2.VideoCapture` （http://docs.opencv.org/3.0-beta/modules/videoio/doc/reading_and_writing_video.html）获取图像。由于摄像头需要首先适应拍照环境的光线，在将照片输入目标检测程序前，程序会丢弃开始的一些照片。这样，网络摄像头总有时间调节其灯光设置：
+```python
+    def capture_webcam(self):
+        """
+        Capturing an image from the integrated webcam
+        """
+        def get_image(device):
+            """
+            Internal function to capture a single image             from the camera and return it in PIL format
+            """
+            retval, im = device.read()
+            return im
+        # Setting the integrated webcam         camera_port = 0
+        # Number of frames to discard as the camera
+        # adjusts to the surrounding lights         ramp_frames = 30
+        # Initializing the webcam by cv2.VideoCapture         camera = cv2.VideoCapture(camera_port)
+        # Ramping the camera_all these frames will be
+        # discarded as the camera adjust to the right light levels
+        print("Setting the webcam")
+        for i in range(ramp_frames):
+          _ = get_image(camera)
+        # Taking the snapshot
+        print("Now taking a snapshot...", end='')
+        camera_capture = get_image(camera)
+        print('Done')
+        # releasing the camera and making it reusable
+        del (camera)
+        return camera_capture
+```
+`file_pipeline`函数包括从存储图像加载图像所需的所有步骤，并对它们进行可视化/注释：
+1. 从磁盘载入图像
+2. 对于加载好的图像应用目标检测
+3. 将每幅图像的注释结果写入JSON文件
+4. 如果布尔参数`visualize`需要，在电脑屏幕上展示图像和`bounding box`
+```python
+    def file_pipeline(self, images, visualize=True):
+        """
+        A pipeline for processing and annotating lists of
+        images to load from disk         """
+
+        if type(images) is not list:
+                images = [images]
+
+        for filename in images:
+
+        single_image = self.load_image_from_disk(filename)
+
+        for new_image, boxes, scores, classes, num_detections in self.detect(single_image):
+
+           self.serialize_annotations(boxes, scores, classes,
+
+           filename=filename + ".json")
+
+           if visualize:
+
+               self.visualize_image(new_image)
+```
+`video_pipeline`简单地组织所有必要的步骤来用`bounding box`注释图像，并在完成操作后存入磁盘：
+```python
+    def video_pipeline(self, video, audio=False):
+        """
+        A pipeline to process a video on disk and annotating it         by bounding box.The output is a new annotated video.
+        """
+        clip = VideoFileClip(video)
+        new_video = video.split('/')
+        new_video[-1] = "annotated_" + new_video[-1]
+        new_video = '/'.join(new_video)
+        print("Saving annotated video to", new_video)
+        video_annotation = clip.fl_image(self.annotate_photogram)
+        video_annotation.write_videofile(new_video, audio=audio)
+```
+
+`webcam_pipeline`函数包含从网络摄像头到得到读者想要的注释图像的所有步骤：
+
+1. 从网络摄像头捕获图像
+2. 将捕获的图像存入磁盘（用 cv2.imwrite，它具有基于目标文件名编写不同图像格式的优点。详见http://docs.opencv.org/3.0_beta/modules/imgcodecs/doc/reading_and_writing_images.html）
+3. 对图像应用目标探测
+4. 把注释保存到JSON文件
+5. 展示图像和边框
+```python
+    def webcam_pipeline(self):
+        """
+        A pipeline to process an image acquired by the internal webcam
+        and annotate it, saving a JSON file to disk
+        """
+        webcam_image = self.capture_webcam()
+        filename = "webcam_" + self.get_time()
+        saving_path = os.path.join(self.CURRENT_PATH, filename + ".jpg")
+        cv2.imwrite(saving_path, webcam_image)
+
+        new_image, boxes, scores, classes, num_detections =
+        self.detect(webcam_image)[0]
+
+        json_obj = {'classes': classes, 'boxes':boxes, 'scores':scores}
+        self.serialize_annotations(boxes, scores, classes, filename=filename+".json")
+
+        self.visualize_image(new_image, bluish_correction=False)
+```
+
+
+## 一些简单应用
+
+作为代码配置的最后一部分，我们只演示三个简单的脚本，分别利用我们项目中使用的三种不同的来源：文件、视频、网络摄像头。
+
+我们的第一个测试脚本目标是从本地文件夹（当读者在其他文件夹操作时，导入操作不会生效，除非读者把整个项目文件夹加入Python路径）导入`DetectionObj`并注释以及可视化三幅图像，
+为了在读者的脚本中在Python路径中加入目录，在需要访问目录的脚本之前读者需要调用`sys.path.insert`命令：
+```python
+    import sys
+    sys.path.insert(0,'/path/to/directory')
+```
+然后我们激活类，声明它并使用SSD MobileNet v1模型。之后，我们必须将每幅图像的路径放入列表并传入方法`file_pipeline`中：
+```python
+    from TensorFlow_detection import DetectionObj
+
+    if__name__ == "__main__":
+
+       detection = DetectionObj(model='ssd_mobilenet_v1_coco_11_06_2017')
+        images = ["./sample_images/intersection.jpg",
+                "./sample_images/busy_street.jpg",
+                "./sample_images/doge.jpg"]
+        detection.file_pipeline(images)
+```
+
+在我们收到探测的类的结果之后得到的输出被放在图像的交叉点上，并返回给我们包含具有足够置信度的围绕着物体的边框的另一幅图像。
+
+<img src="PATH\figures\46_1.jpg" />
+
+​						SSDMobileNet v1在交叉口照片上的目标检测
+
+
+
+运行脚本之后，三张图像和它们的注释会展示在屏幕上（每一幅图展示三秒），一个新的JSON文件会被存入磁盘（存储在目标路径，如果读者没有修改环境变量`TARGET_CLASS`，那么会存储在本地目录）。
+
+在可视化中，读者可以看见与目标相关的边框，它们的置信度大于0.5。无论如何，读者会注意到，在这种情况下，一个交叉路口的注释图像（在前面的图中描绘）中，并不是所有的汽车和行人都能被模型所发现。
+
+通过观察JSON文件，读者可以发现很多其他汽车和行人被模型发现，尽管它们的置信度较低。在文件中，读者会发现所有检测到的目标最少具有0.25的置信度，这是很多目标检测研究中常用的一个阈值（读者可以通过修改变量`THRESHOLD`来改变它）。
+
+这里读者可以看到JSON文件中产生的分数。只有8个探测到的目标的得分高于阈值0.5，其它16个得到较低：
+
+```json
+    "scores": [0.9099398255348206, 0.8124723434448242, 0.7853631973266602,
+    0.709653913974762, 0.5999227166175842, 0.5942907929420471,
+    0.5858771800994873, 0.5656214952468872, 0.49047672748565674,
+    0.4781857430934906, 0.4467884600162506, 0.4043623208999634,
+    0.40048354864120483, 0.38961756229400635, 0.35605812072753906,
+    0.3488095998764038, 0.3194449841976166, 0.3000411093235016,
+    0.294520765542984, 0.2912806570529938, 0.2889115810394287,
+    0.2781482934951782, 0.2767323851585388, 0.2747304439544678]
+```
+同时，读者可以发现检测到的目标对应的类。很多置信度较低的汽车被检测到。事实上它们有可能是图中的其它车，也可能是误判。根据检测API的应用，读者可能需要调整阈值或使用其它模型，仅当它被不同的模型在阈值以上重复检测时才保留认为这是需要检测的目标：
+
+```json
+   "classes": ["car", "person", "person", "person", "person", "car", "car",
+    "person", "person", "person", "person", "person", "person", "person", "car", "car", "person", "person",
+
+   "car", "car", "person", "car", "car", "car"]
+```
+对视频的检测采用同样的脚本方法。这一次，读者只需要指出合适的方法——`video_pipeline`，视频的路径，并设置生成的视频是否需要有音频（默认音频被过滤）。脚本自己可以完成任务，保存一个修改并注释的视频在与原始视频相同的目录下（读者可以很快找到它，它在原有文件名前加上了 `annotated_` ）：
+```python
+   from TensorFlow_detection import DetectionObj
+   if__name__ == "__main__":
+        detection = DetectionObj(model='ssd_mobilenet_v1_coco_11_06_2017')
+       detection.video_pipeline(video="./sample_videos/ducks.mp4", audio=False)
+```
+最后读者可以将这个方法用于摄像头，读者需要使用`webcam_pipeline`函数：
+```python
+from TensorFlow_detection import DetectionObj
+if__name__ == "__main__":
+    detection = DetectionObj(model='ssd_mobilenet_v1_coco_11_06_2017')
+    detection.webcam_pipeline()
+```
+这个脚本会激活摄像头，适应光线，选择快照，将快照和注释保存到当前目录下的JSON文件中，并最终将快照和检测目标的边框展示在读者的屏幕上。
+
+## 网络摄像头实时监测
+
+目前的`webcam_pipeline`不是实时的目标检测系统，因为它只是获取快照并应用检测程序来处理单张图像。这是必要的限制，因为处理网络摄像头数据流需要密集的I/O交换。特别地，问题是从网络摄像头到Python解释器的图像队列，它锁定Python直到传输完成。Adrian Rosebrock在他的图像研究网站上 提出了一个基于线程的简单解决方案，读者可以在网站http://www.pyimagesearch.com/2015/12/21/increasing_webcam_fps_withpython-and_opencv/.上了解更多。
+
+想法非常简单、在Python中，由于全局解释器锁 （global interpreter lock，GIL）的存在，同一时间只能执行一个线程。如果存在某些阻止I/O操作的线程（例如下载文件或从网络摄像头获取图像），所有剩余的命令会因此而延迟，导致程序本身执行非常缓慢。为此可以产生一个很好的解决方案，即将阻塞的I/O操作转移到另一个线程。这样的线程共享一部分内存，程序线程可以继续执行它的指令和查询I/O线程，以便检查它是否已经完成了它的操作。 因此，如果将图像从网络摄像头转移到内存是一个阻塞操作，让另一个线程处理I/O可能是一种解决方法。主程序会查询I/O线程，从只包含最近接收的图像的缓冲区选择图像并在屏幕上绘制它。
+```python
+from tensorflow_detection import DetectionObj
+from threading import Thread
+import cv2
+def resize(image, new_width=None, new_height=None):
+    """
+    Resize an image based on a new width or new height
+    keeping the original ratio
+    """
+    height, width, depth = image.shape
+    if new_width:
+        new_height = int((new_width/float(width)) * height)
+    elif new_height:
+        new_width = int((new_height/float(height)) * width)
+    else:
+        return image
+    return cv2.resize(image, (new_width, new_height), \
+        interpolation=cv2.INTER_AREA)
+class webcamStream:
+    def__init__(self):
+        # Initialize webcam
+        self.stream = cv2.VideoCapture(0)
+        # Starting TensorFlow API with SSD Mobilenet
+        self.detection = DetectionObj(model=\
+                        'ssd_mobilenet_v1_coco_11_06_2017')
+        # Start capturing video so the Webca, will tune itself
+        _, self.frame = self.stream.read()
+        # Set the stop flag to False
+        self.stop = False
+        #
+        Thread(target=self.refresh, args=()).start()
+    def refresh(self):
+        # Looping until an explicit stop is sent
+        # from outside the function
+        while True:
+            if self.stop:
+                return
+        _, self.frame = self.stream.read()
+    def get(self):
+        # returning the annotated image
+        return self.detection.annotate_photogram(self.frame)
+    def halt(self):
+        # setting the halt flag
+        self.stop = True
+if__name__ == "__main__":
+    stream = webcamStream()
+    while True:
+        # Grabbing the frame from the threaded video stream
+        # and resize it to have a maximum width of 400 pixels
+        frame = resize(stream.get(), new_width=400)
+        cv2.imshow("webcam", frame)
+        # If the space bar is hit, the program will stop
+        if cv2.waitKey(1) & 0xFF == ord(" "):
+            # First stopping the streaming thread
+            stream.halt()
+            # Then halting the while loop
+            break
+```
+上面的代码使用 `webcamStream`类来解决这一问题，它为网络摄像机I/O实例化一个线程，允许Python主程序总能拥有最新接收到的图像，用Tensorflow接口处理（用`ssd_mobilenet_v1_coco_11_06_2017`）。处理后的图像会通过OpenCV函数全部绘制在屏幕上，敲击空格键以终止程序。
+
+
+
+## 致谢
+
+项目的所有相关内容起源于下面的论文：Speed/accuracy trade-offs for modern convolutional object detectors（https://arxiv.org/abs/1611.10012 ） by Huang J, Rathod V, Sun C, Zhu M, Korattikara A, Fathi A, Fischer I, Wojna Z, Song Y, Guadarrama S, Murphy K, CVPR 2017.
+
+总结这一章，我们需要感谢Tensorflow目标探测接口的所有开发者：Jonathan Huang, Vivek Rathod, Derek Chow, Chen Sun, Menglong Zhu, Matthew Tang, Anoop Korattikara, Alireza Fathi, Ian Fischer, Zbigniew Wojna, Yang Song, Sergio Guadarrama, Jasper Uijlings, Viacheslav Kovalevskyi, Kevin Murphy.，感谢他们实现了如此伟大的接口并且对所有人免费开源。
+
+我们也要感谢 Dat Tran，他在MIT许可项目的媒体上发表了两篇关于如何使用TaySoFoad对象检测API进行实时识别，even on custom的文章（https://towardsdatascience.com/building_a_real_time_object_recognition_app_with_tensorflow_and_opencvb7a2b4ebdc32 及 https://towardsdatascience.com/how_to_train_your_own_objectdetector-with_tensorflows_object_detector_api_bec72ecfe1d9 ）
+
+## 总结
+
+这个项目可以帮助您对图像分类建立信心，并且不会有太多麻烦。它可以帮助读者更多地了解卷积网络在解决实际问题中起到的作用，可以让读者更加关注问题本身（可能是更大规模的应用），并且注释图像，以便用选定的类中的图像训练更多的卷积网络。
+
+在这一项目章，读者可以学到图像处理过程中很多常用的技巧。首先，读者现在已经知道怎样处理不同类型的视觉输入，例如图像、视频、摄像头捕捉。读者也已经知道，怎样加载一个冻结的模型并使其工作，怎样使用Tensorflow模型。
+
+另一方面，显然，项目中存在一些读者必然会遇到的限制，这可能会激励读者尝试集成读者的代码并使它更加优秀。首先，我们讨论的模型很快会被更新、更高效的模型所取代（读者可以查看下面的链接以获取可用的模型：https://github.com/tensorflow/models/blob/master/object_detection/g3doc/detection_model_zoo.md ），同时，读者需要合并新模型或创造读者自己的模型（参见https://github.com/tensorflow/models/blob/master/object_detection/g3doc/defining_your_own_model.md ）。此外，读者需要结合模型以达到读者的项目所需要的准确率（论文Speed/accuracy trade-offs for modern convolutional object detectors揭示了google研究员如何完成这一目标）。最后，读者需要调节娟姐网络去识别新的类（相关资料见https://github.com/tensorflow/models/blob/master/object_detection/g3doc/using_your_own_dataset.md ，这是一个长期的工程）。
+
+下一章，我们将研究图像中最先进的对象检测，设计一个项目，该项目将引导读者对提交的图像做出完整的描述说明，而不仅仅是简单的标签和边框。
+
