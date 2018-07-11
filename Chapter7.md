@@ -66,15 +66,9 @@
 
 ### 创建训练集
 
-Let's now create the training set for the chatbot. We'd need all the conversations between
-the characters in the correct order: fortunately, the corpora contains more than what we
-actually need. For creating the dataset, we will start by downloading the zip archive, if it's
-not already on disk. We'll then decompress the archive in a temporary folder (if you're
-using Windows, that should be `C:\Temp`), and we will read just the `movie_lines.txt` and
-the `movie_conversations.txt` files, the ones we really need to create a dataset of
-consecutive utterances.
-Let's now go step by step, creating multiple functions, one for each step, in the file
-`corpora_downloader.py`. The first function we need is to retrieve the file from the
+现在我们创建用于聊天机器人的训练集。我们需要以正确顺序组织角色间的所有对话。而上述语料库可以满足我们的需求。如果本地没有所需的`zip`文档，我们要先下载下来，然后把文件解压到一个临时文件夹中（Windows环境下，应该放在`C:\Temp`），我们只需读取 `movie_lines.txt和`movie_conversations.txt` 文件，用于创建连续的语言表达数据集。
+
+现在我们可以在`corpora_downloader.py`中逐步创建几个函数。第一个函数是用于本地磁盘没有保存的情况下，从因特网上获取文件。
 Internet, if not available on disk.
 
 ```python
@@ -92,16 +86,9 @@ def download_and_decompress(url, storage_path, storage_dir):
 return
 ```
 
+这个函数的功能如下：它首先检查本地是否有“`README.txt`”文件；如果没有，下载文件（借助于`urllib.request`模块的`urlretrieve`函数）,并解压`zip`文件（使用`zipfile`模块）。
 
-This function does exactly that: it checks whether the “`README.txt`” file is available locally;
-if not, it downloads the file (thanks for the urlretrieve function in the urllib.request module)
-and it decompresses the zip (using the zipfile module).
-The next step is read the conversation file and extract the list of utterance IDS. As a
-reminder, its format is: `u0 +++$+++ u2 +++$+++ m0 +++$+++ ['L194', 'L195', 'L196', 'L197']`,
-therefore what we're looking for is the fourth element of the list after we split it on the
-token `+++$+++` . Also, we'd need to clean up the square brackets and the apostrophes to
-have a clean list of IDs. For doing that, we shall import the re module, and the function will
-look like this.
+接着，读取对话文件，抽取语言表达ID的列表。注意，格式为：`u0 +++$+++ u2 +++$+++ m0 +++$+++ ['L194', 'L195', 'L196', 'L197']`，我们需要的是经过分隔符`+++$+++`分割后的第四个元素。而且，我们需要清除方括号和单引号，拿到纯粹的ID列。 因此，我们首先加载`re`模块，函数如下：
 
 ```python
 import re
@@ -114,13 +101,9 @@ def read_conversations(storage_path, storage_dir):
 ```
 
 
-As previously said, remember to read the file with the right encoding, otherwise, you'll get
-an error. The output of this function is a list of lists, each of them containing the sequence of
-utterance IDS in a conversation between characters. Next step is to read and parse the
-movie_lines.txt file, to extract the actual utterances texts. As a reminder, the file looks
-like this line:
+正如之前所说，记住使用正确的编码格式读取文件，否则会报错。函数的输出是包含列的列。每一个列都包含角色间对话的语言表达ID。然后，读取和解析`movie_lines.txt`文件，抽取语言表达的文本。记住这个文件的形式如下：
 `L195 +++$+++ u2 +++$+++ m0 +++$+++ CAMERON +++$+++ Well, I thought we'd start with pronunciation, if that's okay with you`.
-Here, what we're looking for are the first and the last chunks.
+这里，我们需要第一个和最后一个部分。
 
 ```python
 def read_lines(storage_path, storage_dir):
@@ -130,12 +113,7 @@ def read_lines(storage_path, storage_dir):
     return {line[0]: line[-1].strip() for line in lines_chunks}
 ```
 
-
-
-The very last bit is about tokenization and alignment. We'd like to have a set whose
-observations have two sequential utterances. In this way, we will train the chatbot, given
-the first utterance, to provide the next one. Hopefully, this will lead to a smart chatbot, able
-to reply to multiple questions. Here's the function:
+最后一步是关于分割和对齐。我们希望一个集合内的结果有两次语言表达的序列。这样，我们可以在给定第一次语言表达的情况下，训练聊天机器人，以便给出下一句话。最终，我们希望得到一个智能聊天机器人，可以回复多个问题。函数如下：
 
 ```python
 def get_tokenized_sequencial_sentences(list_of_lines, line_text):
@@ -145,34 +123,24 @@ def get_tokenized_sequencial_sentences(list_of_lines, line_text):
                    line_text[line[i+1]].split(" "))
 ```
 
+它的输出是一个生成器，其包含两次语句表达（右边的跟着左边的）的元组。而且每次语言表达都用空格分割。
 
-Its output is a generator containing a tuple of the two utterances (the one on the right
-follows temporally the one on the left). Also, utterances are tokenized on the space
-character.
-Finally, we can wrap up everything into a function, which downloads the file and unzip it
-(if not cached), parse the conversations and the lines, and format the dataset as a generator.
-As a default, we will store the files in the /tmp directory:
+最后，我们可以把所有逻辑都封装在一个函数中，包括（如果本地没有的话）下载文件和解压文件，解析对话和文件行，格式化数据集为生成器。最终，我们可以把文件存在/tmp目录下：
 
 ```python
 def retrieve_cornell_corpora(storage_path="/tmp",
-                             storage_dir="cornell_movie_dialogs_corpus"):
-    download_and_decompress("http://www.cs.cornell.edu/~cristian/data/cornell_movie_dialogs_corpus.zip", storage_path, storage_dir)
+                             storage_dir="cornell_movie_dialogs_corpus"):    download_and_decompress("http://www.cs.cornell.edu/~cristian/data/cornell_movie_dialogs_corpus.zip", storage_path, storage_dir)
     conversations = read_conversations(storage_path, storage_dir)
     lines = read_lines(storage_path, storage_dir)
     return tuple(zip(*list(get_tokenized_sequencial_sentences(conversations, 
                                                               lines))))
 ```
 
+现在，我们的训练集看起来和机器翻译项目中的训练集很类似。事实上，它们不仅仅相似，而且目的相同，格式相同。因此我们可以使用之前章节中相同的代码。例如，`corpora_tools.py`文件可以不加修改直接用在这里（而且，它需要`data_utils.py`）。
 
-At this point, our training set looks very similar to the training set used in the translation
-project, in the previous chapter. Actually, it's not just similar, it's the same format with the
-same goal. We can, therefore, use some pieces of code we've developed in the previous
-chapter. For example, the `corpora_tools.py` file can be used here without any change
-(also, it requires the `data_utils.py`).
-Given that file, we can dig more into the corpora, with a script to check the chatbot input.
-To inspect the corpora, we can use the `corpora_tools.py` we made in the previous
-chapter, and the file we've previously created. Let's retrieve the Cornell Movie Dialog
-Corpus, format the corpora and print an example and its length:
+有了这些文件，我们可以使用一些脚本检查聊天机器人的输入，再深入研究一下语料库。
+
+我们可以使用之前章节中的`corpora_tools.py`查看语料库。获取康奈尔电影对话语料库，格式化语料，并打印出一个例子和它的长度：
 
 ```python
 from corpora_tools import *
@@ -186,8 +154,7 @@ print(len(sen_l1))
 assert len(sen_l1) == len(sen_l2)
 ```
 
-This code prints an example of two tokenized consecutive utterances, and the number of
-examples in the dataset, that is more than 220,000:
+这些代码打印出两条被分割的连续语言表达的句子，以及数据集中的例子数量，超过22万：
 
 ```
 # Two consecutive sentences in a conversation
@@ -200,9 +167,7 @@ A: ['Well,', 'I', 'thought', "we'd", 'start', 'with', 'pronunciation,',
 221616
 ```
 
-Let's now clean the punctuation in the sentences, lowercase them and limits their size to 20
-words maximum (that is examples where at least one of the sentences is longer than 20
-words are discarded). This is needed to standardize the tokens:
+清除句子中的停顿字符，把句子全部转成小写，并且限定每条句子最多20个单词（也就是说，对话序列只要包含超过20个单词的句子，就会被舍弃。）。后续的标准化分隔符如下：
 ```python
 clean_sen_l1 = [clean_sentence(s) for s in sen_l1]
 clean_sen_l2 = [clean_sentence(s) for s in sen_l2]
@@ -214,19 +179,14 @@ assert len(filt_clean_sen_l1) == len(filt_clean_sen_l2)
 ```
 
 
-This leads us to almost 140,000 examples:
+结果输出超过14万个例子：
 ```
 # Filtered Corpora length (i.e. number of sentences)
 140261
 ```
 
 
-Then, let's create the dictionaries for the two sets of sentences. Practically, they should look
-the same (since the same sentence appears once on the left side, and once in the right side)
-except there might be some changes introduced by the first and last sentences of a
-conversation (they appear only once). To make the best out of our corpora, let's build two
-dictionaries of words and then encode all the words in the corpora with their dictionary
-indexes:
+然后，创建两组句子集合的词典。实际中可以发现，两个词典看起来一样（因为出现在左边的句子也会出现在右边。），除非第一条句子和最后一条句子（都是只出现一次）使用了独特的词语。为了充分使用语料库，构建两个词典，然后使用词典对所有词语编码：
 ```python
 dict_l1 = create_indexed_dictionary(filt_clean_sen_l1, dict_size=15000,
                                     storage_path="/tmp/l1_dict.p")
@@ -240,9 +200,7 @@ print("A:", list(zip(filt_clean_sen_l2[0], idx_sentences_l2[0])))
 ```
 
 
-That prints the following output. We also notice that a dictionary of 15 thousand entries
-doesn't contain all the words and more than 16 thousand (less popular) of them don't fit
-into it:
+打印出的结果如下。我们注意到词典包含1万5千个词语，但是并没有包含所有词语，而且超过1万6千个（出现较少的）词语并没有包含其中：
 ```
 [sentences_to_indexes] Did not find 16823 words
 [sentences_to_indexes] Did not find 16649 words
@@ -256,7 +214,7 @@ A: [('not', 31), ('the', 10), ('hacking', 7309), ('and', 23), ('gagging',
 145), ('.', 4)]
 ```
 
-As the final step, let's add paddings and markings to the sentences:
+最后一步，给句子添加补全和标记信息：
 ```python
 data_set = prepare_sentences(idx_sentences_l1, idx_sentences_l2,
                              max_length_l1, max_length_l2)
@@ -269,7 +227,7 @@ print("A:", len(idx_sentences_l2[0]), "->", len(data_set[0][1]))
 ```
 
 
-And that, as expected, prints:
+和预期的一样，打印如下：
 ```
 # Prepared minibatch with paddings and extra stuff
 Q: [0, 68, 8, 9, 141, 23, 5, 83, 370, 46, 3, 8, 78, 18, 5, 12, 92, 46, 7, 4]
@@ -282,16 +240,9 @@ A: 11 -> 22
 
 ### 训练聊天机器人
 
-After we're done with the corpora, it's now time to work on the model. This project requires
-again a sequence to sequence model, therefore we can use an RNN. Even more, we can
-reuse part of the code from the previous project: we'd just need to change how the dataset is
-built, and the parameters of the model. We can then copy the training script built in the
-previous chapter, and modify the `build_dataset` function, to use the Cornell dataset.
-Mind that the dataset used in this chapter is bigger than the one used in the previous,
-therefore you may need to limit the corpora to a few dozen thousand lines. On a 4 years old
-laptop with 8GB RAM, we had to select only the first 30 thousand lines, otherwise, the
-program ran out of memory and kept swapping. As a side effect of having fewer examples,
-even the dictionaries are smaller, resulting in less than 10 thousands words each.
+处理完语料库后，我们可以开始构建模型。这个项目需要一个序列生成的模型，因此我们可以使用RNN模型。而且，我们可以重用上个项目的代码：只需要修改一下数据集构建的方法，和模型的参数。然后复制上一章中的训练脚本，修改`build_dataset`函数，方便使用康奈尔的数据集。
+
+需要注意的是，本章使用的数据集比上一章的要大，因此我们需要限制语料库大小至几万行。在一台RAM为8G的4年老笔记本上，我们需要用前3万行，否则程序会耗尽内存，一直交换空间。使用少量例子的另一个好处是，字典也会变小，每个不超过1万个词语。
 
 ```python
 def build_dataset(use_stored_dictionary=False):
@@ -325,12 +276,9 @@ def build_dataset(use_stored_dictionary=False):
 ```
 
 
-By inserting this function into the `train_translator.py` file (from the previous chapter)
-and rename the file as `train_chatbot.py`, we can run the training of the chatbot.
+把这个函数放在（上一章定义的）`train_translator.py`文件中，并重命名为文件`train_chatbot.py`，然后我们可以开始训练聊天机器人。
 
-[ 168 ]
-After a few iterations, you can stop the program and you'll see something similar to this
-output:
+几次迭代后，读者可以终止程序，并得到类似以下的输出：
 
 ```
 [sentences_to_indexes] Did not find 0 words
@@ -358,27 +306,17 @@ perplexity 2.878854805600354
 eval: perplexity 2.563583924617356
 ```
 
+如果改变参数，读者可以在不同的混淆度下终止程序。要得到最终结果，我们可以设置RNN的大小为256，层数为2，批大小为128个样本，学习率为1.0。
 
-Again, if you change the settings, you may end up with a different perplexity. To obtain
-these results, we set the RNN size to 256 and 2 layers, the batch size of 128 samples, and the
-learning rate to 1.0.
-At this point, the chatbot is ready to be tested. Although you can test the chatbot with the
-same code as in the `test_translator.py` of the previous chapter, here we would like to
-do a more elaborate solution, which allows exposing the chatbot as a service with APIs.
+现在，聊天机器人可以接受测试了。尽管我们可以使用上一章`test_translator.py`中的相同代码进行测试，但是我们还是希望可以完成一个更加精细的方案，也就是让聊天机器人通过API作为服务发布。
 
 ### 聊天机器人API
 
-First of all, we need a web framework to expose the API. In this project, we've chosen Bottle,
-a lightweight simple framework very easy to use.
+首先，我们需要一个web框架，提供API。在这个项目中，我们选择Botttle，一种非常易用的轻量化简易框架。
 
-> To install the package, run pip install bottle from the command
-> line. To gather further information and dig into the code, take a look at the
-> project webpage, https://bottlepy.org.
+> 要安装这个程序包，在命令行中运行`pip install bottle`。要获取更多信息和代码，可以查看项目网页：https://bottlepy.org。
 
-Let's now create a function to parse an arbitrary sentence provided by the user as an
-argument. All the following code should live in the test_chatbot_aas.py file. Let's start
-with some imports and the function to clean, tokenize and prepare the sentence using the
-dictionary:
+现在，创建函数，解析用户提供的任意一个句子参数。以下所有代码应该放在`test_chatbot_aas.py`文件中。首先引入一些库和函数，便于借助词典清洗，分隔，准备句子：
 
 ```python
 import pickle
@@ -399,18 +337,14 @@ return sentences, data_set
 ```
 
 
-The function `prepare_sentence` does the following:
+函数`prepare_sentence`的功能如下：
 
-- Tokenizes the input sentence
-- Cleans it (lowercase and punctuation cleanup)
-- Converts tokens to dictionary IDs
-- Add markers and paddings to reach the default length
+- 分隔输入的句子
+- 清洗句子（转成小写，清除停顿符号）
+- 把分隔结果转换成字典ID列
+- 添加标记和补全，以保证默认的长度
 
-Next, we will need a function to convert the predicted sequence of numbers to an actual
-sentence composed of words. This is done by the function `decode`, which runs the
-prediction given the input sentence and with softmax predicts the most likely output.
-Finally, it returns the sentence without paddings and markers (a more exhaustive
-description of the function is provided in the previous chapter):
+接着，我们需要一个函数把预测的序列ID转换成实际的词语序列。这个任务由函数`decode`完成，可以根据输入的句子和softmax函数预测最可能的输出。最后，代码返回不带补全和标记的句子（更全面的函数介绍在上一章）：
 
 ```python
 def decode(data_set):
@@ -429,7 +363,7 @@ def decode(data_set):
             tf.reset_default_graph()
      return " ".join([tf.compat.as_str(inv_dict_l2[output]) for output in outputs])
 ```
-Finally, the main function, that is, the function to run in the script:
+最终，主函数，即脚本中的函数：
 
 ```python
 if __name__ == "__main__":
@@ -451,28 +385,19 @@ if __name__ == "__main__":
     run(host='127.0.0.1', port=8080, reloader=True, debug=True)
 ```
 
+首先，它加载词典，并准备逆序词典。然后，使用Bottle API创建一个（基于/api的URL） HTTP GET端点。当端点接收到HTTP GET请求时，路径装饰器可以设置和丰富了函数。在这种情况下，`api()` 开始运行，它首先把句子读取为HTTP参数，然后调用`prepare_sentence`函数，最后运行解码程序。返回的结果是一个包含用户输入句子和机器人回答的词典。
 
-Initially, it loads the dictionary and prepares the inverse dictionary. Then, it uses the Bottle
-API to create an HTTP GET endpoint (under the /api URL). The route decorator sets and
-enriches the function to run when the endpoint is contacted via HTTP GET. In this case, the
-`api()` function is run, which first reads the sentence passed as HTTP parameter, then calls
-the `prepare_sentence` function, described above, and finally runs the decoding step.
-What's returned is a dictionary containing both the input sentence provided by the user and
-the reply of the chatbot.
-Finally, the webserver is turned on, on the localhost at port 8080. Isn't very easy to have a
-chatbot as a service with Bottle?
-It's now time to run it and check the outputs. To run it, run from the command line:
+最后，网络服务器打开，本地端口为port 8080。使用Bottle构建聊天机器人服务就是这么简单！
+
+现在运行服务，检查输出。在命令行中运行：
 
 ```shell
 $> python3 –u test_chatbot_aas.py
 ```
 
-Then, let's start querying the chatbot with some generic questions, to do so we can use
-CURL, a simple command line; also all the browsers are ok, just remember that the URL
-should be encoded, for example, the space character should be replaced with its encoding,
-that is, %20.
-Curl makes things easier, having a simple way to encode the URL request. Here are a
-couple of examples:
+然后，开始使用一些通用问题询问聊天机器人，我们可以使用CURL，这一简单的命令行完成这个操作。同时所有的浏览器都是可用的。只需注意URL应该经过编码，例如，空格符应该使用编码格式`%20`替代。
+
+CURL提供简单的方法编码URL请求，可以让所有操作变得更简单。下面是两个例子：
 
 ```shell
 $> curl -X GET -G http://127.0.0.1:8080/api --data-urlencode "sentence=how are you?"
@@ -488,29 +413,25 @@ $> curl -X GET -G http://127.0.0.1:8080/api --data-urlencode "sentence=how are y
 ```
 
 
-> If the system doesn't work with your browser, try encoding the URL, for example:
+> 如果浏览器没有反应，可以试试编码URL，例如：
 > ```shell
 > $> curl -X GET
 > http://127.0.0.1:8080/api?sentence=how%20are%20you?
 > {"data": [{"out": "that ' s okay .", "in": "how are you?"}]}.
 > ```
 
-Replies are quite funny; always remember that we trained the chatbox on movies, therefore
-the type of replies follow that style.
-To turn off the webserver, use Ctrl + C.
+回复也很有趣；务必注意，我们是使用电影数据训练的聊天机器人，所以回复的风格也是这类的。
+
+要关闭网络服务器，使用`Ctrl + C`。
 
 #### 课后作业
 
-Following are the home assignments:
-Can you create a simple webpage which queries the chatbot via JS?
-Many other training sets are available on the Internet; try to see the differences of
-answers between the models. Which one is the best for a customer service bot?
-Can you modify the model, to be trained as a service, that is, by passing the
-sentences via HTTP GET/POST?
+下面是课后作业：
+
+* 你可以使用JS创建一个简单网页来请求聊天机器人吗？
+* 因特网上有许多其他的训练集；试着看看模型之间答案的差异。哪一个数据集最适合客服机器人？
+* 你可以修改模型，作为服务训练吗？也就是说，使用HTTP GET/POST传递句子？
 
 ### 小结
 
-In this chapter, we've implemented a chatbot, able to respond to questions through an
-HTTP endpoint and a GET API. It's another great example of what we can do with RNN. In
-the next chapter, we're moving to a different topic: how to create a recommender system
-using Tensorflow.
+在本章汇总，我们已经实现了一个聊天机器人，可以通过HTTP端点和GET API回答问题。这是我们使用RNN所完成的有一个很棒的例子。在下一章中，我们会讨论另一个话题：如何使用TensorFlow创建推荐系统。
