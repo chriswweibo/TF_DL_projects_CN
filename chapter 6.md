@@ -17,7 +17,7 @@
 
 下面是一个把“Hello word” 翻译成德语的例子：
 
-<img src="E:\我的\翻译\141_1.jpg" style="zoom:50%" align="center" /> 
+![](figures\141_1.jpg)
 
 是不是很简单呢？乍一看，读者可能认为这是一个简单的字典替换。单词可以被分块后在特定的英法词典上查找，用每个词的翻译来代替。可是，事实并非如此。在这个例子中，英语句子有两个单词，而法语句子有三个单词。更一般地，一些短语动词（例如，turn up、turn off、turn on、turndown等）、撒克逊属格、语法性别、时态、条件句等等，它们并不总是能够直接被翻译，正确的翻译往往需要考虑句子的上下文。
 
@@ -299,7 +299,7 @@ EN: 4 -> 22
 
 ###训练机器翻译模型
 目前为止已经讲述了如何对语料库进行预处理，接下来要讲述如何运用模型。模型已经训练好了，读者可直接从https://github.com/tensorflow/models/blob/master/tutorials/rnn/translate/seq2seq_model.py 进行下载。
-> The piece of code is licensed with Apache 2.0. 十分感谢将此模型开源的作者。We really thank the authors for having open sourced such a great model. Copyright 2015 The TensorFlow Authors. All Rights Reserved. Licensed under the Apache License, Version 2.0 (the License); 未经授权不得使用。读者可以从http://www.apache.org/licenses/LICENSE-2.0 获取授权副本。
+> 上述代码片段以Apache 2.0方式授权。十分感谢将此模型开源的作者。We really thank the authors for having open sourced such a great model. Copyright 2015 The TensorFlow Authors. All Rights Reserved. Licensed under the Apache License, Version 2.0 (the License); 未经授权不得使用。读者可以从http://www.apache.org/licenses/LICENSE-2.0 获取授权副本。
 Unless required by applicable law or agreed to in writing, software.
 Distributed under the License is distributed on an AS IS BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
@@ -564,5 +564,3 @@ Model output: if the house gave this proposal , i would like to hear mr byrne .
 
 ###小结
 本章为读者介绍了如何利用RNN构建一个机器翻译系统。具体地，本章讲解了如何组织语料库，如何训练模型以及如何进行测试。下一章会为读者讲解RNN的其他应用：聊天机器人。
-
-```

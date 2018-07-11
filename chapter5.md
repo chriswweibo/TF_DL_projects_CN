@@ -153,7 +153,7 @@ High,Adj. Low,Adj. Close,Adj. Volume
 ```
 
 代码很简单，引入几个包后，便绘制出周期为10（频率为0.01）、20个点的余弦时间序列:
-<img src="E:\我的\翻译\116_1.jpg" style="zoom:55%" align="center" /> 
+![](figures\116_1.jpg) 
 
 
 
@@ -188,7 +188,7 @@ High,Adj. Low,Adj. Close,Adj. Volume
 ```
 
 画出的图如下所示：
-<img src="E:\我的\翻译\117_1.jpg" style="zoom:55%" align="center" /> 
+![](figures\117_1.jpg) 
 
 从图中可以看出，时间序列数据已被转化为观测向量，每个向量的长度是5。
 
@@ -210,7 +210,7 @@ High,Adj. Low,Adj. Close,Adj. Volume
 ```
 
 价格走势图如下所示:
-<img src="E:\我的\翻译\118_1.jpg" style="zoom:55%" align="center" /> 
+![](figures\118_1.jpg) 
 
 图中的每条线都是时间序列，本节按照处理余弦波信号的方式将其转化为观测矩阵（利用`format_dataset`函数）。
 
@@ -398,10 +398,10 @@ def regression_ANN(x, weights, biases):
 读者可以看到，模型在训练集和测试集上的表现很相近(因此，模型没有过拟合)，MSE和MAE这两个指标均优于非模型预测。
 
 下图展示了模型在每个时间点上预测错误率情况。可以看出错误率在正负0.15之内，且没有随着时间的变化而形成升高或降低的趋势。这是因为，在本章的开头，为余弦波信号引入的噪声值在正负0.1之内均匀分布：
-<img src="E:\我的\翻译\124_1.jpg" style="zoom:55%" align="center" />
+![](figures\124_1.jpg) 
 
 最后一个图显示了模型预测的时间序列与真实的时间序列会重叠在一起。对一个简单的线性回归来说，这个结果不错。
-<img src="E:\我的\翻译\125_1.jpg" style="zoom:55%" align="center" />
+![](figures\125_1.jpg) 
 
 接下来，本章在股票价格上使用同样的模型。建议读者把接下来的代码保存到一个新的文件中，并命名为`3_regression_stock_price.py`。这里只需要改变导入的包名，其余的不用改动。
 
@@ -457,12 +457,12 @@ def regression_ANN(x, weights, biases):
 这个例子中，模型依然没有过拟合，简单的回归模型一定比不用模型的效果好。开始训练的时候，损失特别高，但是随着迭代次数的增加，损失会趋于0。同样的，因为本例预测的是美元，所以用mae分数作为评估。基于模型预测的第二天的股票价格，与真实价格平均差0.5美元；而不做任何学习的价格与真实价格相差9倍之多。
 
 接下来，本章直观地评估模型的性能，下图是模型预测的值：
-<img src="E:\我的\翻译\127_1.jpg" style="zoom:150%" align="center" />
+![](figures\127_1.jpg) 
 下图是绝对误差，点线代表绝对误差的趋势：
-<img src="E:\我的\翻译\128_1.jpg" style="zoom:150%" align="center" />
+![](figures\128_1.jpg) 
 
 下图是真实数据和训练集上的预测数据：
-<img src="E:\我的\翻译\129_1.jpg" style="zoom:150%" align="center" />
+![](figures\129_1.jpg) 
 读者需注意，这只是简单的回归模型的性能，此模型没有利用特征之间的时间相关性。那么如何更好地利用时间相关性呢？
 
 ### 长短期记忆神经网络—LSTM 101
@@ -474,7 +474,7 @@ def regression_ANN(x, weights, biases):
 > 也可参考这个页面`https://www.packtpub.com/big-data-and-business-intelligence/neural-networks-r`
 
 简单来说，RNN适用于序列数据： 以多维信号作为输入，并生成多维输出信号。下图是一个RNN的例子，这个RNN模型能够处理五个时间步长（每个时间步长是一个输入）。图的下半部分是RNN的输入，上半部分是输出。每个输入或输出都包含一个N维的特征：
-<img src="E:\我的\翻译\130_1.jpg" style="zoom:100%" align="center" />
+![](figures\130_1.jpg) 
 在RNN的内部存在许多时间阶段；每个阶段不仅与它本身的输入和输出相连，也与上一阶段的输出相连。所以，每个当前阶段的输出不再仅是当前输入的函数，还依赖于上一阶段的输出（上一阶段的输出依赖于上一阶段的输入和上上阶段的输出，以此类推）。这种设置保证了每个输入可以影响到接下来的所有输出，换句话说，每个输出都是前面所有输入及当前输入的函数。
 
 > 读者需注意，并不是所有的输出都会被使用。例如，在一个情感分析任务中，给定一个句子（时间序列输入信号），需要判定其情感倾向（积极/消极），这时，只有最后一个输出被认为是最终输出，其他的输出不会被作为输出使用。谨记，因为只有最后的一个输出包含了整个句子所有的情感信息，所以只会使用最后一个输出。
@@ -714,14 +714,14 @@ with tf.Session() as sess:
 接下来加载`tensorboard`：
 
 ```
-  $> tensorboard --logdir=./logs/tf/stock_price_lstm
+$> tensorboard --logdir=./logs/tf/stock_price_lstm
 ```
 
-  打开浏览器，输入`localhost:6006`，读者在第一个选项卡中可以看到MSE和MAE的曲线：
-  <img src="E:\我的\翻译\137_1.jpg" style="zoom:55%" align="center" /> 
+打开浏览器，输入`localhost:6006`，读者在第一个选项卡中可以看到MSE和MAE的曲线：
+![](figures\137_1.jpg) 
 
 图中两条曲线的趋势不错，它们一开始在下降，然后趋于平稳。读者也可以在`tensorflow`图（在**GRAPH**选项卡中）中看到模型的各个组成部分如何互相连接，以及所做的运算是如何相互影响的。读者还可以放大查看LSTM是如何在Tensorflow建立的：
-<img src="E:\我的\翻译\138_1.jpg" style="zoom:70%" align="center" /> 
+![](figures\138_1.jpg) 
 到此为止，这个项目就结束了。
 
 ### 问题思考
