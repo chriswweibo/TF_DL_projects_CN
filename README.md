@@ -15,6 +15,7 @@
 * in order to: 为了，以便
 * library：库
 * logistic regression：logistic回归
+* one-hot encoding: 独热编码
 * package：程序包
 * pooling: 池化
 * pool size：池化大小
