@@ -299,11 +299,10 @@ EN: 4 -> 22
 
 ###训练机器翻译模型
 目前为止已经讲述了如何对语料库进行预处理，接下来要讲述如何运用模型。模型已经训练好了，读者可直接从https://github.com/tensorflow/models/blob/master/tutorials/rnn/translate/seq2seq_model.py 进行下载。
-> 上述代码片段以Apache 2.0方式授权。十分感谢将此模型开源的作者。We really thank the authors for having open sourced such a great model. Copyright 2015 The TensorFlow Authors. All Rights Reserved. Licensed under the Apache License, Version 2.0 (the License); 未经授权不得使用。读者可以从http://www.apache.org/licenses/LICENSE-2.0 获取授权副本。
-Unless required by applicable law or agreed to in writing, software.
-Distributed under the License is distributed on an AS IS BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
-express or implied. See the License for the specific language governing permissions and limitations under the License.
+> 上述代码片段以Apache 2.0方式授权。十分感谢将此模型开源的作者。2015版权所有者为TensorFlow的作者。受Apache  2.0版本许可保护，未经授权不得使用。读者可以从http://www.apache.org/licenses/LICENSE-2.0 获取授权副本。
+> 除非法律另有规定或书面、软件同意。
+>
+> 授权分发参照 AS IS BASIS , WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND 进行。读者可查看特定语言许可的条款，以及此许可下的一系列限制。
 
 本节会为读者讲解如何使用模型。首先需要创建一个名为`train_translator.py`的新文件，然后引入一些包，并设置一些常量。本章会把词典、模型、检查点保存在`/tmp/`目录中：
 
