@@ -5,6 +5,7 @@
 * batch normalization： 批归一化
 * benchmark：基准，基准表现
 * boosting: 提升
+* bounding box: 边框
 * cnn：卷积神经网络
 * compressed storage row：压缩行存储
 * dense layer: 全连接层
