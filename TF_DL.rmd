@@ -709,11 +709,11 @@ except:
     from object_detection.utils import label_map_util
     from object_detection.utils import visualization_utils as vis_util
 ```
-我们定义`DetectionObj`类和它的`init`步骤。初始化只针对一个参数和模型名（最初的设置只要求性能较差但速度更快、更轻量的模型，例如SSD MobileNet），但一些内部参数可以改变，以适合类的使用：
+我们定义了`DetectionObj`类和它的`init`步骤。初始化只针对一个参数和模型名（最初的设置只可以接受性能较差但速度更快、更轻量的模型，例如SSD MobileNet），但一些内部参数可以改变，以适合类的使用：
 
-* `self.TARGET_PATH`指出了读者想进行注释并保存的目录
+* `self.TARGET_PATH`指出了进行注释并保存的目录。
 
-* `self.THRESHOLD`修正由注释过程引起的概率阈值。事实上，任何模型都会输出每幅图形的低概率探测。概率过低的探测通常是错误的。因此，读者需要确定一个阈值，忽略这些并不可能的检测。从经验上来看，0.25是一个很好的阈值，可以根据几乎所有的完全遮挡或视觉杂波来寻找不确定的目标。
+* `self.THRESHOLD`修正由注释过程引起的概率阈值。事实上，任何模型都会输出每幅图形的低概率检测。概率过低的检测通常是错误的。因此，我们需要确定一个阈值，以便忽略这些并不可能的检测结果。经验告诉我们，0.25是一个很好的阈值，可以在几乎完全遮挡或视觉杂波的情况下来寻找不确定的目标。
 
 ```python
 class DetectionObj(object):
@@ -793,9 +793,9 @@ class DetectionObj(object):
        # Starting the TensorFlow session
        self.TF_SESSION = tf.Session(graph=self.DETECTION_GRAPH)
 ```
-`self.LABLES`变量非常易于获取，它包含一个对文本表示进行数字编码的字典。此外，`init`程序会加载并打开TensorFlow会话，并为`self.TF_SESSION`准备好。
+`self.LABLES`变量非常易于调用，它包含一个对文本表示进行数字编码的字典。此外，`init`程序会加载并打开TensorFlow会话，并为`self.TF_SESSION`准备好环境。
 
-`load_frozen_model`和`download_frozen_model`这两个函数会帮助`init`来从磁盘加载选中的冻结的模型，如果模型不可访问，则会从网上下载tar格式的模型并且解压到合适的目录（即`object_detection`目录）：
+`load_frozen_model`和`download_frozen_model`这两个函数会帮助`init`从磁盘中加载选中的冻结模型。如果模型不可访问，它们会从网上下载tar格式的模型并且解压到合适的目录（即`object_detection`目录）下：
 ```python
     def load_frozen_model(self):
             """
@@ -814,7 +814,7 @@ class DetectionObj(object):
 
        return detection_graph
 ```
-函数`download_frozen_model`改变`tqdm`包从而使新模型从互联网下载的过程可以可视化。一些模型相当大（超过600MB），下载可能需要很长时间。提供可视化的反馈并且估计剩余时间可以让使用者对操作过程更有信心：
+函数`download_frozen_model`使用了`tqdm`包，从而使新模型的互联网下载过程可视化。一些模型相当大（超过600MB），下载可能需要很长时间。提供流程的可见反馈和预估剩余时间可以让我们对操作过程更有信心：
 ```python
 def download_frozen_model(self):
     """
@@ -840,14 +840,14 @@ download_url = \
     'http://download.TensorFlow.org/models/object_detection/'
 opener = urllib.request.URLopener()
 
-Downloading the model with tqdm estimations of completion
+# Downloading the model with tqdm estimations of completion
 
 print('Downloading...')
 with tqdm() as t:
     opener.retrieve(download_url + model_filename,
                     model_filename, reporthook=my_hook(t))
 
-Extracting the model from the downloaded tar file
+# Extracting the model from the downloaded tar file
 
 print ('Extracting...')
 tar_file = tarfile.open(model_filename)
@@ -858,7 +858,7 @@ for file in tar_file.getmembers():
                     os.path.join(self.CURRENT_PATH,
                     'object_detection'))
 ```
- 在本项目中下面的两个函数， `load_image_from_disk` 和 `load_image_into_numpy_array`是可用的，它们对于从磁盘中选择图像并转化为适合任何TensorFlow模型处理的numpy矩阵是必要的：
+下面的两个函数，`load_image_from_disk`和`load_image_into_numpy_array` 是可用必须的。它们可以从磁盘中选择图像并转化为适合任何TensorFlow模型的numpy数组：
 ```python
     def load_image_from_disk(self, image_path):
         return Image.open(image_path)
@@ -873,12 +873,15 @@ for file in tar_file.getmembers():
 
        return image
 ```
-`detect`函数，是分类功能的核心。该函数期望一次性处理一系列图像。一个布尔型的标记`annotate_on_image`，告诉脚本是否对边界盒可视化并直接对给定图像进行注释。
-这样一个函数可以一个接一个地处理不同尺寸的图像，但是需要逐一处理。因此，它读取每张图像并扩展矩阵的维数，增加一个新的维度。这一过程是必要的，因为模型希望矩阵的尺寸是：图像的数量 * 高度 * 宽度 * 深度
+`detect`函数是分类功能的核心。该函数接收图像列表。布尔标记`annotate_on_image`，可以控制脚本在给定的图像上可视化边框和注释。
 
-注意，我们可以将所有待预测的批处理图像打包成一个矩阵。这样可以很好地工作，并且如果所有图像的高度和深度都相同，处理速度会更快。我们的项目中不做这样的假设，因此需要对单张图像进行处理。
-之后，我们将在模型中按名称取若干张量（`detection_boxes`, `detection_scores`, `detection_classes`, `num_detections`），这是我们期望的模型输出。同时，我们把这些传送给输入张量`image_tensor`,，它会把图像标准化到对模型中每一层合适的格式。
-结果被收集到一个列表中，如有需要，图像和探测盒将被展示：
+这个函数可以逐个处理不同尺寸的图像。但是一次只能处理一个。因此，它读取每张图像并通过增加一个新的维度来扩展数组的维度。这一过程是必要的，因为模型希望数组的大小满足：图像的数量 \* 高度 \* 宽度 \* 深度。
+
+注意，我们可以将所有待预测的批处理图像打包成一个矩阵。如果所有图像的高度和深度都相同，这样可以很好地工作，处理起来很快。但是，我们的项目不满足这样的假设，因此需要逐个处理图像。
+
+我们会按照名称取张量（`detection_boxes`, `detection_scores`, `detection_classes`, `num_detections`）。这些就是期望的模型输出。同时，我们把输入传递给输入张量`image_tensor`，它会对图像进行标准化以适合模型中每一层的处理。
+
+结果存到一个列表中。如有需要，图像会带着检测边框一并展示：
 ```python
      def detect(self, images, annotate_on_image=True):
         """
@@ -938,7 +941,7 @@ for file in tar_file.getmembers():
             results.append((image_np, boxes,
                                         scores, classes, num_detections))
 
-   return results
+        return results
 ```
 函数`detection_on_image`的作用是处理`detect`函数的结果并返回一张包含边框的新图像，并通过`visualize_image`函数展示在屏幕上（读者可以调整延迟参数，它对应着脚本处理另一图像之前，当前图像在屏幕上停留的秒数）。
 ```python
@@ -958,17 +961,15 @@ for file in tar_file.getmembers():
         return image_np
 
 ```
-函数`visualize_image`提供了一些可以修改的参数，以便适应读者在本项目中的需求。首先，`image_size`提供了屏幕上展示的图像需要的尺寸。因此，过大或过小的图像可以被调整，以便部分地类似于这个规定的尺寸。延迟参数`latency`，定义了每幅图像展示在屏幕上的描述，这样可以锁定物体探测过程，直到处理下一幅图像。最后，`bluish_correction`是图像为BGR（这一格式颜色通道按蓝-绿-红的顺序被组织，这是OpenCV库中的一种标准，详见https://stackoverflow.com/questions/14556545/why-opencv-usingbgr-colour-space-instead-of-rgb）而非RGB（红-绿-蓝）格式时提供的校正。模型需要的是RGB格式。
+函数`visualize_image`提供了一些可以修改的参数，以便适应我们在项目中的特殊需求。首先，`image_size`提供了屏幕上展示图像的尺寸。因此，过大或过小的图像都可以调整，以便和要求的尺寸相近。延迟参数`latency`，定义了每幅图像展示在屏幕上的秒数，这样可以锁定物体检测过程，直到处理下一幅图像。最后，`bluish_correction`是图像为**BGR**（这一格式颜色通道按**蓝-绿-红**的顺序组织，这是OpenCV库中的一种标准，详见https://stackoverflow.com/questions/14556545/why-opencv-usingbgr-colour-space-instead-of-rgb）而非**RGB**（**红-绿-蓝**）格式时提供的校正。模型需要的是RGB格式。
 ```python
-       def visualize_image(self, image_np, image_size=(400, 300), latency=3, bluish_correction=True):
-
+       def visualize_image(self, image_np, image_size=(400, 300), 
+                           latency=3, bluish_correction=True):
            height, width, depth = image_np.shape
-
            reshaper = height/float(image_size[0])
                 width = int(width/reshaper)
 
            height = int(height/reshaper)
-
            id_img = 'preview_' + str(np.sum(image_np))
                 cv2.startWindowThread()
                 cv2.namedWindow(id_img, cv2.WINDOW_NORMAL)
@@ -984,7 +985,7 @@ for file in tar_file.getmembers():
                cv2.imshow(id_img, image_np)
                cv2.waitKey(latency*1000)
 ```
-注释通过`serialize_annotations`函数被准备并写入磁盘。函数为每幅图像创建一个JSON文件，数据包括检测的类，bounding box的顶点和检测的置信度。例如，这是狗的照片上检测到的结果：
+注释通过`serialize_annotations`函数写入磁盘。该函数为每幅图像创建一个JSON文件，数据包括检测的类，边框的顶点和检测的置信度。例如，这是狗的照片上的检测结果：
 ```python
      "{"scores": [0.9092628359794617], "classes": ["dog"], "boxes": [[0.025611668825149536, 0.22220897674560547, 0.9930437803268433, 0.7734537720680237]]}"
 ```
@@ -1012,7 +1013,7 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
                              'scores': valid_scores}
                 json.dump(json_data, outfile)
 ```
-函数`get_time`可以很方便地将真实时间转化为字符串并可用于文件名：
+函数`get_time`可以很方便地将真实时间转化为字符串并存在文件名：
 ```python
     def get_time(self):
         """
@@ -1021,9 +1022,8 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
 
         return strftime("%Y-%m-%d_%Hh%Mm%Ss", gmtime())
 ```
-最后，我们准备三个检测渠道，分别处理图像，视频和网络摄像头。对图像的渠道把每幅图像加载到一个列表中。视频渠道使`moviepy`中的` VideoFileClip`模型在简单通过`detect`函数之后完成大量操作并被封装在`annotate_photogram`函数中。最后，网络摄像头渠道的快照依赖于简单的函数`capture_webcam`，它依赖于 OpenCV's VideoCapture，记录从网络摄像头的返回的最后一些快照（ 操作考虑到了网络摄像头适应环境光线水平所需的必要时间）：
+最后，我们准备三个检测渠道，分别处理图像，视频和网络摄像头。处理图像的渠道把每幅图像加载到一个列表中。视频渠道使`moviepy`中的`VideoFileClip`模型在简单通过`detect`函数之后，完成大量操作并被封装在`annotate_photogram`函数中。最后，网络摄像头渠道的快照依赖于简单的基于OpenCV'的VideoCapture函数`capture_webcam`，记录从网络摄像头返回的最后一些快照（操作考虑到了网络摄像头适应环境光线水平所需的必要时间）：
 
-在考虑到环境光的水平之前，该操作考虑了摄像头所需的时间。
 ```python
        def annotate_photogram(self, photogram):
         """
@@ -1034,7 +1034,7 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
 
             return new_photogram
 ```
-`capture_webcam`函数从读者的网络摄像头中用`cv2.VideoCapture` （http://docs.opencv.org/3.0-beta/modules/videoio/doc/reading_and_writing_video.html）获取图像。由于摄像头需要首先适应拍照环境的光线，在将照片输入目标检测程序前，程序会丢弃开始的一些照片。这样，网络摄像头总有时间调节其灯光设置：
+`capture_webcam`函数利用`cv2.VideoCapture` （http://docs.opencv.org/3.0-beta/modules/videoio/doc/reading_and_writing_video.html）获取网络摄像头的图像。由于摄像头需要首先适应拍照环境的光线，在将照片输入目标检测程序前，程序会丢弃开始的一些照片。这样，网络摄像头总有时间调节灯光设置：
 ```python
     def capture_webcam(self):
         """
@@ -1042,14 +1042,18 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
         """
         def get_image(device):
             """
-            Internal function to capture a single image             from the camera and return it in PIL format
+            Internal function to capture a single image             
+            from the camera and return it in PIL format
             """
             retval, im = device.read()
             return im
-        # Setting the integrated webcam         camera_port = 0
+        # Setting the integrated webcam         
+        camera_port = 0
         # Number of frames to discard as the camera
-        # adjusts to the surrounding lights         ramp_frames = 30
-        # Initializing the webcam by cv2.VideoCapture         camera = cv2.VideoCapture(camera_port)
+        # adjusts to the surrounding lights         
+        ramp_frames = 30
+        # Initializing the webcam by cv2.VideoCapture         
+        camera = cv2.VideoCapture(camera_port)
         # Ramping the camera_all these frames will be
         # discarded as the camera adjust to the right light levels
         print("Setting the webcam")
@@ -1063,11 +1067,11 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
         del (camera)
         return camera_capture
 ```
-`file_pipeline`函数包括从存储图像加载图像所需的所有步骤，并对它们进行可视化/注释：
+`file_pipeline`函数包括从存储图像到加载图像所需的所有步骤，并对它们进行可视化/注释：
 1. 从磁盘载入图像
-2. 对于加载好的图像应用目标检测
+2. 对于加载好的图像进行物体检测
 3. 将每幅图像的注释结果写入JSON文件
-4. 如果布尔参数`visualize`需要，在电脑屏幕上展示图像和`bounding box`
+4. 如果布尔参数`visualize`需要，在电脑屏幕上展示图像和边框
 ```python
     def file_pipeline(self, images, visualize=True):
         """
@@ -1091,11 +1095,12 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
 
                self.visualize_image(new_image)
 ```
-`video_pipeline`简单地组织所有必要的步骤来用`bounding box`注释图像，并在完成操作后存入磁盘：
+`video_pipeline`会组织所有步骤，完成使用边框注释视频，并存入磁盘：
 ```python
     def video_pipeline(self, video, audio=False):
         """
-        A pipeline to process a video on disk and annotating it         by bounding box.The output is a new annotated video.
+        A pipeline to process a video on disk and annotating it         
+        by bounding box.The output is a new annotated video.
         """
         clip = VideoFileClip(video)
         new_video = video.split('/')
@@ -1106,11 +1111,11 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
         video_annotation.write_videofile(new_video, audio=audio)
 ```
 
-`webcam_pipeline`函数包含从网络摄像头到得到读者想要的注释图像的所有步骤：
+`webcam_pipeline`函数会组织所有步骤，注释网络摄像头的图像：
 
 1. 从网络摄像头捕获图像
-2. 将捕获的图像存入磁盘（用 cv2.imwrite，它具有基于目标文件名编写不同图像格式的优点。详见http://docs.opencv.org/3.0_beta/modules/imgcodecs/doc/reading_and_writing_images.html）
-3. 对图像应用物体探测
+2. 将捕获的图像存入磁盘（`cv2.imwrite`，具有基于目标文件名编写不同图像格式的优点。详见http://docs.opencv.org/3.0_beta/modules/imgcodecs/doc/reading_and_writing_images.html）
+3. 对图像进行物体探测
 4. 把注释保存到JSON文件
 5. 展示图像和边框
 ```python
@@ -1136,15 +1141,17 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
 
 ### 一些简单应用
 
-作为代码配置的最后一部分，我们只演示三个简单的脚本，分别利用我们项目中使用的三种不同的来源：文件、视频、网络摄像头。
+作为代码配置的最后一部分，我们只演示三个简单的脚本，分别使用我们项目中三种不同的数据源：文件、视频、网络摄像头。
 
-我们的第一个测试脚本目标是从本地文件夹（当读者在其他文件夹操作时，导入操作不会生效，除非读者把整个项目文件夹加入Python路径）导入`DetectionObj`并注释以及可视化三幅图像，
-为了在读者的脚本中在Python路径中加入目录，在需要访问目录的脚本之前读者需要调用`sys.path.insert`命令：
+我们的第一个测试脚本目标是从本地文件夹（当在其他文件夹操作时，导入操作不会生效，除非把整个项目文件夹加入Python路径）导入`DetectionObj`并注释以及可视化三幅图像。
+
+> 为了在读者的脚本中在Python路径中加入目录，在需要访问目录的脚本之前读者需要调用`sys.path.insert`命令：
 ```python
     import sys
     sys.path.insert(0,'/path/to/directory')
 ```
-然后我们激活类，声明它并使用SSD MobileNet v1模型。之后，我们必须将每幅图像的路径放入列表并传入方法`file_pipeline`中：
+
+然后我们激活类，声明使用SSD MobileNet v1模型。之后，我们必须将每幅图像的路径放入列表并传递给`file_pipeline`方法：
 ```python
     from TensorFlow_detection import DetectionObj
 
@@ -1157,21 +1164,21 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
         detection.file_pipeline(images)
 ```
 
-在我们收到探测的类的结果之后得到的输出被放在图像的交叉点上，并返回给我们包含具有足够置信度的围绕着物体的边框的另一幅图像。
+在我们收到检测结果之后，得到的输出放在交叉路口图像上，最终返回另一个图像，其包含具有足够置信度的物体的边框。
 
-<img src="PATH\figures\46_1.jpg" />
+![](figures/46_1.jpg)
 
-						SSDMobileNet v1在交叉口照片上的目标检测
+SSDMobileNet v1在交叉路口照片上的物体检测
 
 
 
-运行脚本之后，三张图像和它们的注释会展示在屏幕上（每一幅图展示三秒），一个新的JSON文件会被存入磁盘（存储在目标路径，如果读者没有修改环境变量`TARGET_CLASS`，那么会存储在本地目录）。
+运行脚本之后，三张图像和它们的注释会展示在屏幕上（每一幅图展示三秒）。而一个新的JSON文件会被存入磁盘（存储在目标路径，如果我们没有修改环境变量`TARGET_CLASS`，那么会存储在本地目录）。
 
-在可视化中，读者可以看见与目标相关的边框，它们的置信度大于0.5。无论如何，读者会注意到，在这种情况下，一个交叉路口的注释图像（在前面的图中描绘）中，并不是所有的汽车和行人都能被模型所发现。
+经过可视化，我们可以看到与物体相关的边框，它们的置信度大于0.5。然而，可以看到，在这种情况下，一个交叉路口的注释图像（在前面的图中描绘）中，并不是所有的汽车和行人都能被模型所发现。
 
-通过观察JSON文件，读者可以发现很多其他汽车和行人被模型发现，尽管它们的置信度较低。在文件中，读者会发现所有检测到的目标最少具有0.25的置信度，这是很多目标检测研究中常用的一个阈值（读者可以通过修改变量`THRESHOLD`来改变它）。
+通过检查JSON文件，我们可以发现还有其他汽车和行人被模型发现，尽管它们的置信度较低。在文件中，我们会看到所有检测到的目标都至少具有0.25的置信度，这是很多目标检测研究中常用的一个阈值（读者可以通过修改变量`THRESHOLD`来改变它）。
 
-这里读者可以看到JSON文件中产生的分数。只有8个探测到的目标的得分高于阈值0.5，其它16个得到较低：
+这里读者可以看到JSON文件中产生的分数。只有8个检测到的物体得分高于阈值0.5，其它16个得分较低：
 
 ```python
     "scores": [0.9099398255348206, 0.8124723434448242, 0.7853631973266602,
@@ -1183,35 +1190,34 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
     0.294520765542984, 0.2912806570529938, 0.2889115810394287,
     0.2781482934951782, 0.2767323851585388, 0.2747304439544678]
 ```
-同时，读者可以发现检测到的目标对应的类。很多置信度较低的汽车被检测到。事实上它们有可能是图中的其它车，也可能是误判。根据检测API的应用，读者可能需要调整阈值或使用其它模型，仅当它被不同的模型在阈值以上重复检测时才保留认为这是需要检测的目标：
+同时，我们可以发现检测到的物体对应的类。很多置信度较低的汽车被检测到。事实上它们有可能是图中的其它车，也可能是误判。配合检测API的使用，读者可能需要调整阈值或使用其它模型。只有当它被不同的模型以较高阈值重复检测到时才保留，认为这是需要检测的物体：
 
 ```python
    "classes": ["car", "person", "person", "person", "person", "car", "car",
     "person", "person", "person", "person", "person", "person", "person", "car", "car", "person", "person",
-
    "car", "car", "person", "car", "car", "car"]
 ```
-对视频的检测采用同样的脚本方法。这一次，读者只需要指出合适的方法——`video_pipeline`，视频的路径，并设置生成的视频是否需要有音频（默认音频被过滤）。脚本自己可以完成任务，保存一个修改并注释的视频在与原始视频相同的目录下（读者可以很快找到它，它在原有文件名前加上了 `annotated_` ）：
+对视频的检测采用同样的脚本。这一次，读者只需要指出合适的方法——`video_pipeline`，视频的路径，并设置生成的视频是否需要有音频（默认音频被过滤）。脚本自己可以完成任务，并把修改和注释的视频保存在与原始视频相同的目录下（读者可以很快找到它，它在原有文件名前加上了`annotated_` ）：
 ```python
    from TensorFlow_detection import DetectionObj
    if__name__ == "__main__":
         detection = DetectionObj(model='ssd_mobilenet_v1_coco_11_06_2017')
        detection.video_pipeline(video="./sample_videos/ducks.mp4", audio=False)
 ```
-最后读者可以将这个方法用于摄像头，读者需要使用`webcam_pipeline`函数：
+最后读者可以将这个方法用于摄像头，使用`webcam_pipeline`函数：
 ```python
 from TensorFlow_detection import DetectionObj
 if__name__ == "__main__":
     detection = DetectionObj(model='ssd_mobilenet_v1_coco_11_06_2017')
     detection.webcam_pipeline()
 ```
-这个脚本会激活摄像头，适应光线，选择快照，将快照和注释保存到当前目录下的JSON文件中，并最终将快照和检测目标的边框展示在读者的屏幕上。
+这个脚本会激活摄像头，适应光线，选择快照，将快照和注释保存到当前目录下的JSON文件中，并最终将快照和检测物体的边框展示在屏幕上。
 
 ### 网络摄像头实时监测
 
-目前的`webcam_pipeline`不是实时的目标检测系统，因为它只是获取快照并应用检测程序来处理单张图像。这是必要的限制，因为处理网络摄像头数据流需要密集的I/O交换。特别地，问题是从网络摄像头到Python解释器的图像队列，它锁定Python直到传输完成。Adrian Rosebrock在他的图像研究网站上 提出了一个基于线程的简单解决方案，读者可以在网站http://www.pyimagesearch.com/2015/12/21/increasing_webcam_fps_withpython-and_opencv/.上了解更多。
+目前的`webcam_pipeline`并不是实时的物体检测系统，因为它只是获取快照并应用检测程序来处理单张图像。这是必要的限制，因为处理网络摄像头数据流需要密集的I/O交换。具体来说，主要问题在于从网络摄像头到Python解释器的图像队列，会锁定Python直到传输完成。Adrian Rosebrock在他的图像研究网站上 提出了一个基于线程的简单解决方案，读者可以在网站http://www.pyimagesearch.com/2015/12/21/increasing_webcam_fps_withpython-and_opencv/上了解更多。
 
-想法非常简单、在Python中，由于全局解释器锁 （global interpreter lock，GIL）的存在，同一时间只能执行一个线程。如果存在某些阻止I/O操作的线程（例如下载文件或从网络摄像头获取图像），所有剩余的命令会因此而延迟，导致程序本身执行非常缓慢。为此可以产生一个很好的解决方案，即将阻塞的I/O操作转移到另一个线程。这样的线程共享一部分内存，程序线程可以继续执行它的指令和查询I/O线程，以便检查它是否已经完成了它的操作。 因此，如果将图像从网络摄像头转移到内存是一个阻塞操作，让另一个线程处理I/O可能是一种解决方法。主程序会查询I/O线程，从只包含最近接收的图像的缓冲区选择图像并在屏幕上绘制它。
+他的想法非常简单。在Python中，由于**全局解释器锁 （global interpreter lock，GIL）**的存在，同一时间只能执行一个线程。如果存在某些阻止I/O操作的线程（例如下载文件或从网络摄像头获取图像），所有剩余的命令会因此而延迟，导致程序本身执行非常缓慢。为此可以产生一个很好的解决方案，即将阻塞的I/O操作转移到另一个线程。这样的线程共享一部分内存，程序线程可以继续执行它的指令和查询I/O线程，以便检查它是否已经完成了操作。 因此，如果将图像从网络摄像头转移到内存是一个阻塞操作，让另一个线程处理I/O可能是一种解决方法。主程序会查询I/O线程，从只包含最近接收的图像的缓冲区选择图像并在屏幕上进行展示。
 ```python
 from TensorFlow_detection import DetectionObj
 from threading import Thread
@@ -1270,25 +1276,25 @@ if__name__ == "__main__":
             # Then halting the while loop
             break
 ```
-上面的代码使用 `webcamStream`类来解决这一问题，它为网络摄像机I/O实例化一个线程，允许Python主程序总能拥有最新接收到的图像，用TensorFlow接口处理（用`ssd_mobilenet_v1_coco_11_06_2017`）。处理后的图像会通过OpenCV函数全部绘制在屏幕上，敲击空格键以终止程序。
+上面的代码使用`webcamStream`类来解决这一问题。借助TensorFlow接口（使用`ssd_mobilenet_v1_coco_11_06_2017`），它为网络摄像头I/O实例化了一个线程，允许Python主程序总能拥有最新接收到的图像。处理后的图像会通过`OpenCV`函数全部绘制在屏幕上，敲击空格键可以终止程序。
 
 
 
 ### 致谢
 
-项目的所有相关内容起源于下面的论文：Speed/accuracy trade-offs for modern convolutional object detectors（https://arxiv.org/abs/1611.10012 ） by Huang J, Rathod V, Sun C, Zhu M, Korattikara A, Fathi A, Fischer I, Wojna Z, Song Y, Guadarrama S, Murphy K, CVPR 2017.
+项目的所有相关内容起源于下面的论文：《Speed/accuracy trade-offs for modern convolutional object detectors》（https://arxiv.org/abs/1611.10012 ），源自：Huang J, Rathod V, Sun C, Zhu M, Korattikara A, Fathi A, Fischer I, Wojna Z, Song Y, Guadarrama S, Murphy K, CVPR 2017。
 
-总结这一章，我们需要感谢TensorFlow物体探测接口的所有开发者：Jonathan Huang, Vivek Rathod, Derek Chow, Chen Sun, Menglong Zhu, Matthew Tang, Anoop Korattikara, Alireza Fathi, Ian Fischer, Zbigniew Wojna, Yang Song, Sergio Guadarrama, Jasper Uijlings, Viacheslav Kovalevskyi, Kevin Murphy.，感谢他们实现了如此伟大的接口并且对所有人免费开源。
+最后，我们需要感谢TensorFlow物体探测接口的所有开发者：Jonathan Huang, Vivek Rathod, Derek Chow, Chen Sun, Menglong Zhu, Matthew Tang, Anoop Korattikara, Alireza Fathi, Ian Fischer, Zbigniew Wojna, Yang Song, Sergio Guadarrama, Jasper Uijlings, Viacheslav Kovalevskyi, Kevin Murphy.，感谢他们实现了如此伟大的接口并且对所有人免费开源。
 
-我们也要感谢 Dat Tran，他在MIT许可项目的媒体上发表了两篇关于如何使用TaySoFoad对象检测API进行实时识别，even on custom的文章（https://towardsdatascience.com/building_a_real_time_object_recognition_app_with_TensorFlow_and_opencvb7a2b4ebdc32 及 https://towardsdatascience.com/how_to_train_your_own_objectdetector-with_TensorFlows_object_detector_api_bec72ecfe1d9 ）
+我们也要感谢 Dat Tran，他在MIT许可项目的媒体上发表了两篇关于如何使用TaySoFoad对象检测API进行实时识别，甚至是定制化识别的文章（https://towardsdatascience.com/building_a_real_time_object_recognition_app_with_TensorFlow_and_opencvb7a2b4ebdc32 及 https://towardsdatascience.com/how_to_train_your_own_objectdetector-with_TensorFlows_object_detector_api_bec72ecfe1d9）。
 
 ## 总结
 
-这个项目可以帮助您对图像分类建立信心，并且不会有太多麻烦。它可以帮助读者更多地了解卷积网络在解决实际问题中起到的作用，可以让读者更加关注问题本身（可能是更大规模的应用），并且注释图像，以便用选定的类中的图像训练更多的卷积网络。
+这个项目可以帮助我们迅速开展行之有效的而且毫无障碍的图像分类。它可以帮助我们更多地了解卷积网络在解决实际问题中起到的作用，也可以让我们更加关注问题本身（可能是更大规模的应用），并且注释图像，以便用选定的类中的图像训练更多的卷积网络。
 
-在这一项目章，读者可以学到图像处理过程中很多常用的技巧。首先，读者现在已经知道怎样处理不同类型的视觉输入，例如图像、视频、摄像头捕捉。读者也已经知道，怎样加载一个冻结的模型并使其工作，怎样使用TensorFlow模型。
+在这一项目中，读者可以学到图像处理过程中很多常用的技巧。首先，读者现在已经知道怎样处理不同类型的视觉输入，例如图像、视频、摄像头捕捉。读者也已经知道，怎样加载一个冻结的模型并使其工作，怎样使用TensorFlow模型。
 
-另一方面，显然，项目中存在一些读者必然会遇到的限制，这可能会激励读者尝试集成读者的代码并使它更加优秀。首先，我们讨论的模型很快会被更新、更高效的模型所取代（读者可以查看下面的链接以获取可用的模型：https://github.com/TensorFlow/models/blob/master/object_detection/g3doc/detection_model_zoo.md ），同时，读者需要合并新模型或创造读者自己的模型（参见https://github.com/TensorFlow/models/blob/master/object_detection/g3doc/defining_your_own_model.md ）。此外，读者需要结合模型以达到读者的项目所需要的准确率（论文Speed/accuracy trade-offs for modern convolutional object detectors揭示了google研究员如何完成这一目标）。最后，读者需要调节娟姐网络去识别新的类（相关资料见https://github.com/TensorFlow/models/blob/master/object_detection/g3doc/using_your_own_dataset.md ，这是一个长期的工程）。
+另一方面，读者肯定会在以后遇到一些困难。这可能会激励我们整合代码，使其发挥更大的作用。首先，我们讨论的模型很快会被更新、更高效的模型所取代（读者可以查看下面的链接以获取可用的模型：https://github.com/TensorFlow/models/blob/master/object_detection/g3doc/detection_model_zoo.md ），同时，读者需要合并新模型或创造自己的模型（参见https://github.com/TensorFlow/models/blob/master/object_detection/g3doc/defining_your_own_model.md ）。此外，读者需要结合模型以达到自己项目所需要的准确率（论文《Speed/accuracy trade-offs for modern convolutional object detectors》揭示了google研究员如何完成这一目标）。最后，读者需要调节卷积网络去识别新的类（相关资料见https://github.com/TensorFlow/models/blob/master/object_detection/g3doc/using_your_own_dataset.md ，这是一个长期的工程）。
 
-下一章，我们将研究图像中最先进的对象检测，设计一个项目，该项目将引导读者对提交的图像做出完整的描述说明，而不仅仅是简单的标签和边框。
+在下一章里，我们将研究图像中最先进的物体检测。我们会设计一个项目，该项目将引导读者对提交的图像做出完整的描述说明，而不仅仅是简单的标签和边框。
 
