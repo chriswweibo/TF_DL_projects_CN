@@ -13,9 +13,11 @@
 * embedding: 词嵌入
 * epoch：轮
 * gradient clipping：梯度裁剪
+* image captioning:图像描述
 * in order to: 为了，以便
 * library：库
 * logistic regression：logistic回归
+* Long-term recurrent convolutional architectures：长期递归卷积结构
 * one-hot encoding: 独热编码
 * package：程序包
 * pooling: 池化
