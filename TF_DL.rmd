@@ -1686,106 +1686,99 @@ model.fit_generator(data_generator(batch_size=batch_size),
 
 ##第4章 为条件图像生成建立GAN
 
-Yann LeCun，Facebook人工智能的领导者，最近提出“生成对抗网络是机器学习中十年来最有趣的想法“， 这一观点也由于引起了学界对这一深度学习方法的浓厚兴趣而得以证实。如果读者阅读了最近有关深度学习的论文（          同时也要注意LinkedIn或中级职位的主要趋势），就会发现GANs已经产生了非常多的变体。
+Yann LeCun，Facebook人工智能的领导者，最近提出“生成对抗网络是机器学习中十年来最有趣的想法”。 这一观点也由于引起了学界对这一深度学习方法的浓厚兴趣而得以证实。如果读者阅读了最近有关深度学习的论文（          同时注意到相关话题的LinkedIn或Medium的内容趋势），就会发现GAN已经产生了非常多的变体。
 
-读者可以通过Hindu Puravinash,创建的、支持更新的参考文献列表来了解GANs的世界的发展，详见https://github.com/hindupuravinash/the-gan-zoo/blob/master/gans.tsv；也可以通过学习Zheng Liu准备的GANs的时间线https://github.com/dongb5/GAN-Timeline来达到这一目的，它可以帮助读者把所有相关内容放在时间的角度。
+读者可以通过Hindu Puravinash,创建并持续更新的参考文献列表来了解GAN世界的发展，详见https://github.com/hindupuravinash/the-gan-zoo/blob/master/gans.tsv；也可以通过学习Zheng Liu的GAN时间线https://github.com/dongb5/GAN-Timeline 来达到这一目的，它可以帮助读者通过时间维度，理解所有相关内容。
 
-GANs有能力去激发想象力，因为它们能展示人工智能的创造力，而不仅仅是它的计算能力。在本章中，我们将： 
+GAN有能力去激发想象力，因为它们能展示人工智能的创造力，而不仅仅是它的计算能力。在本章中，我们将： 
 
-* 揭开GANs的神秘面纱，为读者提供所有必要的概念来理解GANs是什么，GANs现在能做什么，以及GANs期望做什么。 
+* 揭开GAN的神秘面纱，为读者提供所有必要的概念来理解GAN是什么，GAN现在能做什么，以及期望GAN做什么。 
 
-* 演示如何基于初始的示例图像来生成图像（即所谓的非监督的GANs）
+* 演示如何基于初始的示例图像来生成图像（即所谓的非监督的GAN）
 
-* 解释如何使利用GANs为读者生成读者所需要的类型的结果图。
+* 解释如何使利用GAN生成读者所需类型的结果图。
 
-* 将GaNs与所期望的图像生成的条件相结合。 
+* 建立一个基本的，完整的项目，可以处理不同的手写字符和图标数据集。 
 
-* 建立一个基本的、完整的项目，可以处理不同的手写字符和图标数据集。 
+* 为读者提供如何在云（特别是亚马逊云）上训练GAN的基本指令              
 
-* 为读者提供如何在云（特别是亚马逊云）上训练读者的GANs的基本指令              
-
-GANs的成功很大程度上取决于读者使用的特定神经网络结构，以及它们所面对的问题和读者提供给它们的数据。 本章中我们选择的数据集可以提供满意的结果。我们希望读者能享受并被GAN的创造力所激励！
+GAN的成功很大程度上取决于使用的特定神经网络结构，以及它们所面对的问题和读者提供给它们的数据。 本章中我们选择的数据集可以提供满意的结果。我们希望读者能享受并被GAN的创造力所激励！
 
 
-### GANs简介
+### GAN简介
 
-我们将从最近的一些历史开始，因为GANs是读者能发现的整个人工智能和深度学习领域最新的想法之一。
+我们将从最近的一些历史开始，因为GAN是读者能发现的整个人工智能和深度学习领域最新的想法之一。
 
-一切起源于2014年，Ian Goodfellow和他的同事（Yoshua Bengio也在贡献者名单中）在蒙特利尔大学的Departement d'informatique et de recherche发表了一篇关于生成对抗网络（GANs）的论文，提出了能够基于一系列初始样例生成新数据的框架：、
+一切起源于2014年，Ian Goodfellow和他的同事（Yoshua Bengio也在贡献者名单中）在蒙特利尔大学的计算机科学系发表了一篇关于**生成对抗网络（Generative Adversarial Nets，GAN）**的论文，提出了能够基于一系列初始样例生成新数据的框架：
 
-GOODFELLOW, Ian, et al.Generative Adversarial Nets.In: Advances in Neural Information Processing Systems.2014.p.2672-2680: https://arxiv.org/abs/1406.2661.
+> GOODFELLOW, Ian等人的论文《Generative Adversarial Nets》。收录在"Advances in Neural Information Processing Systems.2014.p.2672-2680": https://arxiv.org/abs/1406.2661。
 
-考虑到以前使用马尔可夫链的尝试远不能令人信服，这种网络所产生的初始图像是惊人的。 在下图中，读者剋看到
-
-论文中提出的一些示例，分别来自于MNIST，多伦多人脸数据集（Toronto Face Dataset，TFD），一个非公开数据集和cifar10数据集。
+考虑到以前使用马尔可夫链的尝试远不能令人信服，这种网络所产生的初始图像是惊人的。 在下图中，读者可以看到论文中提出的一些示例，分别来自于MNIST，以及多伦多人脸数据集（Toronto Face Dataset，TFD），一个非公开数据集和cifar10数据集。
 
 ![](figures\72_1.jpg)
 
-图1：GANs的第一篇论文中采用不同数据集生成新图像的样本 a) MNIST b) TFD c) and d) CIFAR-10
+*图1：GAN的第一篇论文中采用不同数据集生成新图像的样本 a) MNIST b) TFD c) 和 d) CIFAR-10 来源：GOODFELLOW, Ian, et al.Generative Adversarial Nets.In: Advances in Neural Information Processing Systems.2014.p.2672-2680*
 
-来源：GOODFELLOW, Ian, et al.Generative Adversarial Nets.In: Advances in Neural Information Processing Systems.2014.p.2672-2680
+这篇论文被认为是颇具创新性的，因为它把一个非常深的神经网络和博弈理论结合在一个真正智能的体系结构中，它不需要像通常的反向传播那样需要更多的训练。GAN是一种生成模型，可以生成数据，因为它们刻画了模型分布图（例如，GAN学习数据分布）。因此，当GAN生成某种东西时，就好像是从那个分布中取样一样。 
 
-这篇论文被认为是颇具创新性的，因为它把一个非常深的神经网络和博弈理论结合在一个真正智能的体系结构中，它不需要比通常的反向传播需要更多的训练。 GANs是生成类的模型，模型可以生成数据，因为它们刻画了模型分布图（例如，它们学习它）。因此，当它们生成某种东西时，就好像它们是从那个分布中取样一样。 
+### 对抗方式是关键
 
-### 关键在于对抗方式
+理解GAN为何能成为如此成功的生成模型在于对抗。事实上，GAN的结构由两个不同的网络组成，它们基于各自误差进行优化，这个过程就是对抗过程。
 
-理解GANs为何能成为如此成功的生成模型在于对抗。事实上，GAN是的结构由两个不同的网络组成，它们基于各误差的汇集进行优化，这个过程就是对抗过程。
+我们可以从一个真实数据集着手，例如R，它包含不同种类的图像或数据（尽管图像是GAN的主要应用，但并不局限于此）。之后我们可以建立生成网络G，用来生成与真实数据尽可能相似的伪造数据；我们还需要建立一个判别器D，用来比较G生成的数据和真实数据，指出数据是否真实。
+Goodfellow用艺术伪造者这一比喻来描述生成器，而判别器是侦探（或是艺术评论家），必须揭露他们的罪行。伪造者和侦探之间存在一个挑战，因为伪造者需要更有技巧以便不被侦探发现，而侦探在寻找伪造者方面也需要提升。伪造者和侦探之间的一切无休无止，直到伪造的产品与原始的完全相似。事实上，当GAN是过拟合时，它们会重新输出原始数据。这似乎看起来很像市场竞争。而事实上它也确实是，因为GAN的想法就起源于竞争博弈论。
 
-读者可以从一个真实数据集着手，我们称之为R，它包含读者的不同种类的图像或数据（GANs不局限于图像，尽管这是它们主要的应用）。之后读者可以建立生成网络G，用来生成与真实数据尽可能相似的伪造数据；读者还需要建立一个判别器D，用来比较G生成的数据和真实数据，指出数据是否真实。
-Goodfellow用艺术伪造这一比喻来描述生成器，而判别器是侦探（或是艺术评论家），必须揭露他们的罪行。伪造者和侦探之间存在一个挑战，因为伪造者需要更有技巧以便不被侦探发现，而侦探在寻找伪造者方面也需要提升。伪造者和侦探之间的一切无休无止，知道伪造的产品与原始的完全相似。事实上，当GAN是过拟合时，它们会重新输出原始数据。这似乎可以解释为竞争市场，而它也确实是，因为GANs的想法就起源于竞争博弈论。
+> 在GAN中，生成器产生图像，直到判别器无法分辨它们的真假。生成器的一个明显的解决方案是简单地复制一些训练图像或采用判别器无法判断的看起来成功的生成图像。我们的项目中将应用的是单面标签平滑（one-sided label smoothing）技术的解决方案。具体描述见SALIMANS, Tim等人的论文《Improved techniques for training gans》。收录于“ Advances in Neural Information Processing Systems.2016.p.2234-2242”: https://arxiv.org/abs/1606.03498。
 
-在GANs中，生成器产生图像，直到判别器无法分辨它们的真假。生成器的一个明显的解决方案是简单地复制一些训练图像或采用判别器无法判断的看起来成功的生成图像。我们的项目中将应用的是单面标签平滑技术的解决方案。具体描述见SALIMANS, Tim, etal.Improved techniques for training gans.In: Advances in Neural Information Processing Systems.2016.p.2234-2242: https://arxiv.org/abs/1606.03498
-
-下面我们讨论GANs如何运作。首先，生成器G没有线索，完全随机地生成数据（事实上它甚至不考虑原始数据），因此它会被判别器D惩罚——此时分辨真实数据和伪造数据是很容易的。from D. G承担全部责任，开始尝试不同的东西以获得更好的D反馈。这一过程也是随机完成的，因为G能看见的是随机的输入，Z，它无法接触真实的数据。在很多次尝试和失败后，在判别器的指导下，生成器最终会指出如何做并开始生成可靠的输出。最后，经过足够的时间，生成器会生成器将完全复制所有原始数据，即使它并没有见到过其中任何一个示例。
+下面我们讨论GAN如何运作。首先，生成器G没有线索，完全随机地生成数据（事实上它甚至不考虑原始数据），因此它会被判别器D惩罚——此时分辨真实数据和伪造数据是很容易的。G承担误判责任，并开始尝试不同的取值以获得更好的D反馈。这一过程也是随机完成的，因为G能看见的是随机的输入Z，它无法接触真实的数据。在很多次尝试和失败后，在判别器的指导下，生成器最终会指出如何生成并开始生成可靠的输出。最后，经过足够长的时间，即使生成器并没有见到过其中任何一个示例，它也会完全复制所有原始数据。
 
 ![](figures\74_1.jpg)
 
-							图2：一个简单的GAN架构如何工作的例子
+*图2：GAN架构工作的简单示例*
 
-###寒武纪爆发
+### 寒武纪爆发
 
-正如上文提到的，关于GANs的新论文每个月都在产生（读者可以在Hindu Puravinash上查找文献列表，在本章的开头我们已经提到过）。
+正如上文提到的，关于GAN的新论文每个月都在产生（读者可以在Hindu Puravinash上查找文献列表，在本章的开头我们已经提到过）。
 
-不管怎样，除了 Goodfellow和他的同事们最初的描述实施方法的论文之外，值得注意的最著名的的实施方案是**深度卷积对抗网络**（deep convolutional generative adversarial networks，*DCGANs*）和**条件生成对抗网络**（conditional GANs， *CGANs*）。
+不管怎样，除了Goodfellow和他的同事们最初的描述实施方法的论文之外，值得注意的最著名的的实施方案是**深度卷积对抗网络（deep convolutional generative adversarial networks，DCGAN）**和**条件生成对抗网络（conditional GANs， CGAN）**。
 
-* DCGANs是基于CNN结构的GANs(RADFORD, Alec; METZ, Luke;CHINTALA, Soumith.Unsupervised representation learning with deep convolutionalgenerative adversarial networks.arXiv preprint arXiv:1511.06434, 2015: https://arxiv.org/abs/1511.06434).
+* DCGAN是基于CNN结构的GAN（RADFORD, Alec; METZ, Luke;CHINTALA, Soumith.Unsupervised representation learning with deep convolutionalgenerative adversarial networks.arXiv preprint arXiv:1511.06434, 2015: https://arxiv.org/abs/1511.06434）。
 
 
-* CGANs是在DAGANs的基础上，在输入标签上增加了一些条件，从而使得读者得到的结果中包含想得到的特征(MIRZA, Mehdi;OSINDERO, Simon.Conditional generative adversarial nets.arXiv preprint arXiv:1411.1784, 2014: https://arxiv.org/abs/1411.1784)。我们的项目会编写一个CGANs的类并在不同的数据集上训练它，来证明其功能。
+* CGAN是在DCGAN的基础上，在输入标签上增加了一些条件，从而使得到的结果中包含期望的特征(MIRZA, Mehdi;OSINDERO, Simon.Conditional generative adversarial nets.arXiv preprint arXiv:1411.1784, 2014: https://arxiv.org/abs/1411.1784)。我们的项目会编写一个CGAN的类并在不同的数据集上训练它，来证明其功能。
 
- 此外也有一些有趣的例子（我们的项目中不包括这些），给出了创造图像或提升的问题的实际解决方案：
+ 此外也有一些有趣的例子（我们的项目中不包括这些），给出了图像生成或改进的实际解决方案：
 
-* **循环·对抗生成网络**（CycleGAN），将一幅图像转化为另一幅（经典的例子是将马变为斑马: ZHU, Jun-Yan, et al.Unpaired image-	to-image translation using cycle-consistent adversarial networks.arXiv preprint arXiv:1703.10593, 2017: https://arxiv.org/abs/1703.10593)
-* **堆栈对抗生成网络**（StackGAN）可以根据描述图像的文本生成图像 (ZHANG, Han, et al.Stackgan: Text to photo-realistic image synthesis with stacked generative adversarial networks.arXiv preprint arXiv:1612.03242, 2016: https://arxiv\.org/abs/1612.03242)
-	 **发现对抗生成网络**（DiscoveryGAN ，*DiscoGAN*) 传递不同图像之间的风格元素，	从而可以将一个时尚品，比如背包的纹理和装饰传递到一双鞋上(KIM, Taeksoo, et al.Learning to discover cross-domain relations with generative adversarial networks.arXiv preprint arXiv:1703.05192, 2017: https://arxiv.org/abs/1703.05192)
-* SRGAN把低质量的图像转化为高分辨率图像(LEDIG, Christian, et al.Photo-realistic single image super-resolution using a generative adversarial network.arXiv preprint arXiv:1609.04802, 2016: https://arxiv.org/abs/1609.04802)
+* **循环·对抗生成网络（CycleGAN）**，将一幅图像转化为另一幅（经典的例子是将马变为斑马: ZHU, Jun-Yan, et al.Unpaired image-	to-image translation using cycle-consistent adversarial networks.arXiv preprint arXiv:1703.10593, 2017: https://arxiv.org/abs/1703.10593）。
+* **堆栈对抗生成网络（StackGAN）**可以根据描述图像的文本生成图像（ZHANG, Han, et al.Stackgan: Text to photo-realistic image synthesis with stacked generative adversarial networks.arXiv preprint arXiv:1612.03242, 2016: https://arxiv\.org/abs/1612.03242）。
+* **发现对抗生成网络（DiscoveryGAN ，DiscoGAN）** 传递不同图像之间的风格元素，	从而可以将一个流行物品，比如背包的纹理和装饰传递到一双鞋上（KIM, Taeksoo, et al.Learning to discover cross-domain relations with generative adversarial networks.arXiv preprint arXiv:1703.05192, 2017: https://arxiv.org/abs/1703.05192）。
+* **SRGAN**把低质量的图像转化为高分辨率图像（LEDIG, Christian, et al.Photo-realistic single image super-resolution using a generative adversarial network.arXiv preprint arXiv:1609.04802, 2016: https://arxiv.org/abs/1609.04802）。
 
 
 
 ###DCGANs
 
-DCGANs是GANs结构的第一个提升。DCGANs成功完成训练阶段，给出足够的轮和栗子，它们倾向于得到质量令人满意的输出。这使得它们很快成为GANs的基准并且有助于产生令人惊喜的成果，例如根据已知神奇宝贝产生新的：https://www.youtube.com/watch?v=rs3aI7bACGc或创造一些名人的脸，它们事实上并不存在但看起来像是真的（并不神秘），正如NVIDIA所做的：https://youtu.be/XOxxPcy5Gr4，用一个名为progressing growing:的新的训练方法，详见http://research.nvidia.com/sites/default/files/publications/karras2017gan- paper.pdf。它们的根源在于使用与深度学习监督网络中的图像分类中使用的相同的卷积，并且采用了一些巧妙的技巧： 
+DCGANs是GAN结构的第一个提升。通过足够多的迭代轮数和训练数据，DCGAN可以成功完成训练，并可以得到质量令人满意的输出。这使得它们很快成为GAN的基准并且有助于产生令人惊喜的成果，例如根据已知的神奇宝贝Pokemon产生新的Pokemon：https://www.youtube.com/watch?v=rs3aI7bACGc。或正如NVIDIA所做的，创造一些名人的脸，它们事实上并不存在但看起来像是真的：https://youtu.be/XOxxPcy5Gr4。这项工作使用了一个名为progressing growing的新训练方法，详见http://research.nvidia.com/sites/default/files/publications/karras2017gan- paper.pdf。它们的基本思想在于使用深度学习监督式网络中图像分类的卷积，并且采用了一些巧妙的技巧： 
 
 * 在两个网络中都使用批归一化
-	 没有隐藏的连接层	
+* 没有隐藏的全连接层	
 * 没有池化，只在卷积层设置步长
 * 采用ReLU作为激活函数
 
 
+###条件对抗生成网络CGANs
 
-###条件对抗生成网络
-
-在条件对抗生成网络中，增加一个特征向量可以控制输出并更好地引导生成器认识到应该做什么。这样一个特征向量可以编码为图像应该导出的类（图像是女人还是男人，如果我们想创建虚构的演员的面孔）或者是我们希望从图像中得到的一系列特定的特征（对于虚构的演员，可以是发型，眼睛或肤色）。这里的技巧是将信息合并到要学习的图像中并交给Z输入，这里的输入不再完全是随机的。判别器的评价不知需要从原始图像中判断出伪造图像，还需要找到伪造图像对应的标签（或特征）：
+在条件对抗生成网络中，增加一个特征向量可以控制输出并更好地引导生成器认识到应该做什么。这样一个特征向量可以编码为图像应该导出的类（如果我们想创建虚构的演员面孔，这个类意味着图像是女人还是男人）或者是我们希望从图像中得到的一系列特定的特征（对于虚构的演员，可以是发型，眼睛或肤色）。这里的技巧是将信息合并到要学习的图像中并交给Z输入，这里的输入不再完全是随机的。判别器不仅仅需要从原始图像中判断出伪造图像，还需要找到伪造图像对应的标签（或特征）：
 
 ![](figures\77_1.jpg)
 
-					图3：将Z输入与Y输入结合（有标签的特征向量）允许生成受约束的图像。
+*图3：将Z输入与Y输入结合（有标签的特征向量）允许生成受约束的图像*
 
 
 
 ### 项目
 
-在我们开始处导入正确的库。除了Tensoflow之外，我们还需要使用numpy和math进行计算，scipy和matplotlib用来处理图像和图表，warnings、random和distuils来支持特定操作：
+首先导入正确的库。除了Tensoflow之外，我们还需要使用`numpy`和`math`进行计算，`scipy`和`matplotlib`用来处理图像和图表，`warnings`、`random`和`distuils`来支持特定操作：
 
 ```	python
 import numpy as np
@@ -1801,15 +1794,18 @@ from distutils.version import LooseVersion
 
 ### 数据集
 
-我们的第一步是提供数据。我们依赖已经完成预处理的数据集，但读者可以在自己的GAN中使用不同种类的图像。我们的想法是保持一个数据集类，它的任务是为我们以后构建的GANS类提供标准化和重构图像的批次。
+第一步是提供数据。我们依赖已经完成预处理的数据集，但读者可以在自己的GAN中使用不同种类的图像数据。我们的想法是保持一个数据集类，它的任务是为我们以后构建的GANS类提供标准化和重构图像的批次。
 
-在初始化时，我们需要同时处理图像和标签（如果存在）。图像首先需要变形（如果它们的形状和示例的类中定义的不同），然后搅乱。比起有序，例如按数据集中初始的类的顺序，搅乱能帮助GANs更好地学习，对于任何基于随机梯度下降（ stochastic gradient descent，sgd）机器学习方法这一点都是成立的：BOTTOU, Léon.Stochastic gradient descent tricks.In: Neural networks: Tricks of the trade.Springer, Berlin, Heidelberg, 2012.p.421-436: https://www.microsoft.com/en-us/research/wp-content/uploads/2012/01/tricks-2012.pdf）。标签采用one-hot encoder编码，为每一个类创建一个二进制变量，将其设置为1（其他类设为0）以保证标签可以转化为向量。例如，如果我们的类是 `{dog:0, cat:1}`, 我们需要两个 one-hot encoded 向量来表示它们:` {dog:[1, 0], cat:[0, 1]}`.
+在初始化时，我们需要同时处理图像和标签（如果存在）。图像首先需要变形（如果它们的形状和示例的类中定义的不同），然后重洗数据。比起有序，例如按数据集中初始类的顺序，重洗能帮助GANs更好地学习。对于任何基于随机梯度下降（ stochastic gradient descent，sgd）机器学习方法这一点都是成立的：BOTTOU, Léon.Stochastic gradient descent tricks.In: Neural networks: Tricks of the trade.Springer, Berlin, Heidelberg, 2012.p.421-436: https://www.microsoft.com/en-us/research/wp-content/uploads/2012/01/tricks-2012.pdf）。 标签采用独热编码，为每一个类创建一个二进制变量，将其设置为1（其他类设为0）以保证标签可以转化为向量。
 
-用这种方法，我们可以轻松地把向量加入我们的图像，作为另一个通道，并在其中加入一些会被我们的GAN重现的视觉特征。另外，我们可以安排向量的顺序，组成更复杂的有特殊特征的类。比方说，我们可以为我们希望生成的类指定编码，也可以指定它的一些特征：
+> 例如，如果我们的类是 `{dog:0, cat:1}`, 我们需要两个独热编码向量来表示它们:` {dog:[1, 0], cat:[0, 1]}`。
+
+用这种方法，我们可以轻松地把向量作为另一个通道加入我们的图像，并在其中加入一些会被我们的GAN重现的视觉特征。另外，我们可以定义向量的顺序，组成更复杂的有特殊特征的类。例如，我们可以为希望生成的类指定编码，也可以指定它的一些特征：
 
 ```python
 class Dataset(object):     
-	def __init__(self, data, labels=None, width=28, height=28,                            max_value=255, channels=3):
+	def __init__(self, data, labels=None, width=28, height=28, 
+	max_value=255, channels=3):
         # Record image specs         
         self.IMAGE_WIDTH = width         
         self.IMAGE_HEIGHT = height         
@@ -1867,7 +1863,7 @@ class Dataset(object):
         return images_resized
 ```
 
-`get_batches`方法释放了数据集的一个子集并进行标准化，每个像素值除以它们的最大值（256），再减去0.5。结果图中的浮点的值域为` [-0.5, +0.5]`：
+`get_batches`方法可以生成数据集的一个子集并进行标准化，即每个像素值除以它们的最大值（256），再减去0.5。结果图中的浮点的值域为` [-0.5, +0.5]`：
 ```python
 def get_batches(self, batch_size):
     """Pulling batches of images and their labels"""
@@ -1889,18 +1885,19 @@ def get_batches(self, batch_size):
 ```
 
 
-###CGAN class
+###CGAN类
 
-基于CGAN模型的类包含运行CGAN所需要的所有函数。DCGANs被证明可以生成类似于照片质量的输出的性能。我们已经介绍过CGAN，为了提醒读者，参考文献如下：
+基于CGAN模型的类包含运行CGAN所需要的所有函数。DCGANs被证明可以生成类似于照片质量的输出。我们已经介绍过CGAN，其参考文献如下：
 
-> RADFORD, Alec; METZ, Luke; CHINTALA, Soumith.Unsupervisedrepresentation learning with deep convolutional Generative AdversarialNetworks.arXiv preprint arXiv:1511.06434, 2015 at https://arxiv.org/abs/1511.06434.
+> RADFORD, Alec; METZ, Luke; CHINTALA, Soumith.Unsupervisedrepresentation learning with deep convolutional Generative AdversarialNetworks.arXiv preprint arXiv:1511.06434, 2015：https://arxiv.org/abs/1511.06434。
 
-使用标签并将它们与图像集成（这是诀窍）。将导致更好的图像和决定生成图像的特征的可能性。 
-conditional GANs 的参考文献：
+在我们的项目中，我们会添加CGAN的条件格式，其类似于监督式学习任务中的方法。使用标签并将它们与图像集成（这是诀窍），将利于更好的图像和决定生成图像的特征的可能性。 
+
+CGAN的参考文献：
 
 >  MIRZA, Mehdi; OSINDERO, Simon.Conditional Generative Adversarial Nets.arXiv preprint 	arXiv:1411.1784, 2014, https://arxiv.org/abs/411.1784.
 
-我们的CGAN希望输入数据集类对象，轮数，图像批大小，用于生成的输入的图像维数（`z_dim`）和GAN的名字（便于保存）。它会采用不同的值初始化，达到`alpha`或平滑。后面我们会讨论这两种参数对GAN网络的影响。
+CGAN希望输入数据集类对象，轮数，图像批大小，用于生成输入的图像维数（`z_dim`）和GAN的名字（便于保存）。它会采用不同的`alpha`和`smoothing`参数值进行初始化。后面我们会讨论这两种参数对GAN网络的影响。
 
 下面的示例设置了所有内部参数并在系统上检查性能，如果没有检测到GPU则给出警告：
 
@@ -1945,7 +1942,7 @@ class CGan(object):
             print('Default GPU Device: %s' % tf.test.gpu_device_name())
 ```
 
-`instantiate_inputs`函数未输入创建Tensorflow占位符，是一个随机实数。它也提供标签（创建与原始图像形状相同但通道数量等于类数的图像），对于训练过程的学习率：
+`instantiate_inputs`函数为输入创建Tensorflow占位符，是一个随机实数。它也提供标签（创建与原始图像形状相同但通道数量等于类数的图像）。对于训练过程的学习率：
 
 ```python
 def instantiate_inputs(self, image_width, image_height,image_channels, z_dim, classes):
@@ -1967,17 +1964,16 @@ def instantiate_inputs(self, image_width, image_height,image_channels, z_dim, cl
 ```
 
 
+下面，我们的工作转向网络结构，会定义一些基本的函数例如`leaky_ReLU_activation`函数（我们将会在判别器和生成器中使用它，与深度卷积GAN的原文中的描述相反）：
 
-下面，我们的工作转向网络结构，定义一些基本的函数例如`leaky_ReLU_activation`函数（我们将会在判别器和生成器中使用它，与深度卷积GANs的原始论文中描述的相反）：
-
-```
+```python
 def leaky_ReLU_activation(self, x, alpha=0.2):
 	return tf.maximum(alpha * x, x)
 def dropout(self, x, keep_prob=0.9):
 	return tf.nn.dropout(x, keep_prob)
 ```
 
-我们的下一个函数展示了一个判别器的层。它用Xavier初始化创建一个新的层，对结果执行批归一化，设置` leaky_ReLU_activation`，最后应用dropout做正则化：
+下一个函数展示了一个判别器的层。它用Xavier初始化创建一个新的层，并对结果执行批归一化，设置` leaky_ReLU_activation`，最后通过`dropout`做正则化：
 
 ```python
 def d_conv(self, x, filters, kernel_size, strides,
@@ -1997,26 +1993,26 @@ def d_conv(self, x, filters, kernel_size, strides,
     return x
 ```
 
-Xavier初始化保证卷积的初始权重不会太小也不会太大。以便从最初的轮开始，就允许信号通过网络更好地转化。
+Xavier初始化保证卷积的初始权重不会太小也不会太大。以便从最初的迭代开始，就允许信号通过网络更好地转化。
 
-> Xavier初始化提供了一个高斯分布，均值为0，方差为1除以一层中的神经元数量。这是因为这种初始化脱离了深度学习的预训练技术，以前用于设置可以在即使存在多个层也能进行反向传播初始的权重。读者可以在这篇文章中了解更多关于Glorot和Bengio的初始化变量的内容：http://andyljones.tumblr.com/post/110998971763/an-explanation-of-xavierinitialization。 
+> Xavier初始化提供了一个高斯分布，均值为0，方差为1除以一层中的神经元数量。这是因为这种初始化脱离了深度学习的预训练技术，而且以前用于设置权重，即使存在多个层也能进行反向传播。读者可以在这篇文章中了解更多关于Glorot和Bengio的初始化变量的内容：http://andyljones.tumblr.com/post/110998971763/an-explanation-of-xavierinitialization。 
 
-批归一化在这篇论文中被描述：
+批归一化在这篇论文中有相关描述：
 
-> IOFFE, Sergey; SZEGEDY, Christian.批归一化: Accelerating deep network training by reducing internal covariate shift.In: International Conference on Machine Learning.2015.p.448-456.
+> IOFFE, Sergey; SZEGEDY, Christian.批归一化: Accelerating deep network training by reducing internal covariate shift.In: International Conference on Machine Learning.2015.p.448-456。
 
-正如作者所指出的，批归一化算法做标准化需要处理变量偏移问题（http://sifaka.cs.uiuc.edu/jiang4/domain_adaptation/survey/node8.html），换言之，改变输入的分布会引起之前学习到的权重不再使用。事实上，作为第一个输入层初始习到的分布，它们会被传输到下面所有层，并且由于输入突然改变而随之变化（例如，一开始读者已经输入了狗的照片和更多的猫的照片，现在反过来了），除非读者把学习率设定得很低，否则很可能会让人望而生畏。
+正如作者所指出的，批归一化算法做标准化需要处理变量偏移问题（http://sifaka.cs.uiuc.edu/jiang4/domain_adaptation/survey/node8.html）。 也就是说，改变输入的分布会引起之前学习到的权重不再有效。事实上，作为第一个输入层初始习到的分布，它们会被传输到下面所有层。偏移会根据输入突然改变而随之变化（例如，一开始已经输入了狗的照片和猫的照片，现在反过来了）。除非读者把学习率设定得很低，否则偏移很可能会非常剧烈。
 
-批归一化解决了改变输入的分布引起的问题，因为它对于每个batch用均值和方差进标准化（用batch统计数据），正如论文IOFFE, Sergey; SZEGEDY,Christian.批归一化: Accelerating deep network training byreducing internal covariate shift.In: International Conference on Machine Learning.2015.p.448-456所阐述的（它可以在网上找到，网址是https://arxiv.org/abs/1502.03167）。
+> 批归一化解决了不同的输入分布的问题，因为它对于每个批次用均值和方差进标准化（用批次统计数据）。论文IOFFE, Sergey; SZEGEDY,Christian.Batch Normalization: Accelerating deep network training byreducing internal covariate shift.In: International Conference on Machine Learning.2015.p.448-456有所介绍（https://arxiv.org/abs/1502.03167）。
 
-`g_reshaping `和 `g_conv_transpose`是`generato`r中的两个函数。它们对输入重新定形，无论是平铺层还是卷积层。实际上，它们与卷积所做的工作相反，可以将卷积得到的特征恢复为原始特征：
+`g_reshaping`和`g_conv_transpose`是生成器中的两个函数。它们重塑平铺层和卷积层输入数据。实际上，它们与卷积所做的工作相反，可以将卷积得到的特征恢复为原始特征：
 
 ```python
 def g_reshaping(self, x, shape, alpha=0.2,
                 keep_prob=0.5, train=True):
     """
     Generator layer architecture
-    Reshaping layer, applying 批归一化,
+    Reshaping layer, applying Batch Normalization,
     leaky rely activation and dropout
     """
     x = tf.reshape(x, shape)
@@ -2030,7 +2026,7 @@ def g_conv_transpose(self, x, filters, kernel_size,
     """
     Generator layer architecture
     Transposing convolution to a new size,
-    applying 批归一化,
+    applying Batch Normalization,
     leaky rely activation and dropout
     """
     x = tf.layers.conv2d_transpose(x, filters, kernel_size,strides, padding)
@@ -2040,7 +2036,7 @@ def g_conv_transpose(self, x, filters, kernel_size,
     return x
 ```
 
-判别器体系结构以图像为输入，通过各种卷积变换，直到结果展平，变成对数和概率（通过`sigmoid`函数）。实际上，一切都与有序卷积相同： 
+判别器的结构以图像为输入，通过各种卷积变换，直到结果展平，变成对数几率和概率（通过`sigmoid`函数）。实际上，一切都与有序卷积相同： 
 
 ```python
 def discriminator(self, images, labels, reuse=False):
@@ -2073,7 +2069,7 @@ def discriminator(self, images, labels, reuse=False):
         return sigmoids, logits	
 ```
 
-至于生成器，它的结构和判别器相反。从输入向量z开始，首先创建`dense`层，之后进行一系列变换以重现判别器中卷积的逆过程，直到生成与输入形状相同的张量为止，并通过`tanh`函数做进一步的变换：
+至于生成器，它的结构和判别器相反。从输入向量z开始，首先创建全连接层。之后进行一系列变换以重现判别器中卷积的逆过程，直到通过`tanh`函数变换，生成与输入形状相同的张量为止：
 
 ```python
 def generator(self, z, out_channel_dim, is_train=True):
@@ -2112,15 +2108,13 @@ def generator(self, z, out_channel_dim, is_train=True):
         return output
 ```
 
-这一结构与介绍CGANs的论文中画出的结构非常相似，论文中画出了如何通过大小为100的输入向量重构64*64**3的图像：
+这一结构与介绍CGAN的论文中画出的结构非常相似。论文中画出了如何通过大小为100的输入向量重构64\*64\*3的图像：
 
 ![](figures\87_1.jpg)
 
-								图4：DVGANs生成器结构
+*图4：DVGANs生成器结构。来源: arXiv, 1511.06434,2015*
 
-								来源: arXiv, 1511.06434,2015
-
-在定义结构之后，损失函数是接下来需要定义的重要元素。它采用两个输出，来自生成器的输出，将要在管道中被输入到判别器输出对数中；以及来自真实图像的输出，在管道中将要被输入到判别器中。对这二者而言，下一步需要计算损失。这里，平滑的参数很有用，因为它可以使真实图像转化为某些东西的概率不为1，允许一个更好的、更有可能性的结果被GANs学习（在完全惩罚的情况下，对于伪造图像，得到可以对抗真实图像的机会可能会变得更难）。
+在定义好结构之后，损失函数是接下来需要定义的重要问题。它采用两个输出，来自生成器的输出，会在管道中被输入到判别器输出对数中；以及来自真实图像的输出，在管道中将要被输入到判别器中。对这二者而言，下一步需要计算损失。这里，平滑的参数很有用，因为它可以使真实图像转化为某些东西的概率不为1，允许一个更好的、更有可能性的结果被GANs学习（在完全惩罚的情况下，对于伪造图像，得到可以对抗真实图像的机会可能会变得更难）。
 
 最终的判别器损失，是根据伪造图像和真实图像计算的损失的和。在真实图像上的损失是通过比较估计的logit与平滑的概率（我们的案例中是0.9）来计算的，这是为了防止过拟合，以及判别器可以通过存储图像来简单地学习并判断真实图像。生成器损失是由对伪图像的判别器估计的对数来计算的，其概率为1。 用这种方法，生成器努力产生伪造图像，它们能够被判别器判定为真（拥有较高的概率）。因此，在一个循环中，损失简单地从判别器对伪造图像的估计向生成器转化：
 
@@ -2564,7 +2558,7 @@ gan.fit(learning_rate = 0.0002, beta1 = 0.35)
 
 ![](figures\98_1.jpg)
 
-									图6：经过若干轮训练后GANs的结果
+									图6：经过若干轮训练后GAN的结果
 
 经过16轮后，数字表现出较好的形状并且可以使用。下面，我们提取按行排列的所有类的示例。
 
@@ -2594,7 +2588,7 @@ https://github.com/zalandoresearch/fashion-mnist
 
 ![](figures\101_1.jpg)
 
-									图9：原始Zalando 数据集的样例
+*图9：原始Zalando数据集的样例*
 
 我们分别下载数据和它们的标签：
 
