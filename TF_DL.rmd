@@ -5772,3 +5772,2353 @@ print("Answer: %0.2f" % isduplicated(a, b))
 
 需要注意的是，本章的模型和方法可以应用到任何语义匹配问题上。
 
+
+## 第9章 构建TensorFlow推荐系统
+
+推荐系统是基于用户与系统的历史交互信息，给用户提供个性化建议的一类算法。最著名的例子是，亚马逊和其他电商网站上“买了产品X的用户也买了产品Y”的推荐。 
+
+在过去几年中，推荐系统显现出重要的意义：在线网站的推荐做的越好，钱就赚的越多，这个道理越来越明显。这也是为什么今天几乎所有的网站都有个性化推荐的模块。
+
+在本章中，我们会看到如何使用TensorFlow构建推荐系统。
+
+具体说来，我们会介绍以下几个话题：
+
+- 推荐系统基础
+- 推荐系统的矩阵分解
+- 贝叶斯个性化排序
+- 基于递归神经网络的高级推荐系统
+
+在本章结束，读者会知道如何为训练推荐系统准备数据，如何使用TensorFlow构建自己的模型，以及如何对这些模型进行简单的评估。
+
+### 推荐系统
+
+**推荐系统（recommender system）**的任务是列出所有可能的选项，并根据具体用户的偏好进行排序。这个有序列表就是一个个性化的排序，或者更常见的，指的就是**推荐（recommendation）**。
+
+例如，一个购物网站会设计一个推荐区域，用户可以看到相关物品并决定是否购买。售卖音乐会的门票的网站会推荐有意思的表演，在线音乐播放器会建议用户可能喜欢的歌曲。一个在线课程的网站，例如Coursera.org，会推荐与用户已完成课程类似的课程：
+
+![174_1](figures\213_1.png)
+
+*网站上课程推荐*
+
+推荐通常会基于历史数据：过去的交易历史，网页访问，以及用户的点击。因此，一个推荐系统会利用历史数据和机器学习来抽取用户的行为模式，并基于此给出最优推荐。
+
+企业对于尽可能的做出最优推荐很感兴趣：这个任务经常会促使用户来参与改善体验。所以，它最终会提高收入。当我们给出的推荐用户以前却从来没有注意到，而这次他买了下来，这意味着我们不仅满足可用户，还卖出了以前不会卖掉的商品。
+
+本章会介绍如何使用TensorFlow实现个性化推荐系统。首先我们会介绍经典算法，然后继续尝试基于RNN和LSTM的复杂模型。对于每一个模型，我们会首先给出简要介绍，然后给出TensorFlow实现。
+
+为了解释这些思想，我们使用来自加州大学尔湾分校机器学习仓库的在线销售数据集。这个数据集可以从http://archive.ics.uci.edu/ml/datasets/online+retail下载。
+
+数据集本身是一个Excel文件，有以下内容：
+
+- `InvoiceNo`：票号，用来唯一标示每一笔交易
+- `StockCode`：购买物品的编号
+- `Description`：产品名称
+- `Quantity`：交易中物品的购买次数
+- `UnitPrice`：物品单价
+- `CustomerID`：客户编号
+- `Country`：客户的国家名称
+
+数据集包含25,900笔交易，每笔交易大约包含20个物品。因此一共约有540,000个物品。所有交易由2010年12月到2011年12月的4,300名客户生成。
+
+要下载数据集，我们可以使用浏览器下载保存，也可以使用`wget`：
+
+```
+wget
+http://archive.ics.uci.edu/ml/machine-learning-databases/00352/Online%20Retail.xlsx
+```
+
+
+对于这个项目，我们会使用下列Python程序包：
+
+- `pandas`，用于读取数据
+- `numpy`和`scipy`用于数值运算
+- `tensorflow`，用于创建模型
+- `implicit`，用于构建基准方案
+- [可选]` tqdm`，用于监控过程
+- [可选]`numba`用于加速计算
+
+
+如果读者使用Anaconda，`numba`就已经装好了。否则，使用`pip install numba`获取程序包。要安装`implicit`，也可以使用`pip`：
+
+```
+pip install implicit
+```
+
+
+完成数据集下载和程序包安装，我们就可以开始了。在下一节中，我们会回顾矩阵分解技术，然后准备数据集，最后使用TensorFlow进行实现。
+
+### 推荐系统下的矩阵分解
+
+在这一节中，我们会介绍推荐系统的传统技术。我们会看到，用TensorFlow实现这些技术都很简单，最终代码也很灵活，允许修改和优化。
+
+我们会在这一节中使用在线销售数据集。我们首先定义要解决的问题，建立基准性能。然后实现经典的矩阵分解算法，并基于贝叶斯个性化排序做一些修改。
+
+#### 数据集准备和基准
+
+现在我们开始构建推荐系统。
+
+首先，声明需要引入的库：
+
+```python
+import tensorflow as tf
+import pandas as pd
+import numpy as np
+import scipy.sparse as sp
+from tqdm import tqdm
+```
+
+
+读入数据集：
+
+```python
+df = pd.read_excel('Online Retail.xlsx')
+```
+
+读取`xlsx`文件要花些时间。如果想为下次读入文件节省时间，我们可以把读入的文件复制到`pickle` 文件中：
+
+```python
+import pickle
+with open('df_retail.bin', 'wb') as f_out:
+    pickle.dump(df, f_out)
+```
+
+
+这个文件读起来要快很多，因此我们应该使用这个版本的数据：
+
+```python
+with open('df_retail.bin', 'rb') as f_in:
+    df = pickle.load(f_in)
+```
+
+
+数据加载完成后，我们可以看一下数据。使用`head`函数进行查看：
+
+```python
+df.head()
+```
+
+我们可以看到下表：
+
+![](figures/216_1.png)
+
+进一步查看数据，我们可以注意到以下问题：
+
+- 列名都是大写。这有点不自然，因此我们把它们改成小写。
+- 一些交易是还款：这些数据并不是我们感兴趣的，因此应该过滤掉。
+- 最后，一些交易来自于未知用户。我们可以指定一些公共ID，例如-1。而且，未知用户都被编码成`NaN`，这也是为什么`CustomerID`被编码成浮点型。我们需要把它们转换为整型。
+
+
+这些问题可以通过一下代码解决：
+
+```python
+df.columns = df.columns.str.lower()
+df = df[~df.invoiceno.astype('str').str.startswith('C')].reset_index(drop=True)
+df.customerid = df.customerid.fillna(-1).astype('int32')
+```
+
+
+接着，我们把所有的产品ID（`stockcode`）编码成整数。一个方法是构建每一个编码到唯一索引号的映射：
+
+```python
+stockcode_values = df.stockcode.astype('str')
+
+stockcodes = sorted(set(stockcode_values))
+stockcodes = {c: i for (i, c) in enumerate(stockcodes)}
+
+df.stockcode = stockcode_values.map(stockcodes).astype('int32')
+```
+
+
+编码完成后，我们可以把数据集分成训练集，验证集合测试集。由于我们已经有了电商交易数据，最好的办法是根据时间划分。因此我们使用：
+
+- **训练集**：2011.10.09以前的数据（大约10个月，378,500行）
+- **验证集**：2011.10.09和2011.11.09之间的数据（大约1个月，64,500行）
+- **测试集**：2011.11.09之后的数据（大约1个月89,000行）
+
+过滤数据框：
+
+```python
+df_train = df[df.invoicedate < '2011-10-09']
+df_val = df[(df.invoicedate >= '2011-10-09') &
+            (df.invoicedate <= '2011-11-09') ]
+df_test = df[df.invoicedate >= '2011-11-09']
+```
+
+
+在这一节中，我们会考虑下列（简化的）推荐场景：
+
+1. 用户来到网站。
+2. 给出5个推荐。
+3. 用户评估推荐列表，可能购买其中的几样，然后继续一般的购买行为。
+
+我们需要为第二个场景构建模型。我们使用训练数据，然后用验证集模拟第二个和第三个步骤。要验证我们的推荐质量如何，我们可以统计用户购买的推荐物品的数量。
+
+我们的评估方案是成功推荐的数量（用户购买的商品量）除以全部推荐数量，也就是准确率——机器学习模型常用的评估性能的方法。
+
+这是一种非常简单的评估性能的方法，有许多不同的实现方案。其它可能的方案有**平均精度均值（MAP，Mean Average Precision）**, **归一化折损累积增益（NDCG，Normalized Discounted Cumulative Gain）**等。 简单起见，我们在这一章中不使用这些方法。
+
+开始机器学习算法之前，首先建立基准表现。例如，我们可以计算每一个物品被购买了多少次，取最常购买的前5个物品，然后推荐给所有用户：
+
+使用pandas很容易实现：
+
+
+```python
+top = df_train.stockcode.value_counts().head(5).index.values
+```
+
+
+这行代码给出一个整数数组——`stockcode`编码：
+
+
+```python
+array([3527, 3506, 1347, 2730, 180])
+```
+
+现在我们使用这个数组，给所有用户做推荐。重复`top`数组，次数与验证集中的交易数一样，然后使用这个数组作为推荐，计算准确率评估推荐质量。
+
+我们使用numpy中的`tile`函数进行重复：
+
+
+```python
+num_groups = len(df_val.invoiceno.drop_duplicates())
+baseline = np.tile(top, num_groups).reshape(-1, 5)
+```
+
+
+`tile`函数的输入是一个数组，重复`num_group`次。重塑之后，最终数组如下：
+
+```python
+  array([[3527, 3506, 1347, 2730, 180],
+         [3527, 3506, 1347, 2730, 180],
+         [3527, 3506, 1347, 2730, 180],
+         ...,
+         [3527, 3506, 1347, 2730, 180],
+         [3527, 3506, 1347, 2730, 180],
+         [3527, 3506, 1347, 2730, 180]])
+```
+
+
+现在我们可以计算推荐的准确率。
+
+然后，还有一个困难。物品存储的方式使得每组正确分类物品的个数难以计算。使用pandas的`groupby` 函数可以解决这个问题：
+
+- 按照`invoiceno`（也是我们的交易ID）分组
+- 为每一次交易做推荐
+- 记录每组中正确预测的数量
+- 计算整体准确率
+
+但是，这个方法很慢，很低效。它也许在这个项目中可用，但是当数据集变大时，它就成问题了。
+
+变慢的原因来自于pandas中`groupby`的实现方式：它会迭代地执行排序，而我们并不需要这个功能。我们可以通过改善数据排序的方式来提升速度：我们知道数据框中的元素都是按顺序存储的。也就是说，如果一次交易从某一行`i`开始，那么会在第`i + k`行结束，其中`k`是交易中物品数量。换句话说，所有`i`和`i + k`之间的行都属于同一个`invoiceid`。
+
+因此我们需要知道每一次交易开始和结束的信息。我们可以专门维护一个长度为`n + 1`的数组，其中`n`是数据集中的组数（交易数）。
+
+设这个数组为`indptr`。对于每一次交易`t`：
+
+- `indptr[t]`返回数据框中交易开始的行数
+- `indptr[t + 1]`返回交易结束的行数
+
+> 表示变长分组的方法，受到CSR（行压缩存储，Compressed Row Storage，或Compressed Sparse Row）算法的启发。它用于表示内存中的稀疏矩阵。读者可以从Netlib文档中获取更多信息：http://netlib.org/linalg/html_templates/node91.html，也可以从scipy中看到这个名字。它是`scipy.sparse`程序包中表示矩阵的一种方法：https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.sparse.csr_matrix.html。
+
+使用Python创建这些数组并不难：我们只需要知道当前交易在哪里结束，以及下一次交易从哪里开始。所以在每一个行索引中，我们可以比较当前索引和上一个索引，如果二者不同，则记录这个索引。这一步骤可以使用pandas中的`shift`方法实现：
+
+```python
+  def group_indptr(df):
+        indptr, = np.where(df.invoiceno != df.invoiceno.shift())
+        indptr = np.append(indptr, len(df)).astype('int32')
+        return indptr
+```
+
+我们获取验证集的指针数组： 
+
+```python
+ val_indptr = group_indptr(df_val)
+```
+
+
+我们可以定义`precision` 函数：
+
+```python
+  from numba import njit
+    
+  @njit
+  def precision(group_indptr, true_items, predicted_items):
+        tp = 0
+        
+        n, m = predicted_items.shape
+        
+        for i in range(n):
+            group_start = group_indptr[i]
+            group_end = group_indptr[i + 1]
+            group_true_items = true_items[group_start:group_end]
+            
+            for item in group_true_items:
+                for j in range(m):
+                    if item == predicted_items[i, j]:
+                        tp = tp + 1
+                        continue
+      return tp / (n * m)
+```
+
+
+其中的逻辑很直接：对于每一次交易，我们都记录有多少物品被正确预测。正确预测的总量存储在`tp`。最后，用`tp`除以预测总量，即预测矩阵的规模，也就是交易次数乘以5。 
+
+需要注意numba中的`@njit`装饰器。这个装饰器告诉numba代码需要优化。当第一次调用这个函数的时候，numba会分析代码，使用**准时化（just-in-time，JIT）**编译器把函数编译成本地代码。函数编译好后，它的运行速度会比C语言代码提升几个数量级。
+
+> Numba的`@jit`和`@njit` 装饰器提供了非常简单的提升代码速度的方法。通常，只用在函数中放置`@jit`装饰器已经足够看到速度提升。如果函数的运算时间较长，numba是改善性能的好方法。
+
+现在我们可以检测基准表现的准确率：
+
+```python
+ val_items = df_val.stockcode.values
+ precision(val_indptr, val_items, baseline)
+```
+
+执行上述代码可以得到0.064。也就是说，6.4%的情况作出了正确推荐。这意味着，用户只在6.4%的情况下结束了推荐物品的购买。
+
+现在，我们初步查看了数据并建立了基准表现，接着我们可以继续学习更复杂的技术，例如矩阵分解。
+
+#### 矩阵分解
+
+2006年，DVD租赁公司Netflix组织了著名的Netflix竞赛。竞赛的目的是改进他们的推荐系统。为此，公司公开了电影评分的大型数据集。从多方面讲，这个竞赛很出名。首先，奖金池高达100万美元，这也是赛事出名的主要原因。其次，由于奖金和数据集的诱惑，许多研究人员都在上面花费了不少精力。这也推动了推荐系统的前沿研究。
+
+也正是Netflix的竞赛，证明了基于矩阵分解的推荐系统很强大，并且可以扩展到大规模的训练集上，同时实现和部署也并不困难。
+
+ Koren及其合作人员的文章《Matrix factorization techniques for recommender systems》（2009）很好的总结了一些主要结果，本章也会给出。
+
+假设我们拿到了用户$u$对电影$i$的评分$r_{ui}$ 。我们可以通过下列方式建模：
+
+$$\hat{r}_{ui}=\mu+b_i+b_u+q^T_i p_u$$ 
+
+我们把评分分成了4个因素：
+
+- $$\mu$$是全局偏置
+- $$b_i$$是物品的偏置（就是Netflix中电影分类的偏置）
+- $$b_u$$是用户的偏置
+- $$q^T_i p_u$$是用户向量和物品向量的内积
+
+最后一个因素，用户向量和物品向量的内积，是矩阵分解叫法的来源。
+
+设所有的用户向量是$q_u$，存放在矩阵$U$的每一行中。我们有$n_u\times k$的矩阵，其中$n_u$是用户数量，$k$是向量维度。类似的，我们可以获取物品向量$p_i$，放在矩阵$I$的每一行中。这个矩阵是$n_i\times k$的，其中$n_i$是物品数量，$k$还是向量维度。维度$k$是模型的参数，支持我们控制信息压缩的多少。$k$越小，原始评分矩阵的信息保留的越少。
+
+最后，我们得到所有的评分，并存在矩阵$R$中。这个矩阵是$n_u \times n_i$的。这个矩阵可以分解为：
+
+$$R \approx U^TI$$
+
+不考虑偏置部分，这个就是我们在之前的公式中计算$\hat{r}_{ui}$的结果。
+
+要让预测的评分$\hat{r}_{ui}$与观察到的评分$r_{ui}$尽可能的接近，我们需要最小化二者之间的误差平方和。因此，我们的训练目标函数如下：
+
+$$minimize\sum(r_{ui}-\hat{r}_{ui})^2+\lambda(\lVert p_u \rVert ^2 +\lVert q_i \rVert ^2 )$$
+
+评分矩阵的分解方法有时也叫作**SVD**，因为这种方法受经典的奇异值分解方法启发，其同时优化误差平方和。但是，经典的SVD方法容易在训练集上过拟合，这也是为什么我们在目标函数上加上一个正则项。
+
+定义好要优化的问题后，文章又讨论了两种解决方法：
+
+- **随机梯度下降（Stochastic Gradient Descent ，SGD）**
+- **交替最小二乘法（Alternating Least Squares，ALS）**
+
+下面，我们会亲自使用TensorFlow实现SGD方法，然后与`implict`库中ALS方法的结果作比较。
+
+这个项目的数据集与Netflix竞赛的数据集不同。这很关键。因为我们不知道用户不喜欢什么。我们只观察到用户喜欢什么。这也是为什么需要接着讨论解决此类问题的原因。
+
+####隐式反馈数据集
+
+在Netflix竞赛的例子中，数据依赖于用户给出的显式反馈。用户登录网站，明确的以1分到5分的形式告诉系统他们对电影的喜欢程度。
+
+事实上，让用户做到这些很难。然而，仅仅访问和与网站做交互，已经产生了大量的有用信息，支持进一步对兴趣进行推断。所有的点击，网页访问，历史购买记录都可以展示用户的偏好。这一类数据叫做**隐式数据（implicit）**，即用户不会显式的告诉我们喜欢什么，相反，他们会间接的通过使用系统传递这个信息。通过收集这些交互信息，我们可以获取隐式反馈数据集。
+
+项目中使用的在线零售数据集就是这类数据集。它告诉我们用户之前买过什么，但是不会告诉我们用户不喜欢什么。我们不知道用户是不是真的不喜欢某个物品才不买它，而不是不知道物品的存在，才没有买它。
+
+幸运的是，我们做了小小的改动，依然可以在隐式数据集上使用矩阵分解技术。我们不再使用显式评分，而改让矩阵存储0和1的值，记录用户是否和物品有交互。另外，我们也可以对0和1的取值表达一定的置信度，这通常可以通过统计用户去物品交互的次数来实现。交互的次数越多，我们的置信度越高。
+
+所以，在这个例子中，有购买行为的用户在矩阵中会对应1。其他的位置都是0。进而，我们可以当做是一个二分类问题，使用TensorFlow中的SGD模型学习用户兴趣和物品矩阵。
+
+开始之前，我们首先建立另一个基准模型，它要比之前的模型强大。我们使用`implicit`库，以便使用ALS。
+
+>Hu的2008年的文章《Collaborative Filtering for Implicit Feedback Datasets》 给出了ALS在隐式反馈数据集使用的介绍。在本章中，我们不会关注ALS。但是如果读者对ALS的实现，例如`implicit`很感兴趣，这篇文章非常推荐。成书之时，这篇文章可以在http://yifanhu.net/PUB/cf.pdf下载。
+
+首先，我们需要准备`implicit`期望格式的数据，因此我们需要构建用户-物品矩阵。我们要把用户和物品ID进行转换，以便把每一个用户映射为矩阵X的行，每一个物品映射为矩阵X的列。
+
+我们已经把物品（`stockcode`列）转换为整数。同样，也需要对用户ID（`customerid`列）进行操作：
+
+```python
+  df_train_user = df_train[df_train.customerid != -1].reset_index(drop=True)
+    
+  customers = sorted(set(df_train_user.customerid))
+  customers = {c: i for (i, c) in enumerate(customers)}
+    
+  df_train_user.customerid = df_train_user.customerid.map(customers)
+```
+
+
+ 需要注意，在第一行代码中，我们仅仅过滤保留了已知用户，这些用户会在后面的模型训练中用到。我们也会在验证集中执行同样的过程：
+
+
+```python
+ df_val.customerid = df_val.customerid.apply(lambda c: customers.get(c, -1))
+```
+
+接着，我们使用整数编码构建矩阵X:
+
+```python
+  uid = df_train_user.customerid.values.astype('int32')
+  iid = df_train_user.stockcode.values.astype('int32')
+  ones = np.ones_like(uid, dtype='uint8')
+    
+  X_train = sp.csr_matrix((ones, (uid, iid)))
+```
+
+
+`sp.csr_matrix`是`scipy.sparse`包中的函数。它以行列索引，以及每一个索引对的值作为输入，构建一个压缩行存储（Compressed Storage Row）格式的矩阵。
+> 使用稀疏矩阵是减少数据矩阵空间消耗的有效方法。在推荐系统中，有许多用户和物品。构建矩阵的时候，我们把所有与用户没有交互的物品设置为0。保存所有的0值是很浪费空间的，所以稀疏矩阵只给非零数据提供了存储空间。读者可以通过`scipy.sparse`的文档获得更多的信息：https://docs.scipy.org/doc/scipy/reference/sparse.html。
+
+使用`implicit`分解矩阵X，学习用户和物品向量：
+
+```python
+  from implicit.als import AlternatingLeastSquares
+    
+  item_user = X_train.T.tocsr()
+  als = AlternatingLeastSquares(factors=128, regularization=0.000001)
+  als.fit(item_user)
+```
+
+
+要使用ALS，需要使用`AlternatingLeastSquares`类。它需要两个参数：
+
+- `factors`：用户和物品向量的维度，即之前的k
+- `regularization`：L2正则化参数，以避免过拟合
+
+然后我们调用`fit`函数，来学习向量。一旦训练结束，这些向量很容易获取：
+
+```python
+  als_U = als.user_factors
+  als_I = als.item_factors
+```
+
+得到$U$和$I$矩阵后，我们就可以做推荐了。我们只用计算每个矩阵两个行之间的内积就可以。后面马上可以看到。
+
+矩阵分解方法有一个问题：它不能处理新用户。要解决这个问题，我们只需要把这个方法和基准方法结合在一起：用基线方法给新的未知用户做推荐，用矩阵分解给已知用户做推荐。
+
+因此，首先选取验证集中已知用户的ID：
+
+```python
+  uid_val = df_val.drop_duplicates(subset='invoiceno').customerid.values
+  known_mask = uid_val != -1
+  uid_val = uid_val[known_mask]
+```
+
+
+我们只会对这些用户做推荐。然后，复制基准方案，替换ALS下给已知用户做的推荐。 
+
+```python
+  imp_baseline = baseline.copy()
+    
+  pred_all = als_U[uid_val].dot(als_I.T)
+  top_val = (-pred_all).argsort(axis=1)[:, :5]
+  imp_baseline[known_mask] = top_val
+
+  prevision(val_indptr, val_items, imp_baseline)
+```
+
+我们得到验证集中每个用户ID的向量，然后乘以所有的物品向量。对于每一个用户，选取分数最高的5个物品。
+
+输出结果是13.9%。这个结果比之前基准结果6%好了不少。同时，这个结果应该很难超越了。但是接下来，我们还是愿意尝试一下。
+
+#### 基于SGD的矩阵分解
+
+现在我们可以使用TensorFlow实现矩阵分解了，看看是否可以改进`implicit`的基准表现。用TensorFlow实现ALS并不容易：它更适合于基于梯度的方法，例如SGD。这也是我们把ALS做专门实现的原因。
+
+这里我们实现之前章节中的公式：  
+
+$$\hat{r}_{ui}=\mu+b_i+b_u+q_i^Tp_u$$ 。
+
+回忆一下目标函数：
+
+$$minimize\sum(r_{ui}-\hat{r}_{ui})^2+\lambda(\lVert p_u \rVert ^2 +\lVert q_i \rVert ^2 )$$
+
+注意，在这个目标函数中，我们依然使用误差平方和，这已经不再适合我们的二分类问题。而使用TensorFlow，这些都不是问题，我们可以很容易的调整优化目标。
+
+在我们的的模型中，我们会使用对数损失。它比误差平方和更适合二分类问题。
+
+$p$和$q$向量分别构成了$U$和$I$ 矩阵。我们要做的就是学习$U$和$I$ 矩阵。我们可以把完整的$U$和$I$ 矩阵存在TensorFlow的`Variable`中，并使用词嵌入层查找合适的$p$和$q$向量。
+
+假设我们定义了一个函数用来声明词嵌入层： 
+
+```python
+  def embed(inputs, size, dim, name=None):
+        std = np.sqrt(2 / dim)
+        emb = tf.Variable(tf.random_uniform([size, dim], -std, std), name=name)
+        lookup = tf.nn.embedding_lookup(emb, inputs)
+        return lookup
+```
+
+这个函数创建了给定维度的矩阵，并使用随机数值初始化，最后使用查找层把用户或物品的索引转换为向量。
+
+这个函数是模型图的一部分： 
+
+```python
+# parameters of the model
+num_users = uid.max() + 1
+num_items = iid.max() + 1
+
+num_factors = 128
+lambda_user = 0.0000001
+lambda_item = 0.0000001
+K = 5
+lr = 0.005
+
+graph = tf.Graph()
+graph.seed = 1
+
+with graph.as_default():
+    # this is the input to the model
+    place_user = tf.placeholder(tf.int32, shape=(None, 1))
+    place_item = tf.placeholder(tf.int32, shape=(None, 1))
+    place_y = tf.placeholder(tf.float32, shape=(None, 1))
+    
+    # user features
+    user_factors = embed(place_user, num_users, num_factors,
+                         "user_factors")
+    user_bias = embed(place_user, num_users, 1, "user_bias")
+    user_bias = tf.reshape(user_bias, [-1, 1])
+    
+    # item features
+    item_factors = embed(place_item, num_items, num_factors,
+                         "item_factors")
+    item_bias = embed(place_item, num_items, 1, "item_bias")
+    item_bias = tf.reshape(item_bias, [-1, 1])
+    global_bias = tf.Variable(0.0, name='global_bias')
+    
+    # prediction is dot product followed by a sigmoid
+    pred = tf.reduce_sum(user_factors * item_factors, axis=2)
+    pred = tf.sigmoid(global_bias + user_bias + item_bias + pred)
+    reg = lambda_user * tf.reduce_sum(user_factors * user_factors) + \
+          lambda_item * tf.reduce_sum(item_factors * item_factors)
+        
+    # we have a classification model, so minimize logloss
+    loss = tf.losses.log_loss(place_y, pred)
+    loss_total = loss + reg
+    opt = tf.train.AdamOptimizer(learning_rate=lr)
+    step = opt.minimize(loss_total)
+    init = tf.global_variables_initializer()
+```
+这个模型有三个输入：
+
+- `place_user`: 用户ID
+- `place_item`: 物品ID
+- `place_y`: 每个（用户，物品）对的标签
+
+然后定义：
+
+- `user_factors`：用户矩阵$U$
+- `user_bias`：每个用户的偏置$b_u$
+- `item_factors`：物品矩阵$I$
+- `item_bias`：每个物品的偏置$b_i$
+- `global_bias`：全局偏置$\mu$
+
+我们把这个偏置都放在一起，并对用户和物品向量使用点乘。这就是我们的预测结果，可以传递给sigmoid函数得到相应的概率。
+
+最后，我们把目标函数定义为所有数据点损失与正则化损失的和，并使用Adam算法进行目标函数最小化。
+模型有以下参数：
+
+- `num_users`和`num_items`：用户（物品）数。它们分别给出了$U$和$I$ 矩阵的行数。
+- `num_factors`：用户和物品潜在特征的数量。它给出了$U$和$I$ 矩阵的列数。
+- `lambda_user`和`lambda_item`：正则化参数。
+- `lr`：优化算法的学习率。
+- `K`：每个正样本对应的负样本的数量（具体解释在后续章节中）。
+
+
+现在开始训练模型。首先我们需要把输入分成几个批次。使用下列函数：
+```python
+def prepare_batches(seq, step):
+    n = len(seq)
+    res = []
+    for i in range(0, n, step):
+        res.append(seq[i:i+step])
+    return res
+```
+这个函数会把一个数组变成给定大小的数组列表。
+
+回忆一下基于隐式反馈的数据集。其中正样本的例子，也就是交互真实发生的次数，与负样本的例子（没有发生交互的次数）相比数量很少。我们应该怎么办？方法很简单：我们使用**负采样（negative sampling）**。其原理是只采集小部分负样本数据。典型的做法是，对于每一个正样本数据，我们都采集`K`个负样本，`K`是可调节的参数。这就是我们的想法。
+
+开始训练模型：
+
+```python
+session = tf.Session(config=None, graph=graph)
+session.run(init)
+
+np.random.seed(0)
+
+for i in range(10):
+    train_idx_shuffle = np.arange(uid.shape[0])
+    np.random.shuffle(train_idx_shuffle)
+    batches = prepare_batches(train_idx_shuffle, 5000)
+    
+
+    progress = tqdm(total=len(batches))
+    for idx in batches:
+        pos_samples = len(idx)
+        neg_samples = pos_samples * K
+        label = np.concatenate([
+            np.ones(pos_samples, dtype='float32'),
+            np.zeros(neg_samples, dtype='float32')]).reshape(-1, 1)
+        
+        # negative sampling
+        neg_users = np.random.randint(low=0, high=num_users,
+                                      size=neg_samples, dtype='int32')
+        neg_items = np.random.randint(low=0, high=num_items,
+                                      size=neg_samples, dtype='int32')
+        
+        batch_uid = np.concatenate([uid[idx], neg_users]).reshape(-1, 1)
+        batch_iid = np.concatenate([iid[idx], neg_items]).reshape(-1, 1)
+        
+        feed_dict = {
+            place_user: batch_uid,
+            place_item: batch_iid,
+            place_y: label,
+        }
+        _, l = session.run([step, loss], feed_dict)
+        progress.update(1)
+        progress.set_description('%.3f' % l)
+        progress.close()
+        
+        val_precision = calculate_validation_precision(graph, session, uid_val)
+        print('epoch %02d: precision: %.3f' % (i+1, val_precision))
+```
+
+模型训练10轮，每一轮我们都随机重洗数据，并划分成每5000个正样本一个批次。对于每一批，我们生成`K * 5000`个负样本（本例中`K`=5），并把正负样本放在一个数组中。最后，运行模型，使用`tqdm`监控每一次更新步骤的训练损失。`tqdm`库提供了非常优秀的监控训练过程的方法。
+
+下面是使用Jupyter notebook的`tqdm`插件的输出：
+
+![](figures\231_1.png)
+
+每一轮结束时，我们会计算准确率，监控模型在既定推荐场景上的表现。`calculate_validation_precision`函数可以实现这个功能。它与之前`implicit`中的实现方式类似：
+
+* 首先抽取矩阵和偏置
+* 然后放在一起，获取每一个（用户，物品）对的得分
+* 最后，对得分排序，取得分最高的5个推荐
+
+在这个例子中，我们不需要全局偏置和用户偏置：因为即算加上它们也不会改变每个用户对应的物品排序。这个函数的实现如下：
+
+```python
+def get_variable(graph, session, name):
+    v = graph.get_operation_by_name(name)
+    v = v.values()[0]
+    v = v.eval(session=session)
+    return v
+
+def calculate_validation_precision(graph, session, uid):
+    U = get_variable(graph, session, 'user_factors')
+    I = get_variable(graph, session, 'item_factors')
+    bi = get_variable(graph, session, 'item_bias').reshape(-1)
+    
+    pred_all = U[uid_val].dot(I.T) + bi
+    top_val = (-pred_all).argsort(axis=1)[:, :5]
+    
+    imp_baseline = baseline.copy()
+    imp_baseline[known_mask] = top_val
+    
+    return precision(val_indptr, val_items, imp_baseline)
+```
+我们得到如下输出：
+```
+epoch 01: precision: 0.064
+epoch 02: precision: 0.086
+epoch 03: precision: 0.106
+epoch 04: precision: 0.127
+epoch 05: precision: 0.138
+epoch 06: precision: 0.145
+epoch 07: precision: 0.150
+epoch 08: precision: 0.149
+epoch 09: precision: 0.151
+epoch 10: precision: 0.152
+```
+通过6轮训练，模型就超过了之前的基准表现。10轮之后，模型准确率达到15.2%。
+
+矩阵分解技术通常可以为推荐系统提供强大的基准表现。通过简单的调整，这个技术还可以产出更好的结果。不用优化二分类问题的损失函数，我们还可以使用其他面向排序问题的损失函数。在下一节中，我们会学习这一类损失函数，并看看如果作出相应的调整。
+
+#### 贝叶斯个性化排序
+
+我们使用矩阵分解的方法来为每一个用户做个性化排序。然而，要解决这个问题，我们使用了二分类问题的优化标准——对数损失。这个函数效果不错，通过对它的优化可以产生很好的排序模型。那么，如果使用专门的损失函数来训练排序模型会怎么样呢？
+
+我们当然可以用一个目标函数来直接优化排序。在2012年Rendle等人的文章《BPR: Bayesian Personalized Ranking from Implicit Feedback》中，作者提出了优化标准，即**BPR-Opt**。
+
+以前，我们会把每一个物品都分开处理，与其他物品并没有关系。也就是说，我们总是会尝试预测一个物品的得分，或物品$i$以多大概率吸引到用户$u$。这样的排序模型通常叫做“点排序”：它们使用传统的监督式学习方法，例如回归或者分类来学习得分，然后根据得分进行排序。这就是在之前的章节中所讲到的。
+
+BPR-Opt方法则不同。它关注物品对。如果我们知道用户$u$已经买了物品$i$ ，但是从来没有买过物品$j$，那么$u$很有可能对$i$更感兴趣。所以当我们训练模型的时候，分数$\hat{x}_{ui}$应该比分数$\hat{x}_{uj}$要高。换句话说，打分模型应该满足$\hat{x}_{ui}-\hat{x}_{uj}>0$。
+
+因此，要训练这个算法，我们需要三元组（用户，正物品样本，负物品样本）。对于这样的三元组$(u,i,j)$我们可以定义基于物品对的分数差异，如下：
+
+$$\hat{x}_{uij}=\hat{x}_{ui}-\hat{x}_{uj}$$
+
+其中$\hat{x}_{ui}$和$\hat{x}_{uj}$分别是$(u,i)$和$(u,j)$的分数。
+
+在训练过程中，我们要调整模型参数，保证物品$i$最终要比物品$j$的排序要高。我们可以通过优化下列目标函数来实现：
+
+$$minimize-\sum ln\sigma(\hat{x}_{uij})+\lambda \parallel W \parallel ^2$$
+
+其中$\hat{x}_{uij}$是差异，$\sigma$是sigmoid函数，$W$是模型的所有参数。
+
+把之前的代码稍作简单改变就可以优化这个损失函数。计算$(u,i)$和$(u,j)$分数的方法是一样的：我们使用偏置和用户与物品向量之间的内积。然后计算分数之间的差异，并输入给新的目标函数。
+
+实现上的差别也并不大：
+
+- 对于BPR-Opt，我们不用`place_y`，而是使用`place_item_pos`和`place_item_neg`来表示正物品和负物品。
+
+- 我们不再需要用户偏置和全局偏置：因为我们计算差异的时候，这些偏置会互相抵消。而且，它们对于排序并不重要。之前，我们在计算验证集上的预测时也注意到了这个事实。
+
+
+另外一个小的实现上的差别是，由于我们有两个物品输入，并且公用嵌入层，所以需要对嵌入层进行稍微改变，完成新的定义和创建。因此，我们修改`embed`函数，并且分别创建变量和查找层：
+```python
+def init_variable(size, dim, name=None):
+    std = np.sqrt(2 / dim)
+    return tf.Variable(tf.random_uniform([size, dim], -std, std),
+                       name=name)
+
+def embed(inputs, size, dim, name=None):
+    emb = init_variable(size, dim, name)
+    return tf.nn.embedding_lookup(emb, inputs)
+```
+最终，代码如下：
+```python
+num_factors = 128
+lambda_user = 0.0000001
+lambda_item = 0.0000001
+lambda_bias = 0.0000001
+lr = 0.0005
+
+graph = tf.Graph()
+graph.seed = 1
+
+with graph.as_default():
+    place_user = tf.placeholder(tf.int32, shape=(None, 1))
+    place_item_pos = tf.placeholder(tf.int32, shape=(None, 1))
+    place_item_neg = tf.placeholder(tf.int32, shape=(None, 1))  
+    # no place_y
+    
+    user_factors = embed(place_user, num_users, num_factors,
+                         "user_factors")
+    # no user bias anymore as well as no global bias
+    item_factors = init_variable(num_items, num_factors,
+                                 "item_factors")
+    item_factors_pos = tf.nn.embedding_lookup(item_factors, place_item_pos)
+    item_factors_neg = tf.nn.embedding_lookup(item_factors, place_item_neg)
+    
+    item_bias = init_variable(num_items, 1, "item_bias")
+    item_bias_pos = tf.nn.embedding_lookup(item_bias, place_item_pos)
+    item_bias_pos = tf.reshape(item_bias_pos, [-1, 1])
+    item_bias_neg = tf.nn.embedding_lookup(item_bias, place_item_neg)
+    item_bias_neg = tf.reshape(item_bias_neg, [-1, 1])
+    
+    # predictions for each item are same as previously
+    # but no user bias and global bias
+    pred_pos = item_bias_pos + tf.reduce_sum(user_factors * item_factors_pos, axis=2)
+    pred_neg = item_bias_neg + tf.reduce_sum(user_factors * item_factors_neg, axis=2)
+    
+    pred_diff = pred_pos—pred_neg
+    
+    loss_bpr =—tf.reduce_mean(tf.log(tf.sigmoid(pred_diff)))
+    loss_reg = lambda_user * tf.reduce_sum(user_factors * user_factors) +\
+        lambda_item * tf.reduce_sum(item_factors_pos * item_factors_pos)+\
+        lambda_item * tf.reduce_sum(item_factors_neg * item_factors_neg)+\
+        lambda_bias * tf.reduce_sum(item_bias_pos) + \
+        lambda_bias * tf.reduce_sum(item_bias_neg)
+    
+    loss_total = loss_bpr + loss_reg
+    
+    opt = tf.train.AdamOptimizer(learning_rate=lr)
+    step = opt.minimize(loss_total)
+    
+    init = tf.global_variables_initializer()
+```
+
+训练模型的方法也有些许不同。BPR-Opt文章的作者建议使用bootstrap采样，而不是常规的全体数据采样，也就是在每一步中，训练集都对三元组（用户，正物品样本，负物品样本）进行均匀采样。
+
+幸运的是，建议的采样要比全体数据采样要更容易实现：
+
+```python
+session = tf.Session(config=None, graph=graph)
+session.run(init)
+
+size_total = uid.shape[0]
+size_sample = 15000
+
+np.random.seed(0)
+
+for i in range(75):
+    for k in range(30):
+        idx = np.random.randint(low=0, high=size_total, size=size_sample)
+        batch_uid = uid[idx].reshape(-1, 1)
+        batch_iid_pos = iid[idx].reshape(-1, 1)
+        batch_iid_neg = np.random.randint(
+            low=0, high=num_items, size=(size_sample, 1), dtype='int32')
+        
+        feed_dict = {
+            place_user: batch_uid,
+            place_item_pos: batch_iid_pos,
+            place_item_neg: batch_iid_neg,
+        }
+        _, l = session.run([step, loss_bpr], feed_dict)
+        
+        val_precision = calculate_validation_precision(graph, session, uid_val)
+        print('epoch %02d: precision: %.3f' % (i+1, val_precision))
+```
+
+经过70次迭代后，算法可以达到大约15.4%的准确率。然而这和之前的模型（15.2%的准确率）比并不突出。这种方法确实提出了一种直接优化排序的可能。更重要的是，我们可以看到调整现有方法，以优化物品对目标函数而不是点排序损失，也很容易。 
+
+在下一节中，我们会进一步看到递归神经网络如何使用序列建模用户行为，以及如何在推荐系统中使用它。
+
+### 面向推荐系统的RNN
+
+**递归神经网络（recurrent neural networks，RNN）**是专门建模序列的神经网络，它有许多很成功的应用。其中一个应用就是序列生成。在文章《The Unreasonable Effectiveness of Recurrent Neural
+Networks》中，Andrej Karpathy介绍了几个RNN展现优良结果的例子，包括莎士比亚的，维基百科的，XML的，Latex的，甚至C代码的序列生成。
+
+RNN已经证明在一些应用中很成功，那么很自然的问题是：在其他领域中呢？比如在推荐系统中？这是递归神经网络的作者在《Based Subreddit Recommender System》报告中向自己提出的问题（参考https://cole-maclean.github.io/blog/RNN-Based-Subreddit-Recommender-System/）。答案是肯定的，RNN当然可以用。
+
+在这一节中，我们也会回答这问题。我们会考虑一个与之前不一样的推荐场景：
+
+1. 用户访问网站。
+2. 我们给出5个推荐。
+3. 每次购买完成后，我们会更新推荐。
+
+这个场景需要不同方法来评估结果。每一次用户购买后，我们可以判断购买的物品是否在之前的推荐列表中。如果在的话，可以认为推荐是成功的。所以我们可以计算完成了多少次成功的推荐。这种评估性能的方法叫做
+Top-5准确率。它经常用在评估包含大量类别的分类模型上。
+
+早期，RNN是用在语言模型上的，也就是说，给定一个句子预测下一个最有可能的词语。当然，这个语言模型已经可以通过TensorFlow中的模型仓库进行实现：https://github.com/tensorflow/models（在tutorials/rnn/ptb/ 文件夹下）。本章中的一些代码示例也是受到这个例子的很大启发。 
+
+####数据准备和基准
+
+和以前一样，我们需要使用整数表示物品和用户。但是，这一次，我们需要为未知用户设置特殊的占位取值。另外，我们需要专门的占位取值来表示每次交易开始的“无物品”状态。之后我们会在本节提供更多讨论。但是现在，我们需要实现编码，保证0索引可以预留给专门的用途。
+
+之前，我们使用字典，但是这次我们使用特殊的类`LabelEncoder`：
+```python
+        class LabelEncoder:
+            def fit(self, seq):
+                self.vocab = sorted(set(seq))
+                self.idx = {c: i + 1 for i, c in enumerate(self.vocab)}
+                
+            def transform(self, seq):
+                n = len(seq)
+                result = np.zeros(n, dtype='int32')
+                for i in range(n):
+                    result[i] = self.idx.get(seq[i], 0)
+                    return result
+                
+            def fit_transform(self, seq):
+                self.fit(seq)
+                return self.transform(seq)
+            
+            def vocab_size(self):
+                return len(self.vocab) + 1
+```
+
+这个实现很直接，大部分都是之前代码的重复。但是，这次我们封装在一个类中，并且保留了0用于特殊用途——例如，训练集中的缺失数据。
+
+使用这个编码器把物品转换为整数：
+
+```python
+ item_enc = LabelEncoder()
+ df.stockcode = item_enc.fit_transform(df.stockcode.astype('str'))
+ df.stockcode = df.stockcode.astype('int32')
+```
+
+然后，分成训练集，验证集和测试集：前10个月用于训练，1个月用于验证，最后1个月用于测试。
+
+接着，编码用户ID：
+```python
+user_enc = LabelEncoder()
+user_enc.fit(df_train[df_train.customerid != -1].customerid)
+
+df_train.customerid = user_enc.transfrom(df_train.customerid)
+df_val.customerid = user_enc.transfrom(df_val.customerid)
+```
+
+和之前一样，我们使用购买最多的物品作为基准数据。然而，这次的场景不太一样，需要稍微调整一下基准算法。具体说来，如果用户购买了其中一个推荐的物品，我们就把它移出未来的推荐列表。  
+
+实现如下：
+```python
+from collections import Counter
+    
+top_train = Counter(df_train.stockcode)
+
+def baseline(uid, indptr, items, top, k=5):
+    n_groups = len(uid)
+    n_items = len(items)
+    
+    pred_all = np.zeros((n_items, k), dtype=np.int32)
+    
+    for g in range(n_groups):
+        t = top.copy()
+        
+        start = indptr[g]
+        end = indptr[g+1]
+        for i in range(start, end):
+            pred = [k for (k, c) in t.most_common(5)]
+            pred_all[i] = pred
+            
+            actual = items[i]
+            if actual in t:
+                del t[actual]
+                
+    return pred_all
+```
+在上述代码中，`indptr`是指针数组——和之前实现`precision`函数中的一样。
+
+我们可以把这个代码用到验证集上，看看结果：
+```python
+iid_val = df_val.stockcode.values
+pred_baseline = baseline(uid_val, indptr_val, iid_val, top_train, k=5)
+```
+基准表现如下：
+```python
+  array([[3528, 3507, 1348, 2731, 181],
+         [3528, 3507, 1348, 2731, 181],
+         [3528, 3507, 1348, 2731, 181],
+         ...,
+         [1348, 2731, 181, 454, 1314],
+         [1348, 2731, 181, 454, 1314],
+         [1348, 2731, 181, 454, 1314]], dtype=int32
+```
+现在，让我实现top-k准确度评估。我们再次使用`numba`中的`@njit`装饰器来加速函数：
+```python
+@njit
+def accuracy_k(y_true, y_pred):
+    n, k = y_pred.shape
+    
+    acc = 0
+    for i in range(n):
+        for j in range(k):
+            if y_pred[i, j] == y_true[i]:
+                acc = acc + 1
+                break
+    return acc / n
+```
+要评估基准表现，只需要调用真实标记和预测：
+```python
+ accuracy_k(iid_val, pred_baseline)
+```
+结果是0.012。也就是说只在1.2%的情况下做出了成功的推荐。看起来，我们提升的空间还很大！ 
+
+接下来是把物品数组分成不同的交易。我们再次使用指针数组，可以返回每次交易开始和结束的信息：
+
+```python
+def pack_items(users, items_indptr, items_vals):
+    n = len(items_indptr)—1
+    
+    result = []
+    for i in range(n):
+        start = items_indptr[i]
+        end = items_indptr[i+1]
+        result.append(items_vals[start:end])
+        
+    return result
+```
+现在我们可以封装交易，并把物品放在不同的数据框中。
+```python
+train_items = pack_items(indptr_train, indptr_train,
+                         df_train.stockcode.values)
+
+df_train_wrap = pd.DataFrame()
+df_train_wrap['customerid'] = uid_train
+df_train_wrap['items'] = train_items
+```
+要查看最终结果，使用`head`函数：
+```python
+df_train_wrap.head()
+```
+结果如下：
+
+![241_1](\figures\241_1.png)
+
+这些序列长度不同，这对RNN来说是个问题。所以我们需要把他们转成定长的序列。这样我们就可以方便的给模型输入数据了。 
+
+对于初始序列太短的情形，我们需要使用0补全。如果序列太长，我们需要把他们分成多个序列。
+
+最后，我们还需要一个状态，表示用户来到网站但是什么都没有买。我们可以插入一个哑物品——它的索引为0，也就是之前为特殊目的保留的取值。另外，我们还可以使用哑物品补全太短的序列。
+
+我们还需要准备RNN的标注。假设我们有以下序列：
+
+$$S=[e_1,e_2,e_3,e_4,e_5]$$  
+
+我们希望产生一个长度为5的序列，使用之前的补全策略，用于训练的序列会有以下形式：
+
+$$X=[0,e_1,e_2,e_3,e_4]$$  
+
+这里我们给原始序列的开始补上一个0，这样最后一个元素就被挤出。最后一个元素应该只存放在目标序列中。所以，目标序列，也就是预测结果，应该有以下形式：
+
+$$Y=[e_1,e_2,e_3,e_4,e_5]$$ 
+
+第一眼看上去有些奇怪，但是思想很简单。我们希望用这种方式构建序列，保证$X$和$Y$中的$i$位置包含要预测的元素。我们希望学习到以下规则：
+
+* $0 \to e_1$ 二者都位于$X$和$Y$的0位置
+*  $e_1 \to e_2$ 二者都位于$X$和$Y$的1位置
+
+现在假设我们有一个长度为2的序列，需要补全为长度为5：
+
+$$S=[e_1,e_2]$$
+
+在下面的例子中，我们依然后在开始的时候用0补全序列，同时也在末尾用0补全：
+
+$$X=[0,e_1,e_2,0,0]$$  
+
+类似的，我们也会把目标序列$Y$做一下转换： 
+
+$$Y=[e_1,e_2,0,0,0]$$ 
+
+如果输入太长，比如$$[e_1,e_2,e_3,e_4,e_5,e_6,e_7]$$，我们可以把它分成几个序列：
+$$
+X=\begin{cases}
+[0,e_1,e_2,e_3,e_4] \\ 
+[e_1,e_2,e_3,e_4,e_5]\\ 
+[e_2,e_3,e_4,e_5,e_6]
+\end{cases}
+
+和Y=\begin{cases}
+[e_1,e_2,e_3,e_4,e_5]\\ 
+[e_2,e_3,e_4,e_5,e_6]\\
+[e_3,e_4,e_5,e_6,e_7]
+\end{cases}
+$$
+要执行上述转换，我们需要函数`pad_seq`。这个函数可以在开始的位置和结束的位置补全所需的0。然后，另一个函数`prepare_training_data`会调用这个函数。第二个函数可以创建每个序列的$X$和$Y$矩阵。
+```python
+def pad_seq(data, num_steps):
+    data = np.pad(data, pad_width=(1, 0), mode='constant')
+    n = len(data)
+    
+    if n <= num_steps:
+        pad_right = num_steps—n + 1
+        data = np.pad(data, pad_width=(0, pad_right), mode='constant')
+    return data
+
+def prepare_train_data(data, num_steps):
+    data = pad_seq(data, num_steps)
+    
+    X = []
+    Y = []
+    
+    for i in range(num_steps, len(data)):
+        start = i—num_steps
+        X.append(data[start:i])
+        Y.append(data[start+1:i+1])
+        
+    return X, Y
+```
+
+
+剩下的工作就是在训练过程中调用函数`prepare_training_data`，并把结果放在`X_train`和`Y_train`矩阵中：
+
+```python
+train_items = df_train_wrap['items']
+
+X_train = []
+Y_train = []
+
+for i in range(len(train_items)):
+    X, Y = prepare_train_data(train_items[i], 5)
+    X_train.extend(X)
+    Y_train.extend(Y)
+    
+X_train = np.array(X_train, dtype='int32')
+Y_train = np.array(Y_train, dtype='int32')
+```
+
+现在，我们已经完成了数据准备，可以构建RNN模型来处理数据了。
+
+#### 使用TensorFlow搭建RNN推荐系统
+
+数据准备好后，我们可以使用矩阵`X_train`和`Y_train`，训练模型。模型当然要事先准备好。在这一章中，我们会使用带有LSTM单元的递归神经网络。 LSTM单元要比一般的RNN单元效果要好，因为它可以更好的捕捉长期依赖关系。
+
+> 一个学习LSTM的很棒的资源是Christopher Olah的博客"Understanding LSTM Networks"。地址是https://colah.github.io/posts/2015-08-Understanding-LSTMs/ 。在本章中，我们不会介绍LSTM和RNN的理论知识，只会关注它们在TensorFow中的实现。
+
+首先定义具体的配置信息类，其保存了重要的训练参数：
+```python
+class Config:
+    num_steps = 5
+    
+    num_items = item_enc.vocab_size()
+    num_users = user_enc.vocab_size()
+    
+    init_scale = 0.1
+    learning_rate = 1.0
+    max_grad_norm = 5
+    num_layers = 2
+    hidden_size = 200
+    embedding_size = 200
+    batch_size = 20
+    
+config = Config()
+```
+`Config`类定义了下列参数：
+- `num_steps`——定长序列的大小
+- `num_items`——训练数据中物品的数量（为哑物品0加1）
+- `num_users`——训练数据中用户的数量（为哑用户0加1）
+- `init_scale`——初始化中权重参数的大小
+- `learning_rate`——更新权重的速率
+- `max_grad_norm`——梯度归一的最大值，如果超过这个值，将被截断
+- `num_layers`——网络中LSTM的层数
+- `hidden_size`——隐层的规模，用于把LSTM的输出转换为概率
+- `embedding_size`——物品嵌入层的规模
+- `batch_size`——一次训练步骤中输入给模型的序列多少
+
+进一步完成模型的最终构建。首先我们定义两个有用的函数，给模型添加RNN结构：
+
+```python
+def lstm_cell(hidden_size, is_training):
+    return rnn.BasicLSTMCell(hidden_size, forget_bias=0.0,
+                             state_is_tuple=True, reuse=not is_training)
+
+def rnn_model(inputs, hidden_size, num_layers, batch_size, num_steps,
+              is_training):
+    cells = [lstm_cell(hidden_size, is_training) for i in range(num_layers)]
+    cell = rnn.MultiRNNCell(cells, state_is_tuple=True)
+    initial_state = cell.zero_state(batch_size, tf.float32)
+    inputs = tf.unstack(inputs, num=num_steps, axis=1)
+    outputs, final_state = rnn.static_rnn(cell, inputs,
+                                          initial_state=initial_state)
+    output = tf.reshape(tf.concat(outputs, 1), [-1, hidden_size])
+    return output, initial_state, final_state
+```
+
+
+我们可以使用`rnn_model`函数创建模型：
+
+```python
+def model(config, is_training):
+    batch_size = config.batch_size
+    num_steps = config.num_steps
+    embedding_size = config.embedding_size
+    hidden_size = config.hidden_size
+    num_items = config.num_items
+    
+    place_x = tf.placeholder(shape=[batch_size, num_steps], dtype=tf.int32)
+    place_y = tf.placeholder(shape=[batch_size, num_steps], dtype=tf.int32)
+    embedding = tf.get_variable("items", [num_items, embedding_size],
+                                dtype=tf.float32)
+    
+    inputs = tf.nn.embedding_lookup(embedding, place_x)
+    
+    output, initial_state, final_state = \
+    rnn_model(inputs, hidden_size, config.num_layers, batch_size,
+              num_steps, is_training)
+    W = tf.get_variable("W", [hidden_size, num_items], dtype=tf.float32)
+    b = tf.get_variable("b", [num_items], dtype=tf.float32)
+    logits = tf.nn.xw_plus_b(output, W, b)
+    logits = tf.reshape(logits, [batch_size, num_steps, num_items])
+    
+    loss = tf.losses.sparse_softmax_cross_entropy(place_y, logits)
+    total_loss = tf.reduce_mean(loss)
+    
+    tvars = tf.trainable_variables()
+    gradient = tf.gradients(total_loss, tvars)
+    clipped, _ = tf.clip_by_global_norm(gradient, config.max_grad_norm)
+    optimizer = tf.train.GradientDescentOptimizer(config.learning_rate)
+    
+    global_step = tf.train.get_or_create_global_step()
+    train_op = optimizer.apply_gradients(zip(clipped, tvars),
+                                         global_step=global_step)
+    
+    out = {}
+    out['place_x'] = place_x
+    out['place_y'] = place_y
+    out['logits'] = logits
+    out['initial_state'] = initial_state
+    out['total_loss'] = total_loss
+    
+    return out
+```
+
+这个模型包含许多模块，具体如下：
+
+1. 首先定义输入。和之前一样，ID会通过嵌入层转成向量。
+2. 其次，添加RNN层以及全连接层。LSTM层会学习购买行为的临时模式，并通过全连接层转化成全部物品上的概率分布。
+3. 然后，因为我们的模型要解决多分类问题，使用分类交叉熵损失函数。
+4. 最后，由于LSTM存在梯度爆炸的风险，我们使用梯度裁剪来优化损失函数。
+
+这个函数以字典形式返回所有重要的变量。所以，在后面的训练和验证中可以方便的使用。
+
+这次我们之所以创建函数，而不像以前定义全局变量，是因为这样允许我们在训练和测试阶段改变参数。 在训练阶段，`batch_size`和`num_steps`变量可以取任何值，它们实际上是可以调节的。相反，在测试阶段，这些参数只能取唯一可能的值1。原因是当用户购买物品的时候，一次只能买一个，而不是多个，所以`num_steps`是1。同样的原因，`batch_size`也是1。
+
+因此，创建两组配置信息。一个用于训练，一个用于验证：
+
+```python
+  config = Config()
+  config_val = Config()
+  config_val.batch_size = 1
+  config_val.num_steps = 1
+```
+
+
+ 现在，给模型定义计算图。由于我们希望在训练阶段学习到参数，但是在测试阶段用不同的参数和模型进行预测，所以我们需要学到的参数可以共享。这些参数包括嵌入层，LSTM以及全连接层的权重。为了让两个模型共享参数，我们使用`reuse=True`的`scope`变量：
+
+
+```python
+graph = tf.Graph()
+graph.seed = 1
+with graph.as_default():
+    initializer = tf.random_uniform_initializer(-config.init_scale,
+                                                config.init_scale)
+    
+    with tf.name_scope("Train"):
+        with tf.variable_scope("Model", reuse=None, initializer=initializer):
+            train_model = model(config, is_training=True)
+            
+    with tf.name_scope("Valid"):
+        with tf.variable_scope("Model", reuse=True, initializer=initializer):
+            val_model = model(config_val, is_training=False)
+            
+    init = tf.global_variables_initializer()
+```
+
+ 计算图准备好了。我们可以开始训练。创建一个`run_epoch`函数:
+
+
+```python
+def run_epoch(session, model, X, Y, batch_size):
+  fetches = {
+      "total_loss": model['total_loss'],
+      "final_state": model['final_state'],
+      "eval_op": model['train_op']}
+  num_steps = X.shape[1]
+  all_idx = np.arange(X.shape[0])
+  np.random.shuffle(all_idx)
+  batches = prepare_batches(all_idx, batch_size)
+
+  initial_state = session.run(model['initial_state'])
+  current_state = initial_state
+
+  progress = tqdm(total=len(batches))
+  for idx in batches:
+    if len(idx) < batch_sze:
+        continue
+    feed_dict = {}
+    for i, (c, h) in enumerate(model['initial_state']):
+        feed_dict[c] = current_state[i].c
+        feed_dict[h] = current_state[i].h
+        
+    feed_dict[model['place_x']] = X[idx]
+    feed_dict[model['place_y']] = Y[idx]
+    
+    vals = session.run(fetches, feed_dict)
+    loss = vals["total_loss"]
+    
+    current_state = vals["final_state"]
+    progress.update(1)
+    progress.set_description('%.3f' % loss)
+    
+  progress.close()
+```
+
+
+函数的开始已经很熟悉了：首先创建模型中重要变量的字典，并且重洗数据。
+
+接下来有点不同：这次我们使用RNN模型（确切的说是LSTM单元），所以我们需要记录运行间的状态。为此，我们首先获取初始状态，也就是所有状态为0，并确保模型可以获得这些状态。每完成一步训练，我们都记录LSTM的最终状态，并再次输入给模型。通过这种方式，模型可以学习到典型的行为模式。 
+
+依然和之前一样，使用`tqdm`监控过程。我们会展示一轮训练中已经运行了多少步，以及当前的训练损失。
+
+首先训练模型一轮：
+
+
+```python
+session = tf.Session(config=None, graph=graph)
+session.run(init)
+
+np.random.seed(0)
+run_epoch(session, train_model, X_train, Y_train, batch_size=config.batch_size)
+```
+
+
+一轮训练已经足够学习到一些模式，我们可以看一下是否真的做到了。首先完成另一个函数，用于评估我们的推荐场景：
+
+
+```python
+def generate_prediction(uid, indptr, items, model, k):
+    n_groups = len(uid)
+    n_items = len(items)
+    
+    pred_all = np.zeros((n_items, k), dtype=np.int32)
+    initial_state = session.run(model['initial_state'])
+    
+    fetches = {
+        "logits": model['logits'],
+        "final_state": model['final_state'],
+    }
+    
+    for g in tqdm(range(n_groups)):
+        start = indptr[g]
+        end = indptr[g+1]
+        current_state = initial_state
+        
+        feed_dict = {}
+        
+        for i, (c, h) in enumerate(model['initial_state']):
+            feed_dict[c] = current_state[i].c
+            feed_dict[h] = current_state[i].h
+            
+        prev = np.array([[0]], dtype=np.int32)
+        
+        for i in range(start, end):
+            feed_dict[model['place_x']] = prev
+            
+            actual = items[i]
+            prev[0, 0] = actual
+            
+            values = session.run(fetches, feed_dict)
+            current_state = values["final_state"]
+            
+            logits = values['logits'].reshape(-1)
+            pred = np.argpartition(-logits, k)[:k]
+            pred_all[i] = pred
+  
+return pred_all
+```
+
+这里，我们要实现：
+1. 首先，初始化预测矩阵，其大小是验证集中物品的数量乘以推荐物品的数量。
+2. 然后，运行数据集中的每一个交易场景。
+3. 每次我们从哑物品开始，并且LSTM为空的0状态。
+4. 然后逐个预测下一个可能的物品，并把用户真实购买的物品当做上一步的物品，这样我们可以把真实物品当做模型下一步的输入。
+5. 最后，我们获取全连接层的输出，并拿到最可能的top-k预测结果作为这一步的推荐结果。
+
+执行这个函数，查看性能结果：
+
+```python
+  pred_lstm = generate_prediction(uid_val, indptr_val, iid_val, val_model, k=5)
+  accuracy_k(iid_val, pred_lstm)
+```
+
+我们可以看到输出为7.1%。这个结果比基准结果好了7倍。
+
+这是一个非常简单的模型，提升空间也很大：可以调节学习率，多训练几轮，并使用梯度下降学习率。我们可以改变`batch_size`，`num_steps`以及其他参数。我们也可以不使用任何正则化，既不衰减权重也不dropout。这些策略都可能有用。
+
+最重要的是，我们没有使用任何用户信息：推荐完全基于物品的模式本身。我们也可以使用用户信息做进一步的优化。毕竟，推荐系统应该是个性化的，也就是为每个用户专门定制的。
+
+当前`X_train`矩阵只包含物品。我们还应该使用其它输入，例如`U_train`，保存用户ID：
+
+
+```python
+X_train = []
+U_train = []
+Y_train = []
+
+for t in df_train_wrap.itertuples():
+    X, Y = prepare_train_data(t.items, config.num_steps)
+    U_train.extend([t.customerid] * len(X))
+    X_train.extend(X)
+    Y_train.extend(Y)
+    
+X_train = np.array(X_train, dtype='int32')
+Y_train = np.array(Y_train, dtype='int32')
+U_train = np.array(U_train, dtype='int32')
+```
+
+
+让我们改动一下模型。最简单的融入用户特征的方法是把用户向量和物品向量放在一起，并把这个堆叠矩阵一并输入给LSTM。这非常好实现，只需要几行代码：
+
+
+```python
+def user_model(config, is_training):
+    batch_size = config.batch_size
+    num_steps = config.num_steps
+    embedding_size = config.embedding_size
+    hidden_size = config.hidden_size
+    num_items = config.num_items
+    num_users = config.num_users
+    
+    place_x = tf.placeholder(shape=[batch_size, num_steps], dtype=tf.int32)
+    place_u = tf.placeholder(shape=[batch_size, 1], dtype=tf.int32)
+    place_y = tf.placeholder(shape=[batch_size, num_steps], dtype=tf.int32)
+    
+    item_embedding = tf.get_variable("items", [num_items, embedding_size],
+                                     dtype=tf.float32)
+    item_inputs = tf.nn.embedding_lookup(item_embedding, place_x)
+    
+    user_embedding = tf.get_variable("users", [num_items, embedding_size],
+                                     dtype=tf.float32)
+    u_repeat = tf.tile(place_u, [1, num_steps])
+    user_inputs = tf.nn.embedding_lookup(user_embedding, u_repeat)
+    inputs = tf.concat([user_inputs, item_inputs], axis=2)
+    
+    output, initial_state, final_state = \
+    rnn_model(inputs, hidden_size, config.num_layers, batch_size,
+              num_steps, is_training)
+    
+    W = tf.get_variable("W", [hidden_size, num_items], dtype=tf.float32)
+    b = tf.get_variable("b", [num_items], dtype=tf.float32)
+    
+    logits = tf.nn.xw_plus_b(output, W, b)
+    logits = tf.reshape(logits, [batch_size, num_steps, num_items])
+    
+    loss = tf.losses.sparse_softmax_cross_entropy(place_y, logits)
+    total_loss = tf.reduce_mean(loss)
+    
+    tvars = tf.trainable_variables()
+    gradient = tf.gradients(total_loss, tvars)
+    clipped, _ = tf.clip_by_global_norm(gradient, config.max_grad_norm)
+    optimizer = tf.train.GradientDescentOptimizer(config.learning_rate)
+    
+    global_step = tf.train.get_or_create_global_step()
+    train_op = optimizer.apply_gradients(zip(clipped, tvars),
+                                         global_step=global_step)
+    
+    out = {}
+    out['place_x'] = place_x
+    out['place_u'] = place_u
+    out['place_y'] = place_y
+    
+    out['logits'] = logits
+    out['initial_state'] = initial_state
+    out['final_state'] = final_state
+    
+    out['total_loss'] = total_loss
+    out['train_op'] = train_op
+ return out
+```
+
+新的实现和老的实现的差别如下：
+
+- 添加`place_u`——使用用户ID作为输入的占位符
+- 重命名`embeddings`为`item_embeddings`——避免和几行代码后的`user_embeddings`混淆
+- 最后，把用户特征和物品特征拼接起来
+
+模型的其它部分都是一样的！
+
+初始化和之前的模型也类似：
+
+
+```python
+graph = tf.Graph()
+graph.seed = 1
+with graph.as_default():
+    initializer = tf.random_uniform_initializer(-config.init_scale,
+                                                config.init_scale)
+    with tf.name_scope("Train"):
+        with tf.variable_scope("Model", reuse=None,
+                               initializer=initializer):
+            train_model = user_model(config, is_training=True)
+            
+        with tf.name_scope("Valid"):
+            with tf.variable_scope("Model", reuse=True,
+                                   initializer=initializer):
+                
+                val_model = user_model(config_val, is_training=False)
+                init = tf.global_variables_initializer()
+                
+  session = tf.Session(config=None, graph=graph)
+  session.run(init)
+```
+
+
+唯一的差别是，我们在创建模型的时候调用了不同的函数。训练模型一轮的代码和之前的也类似。唯一不同的是函数包含额外的参数。我们会把额外的参数放在`feed_dict`中：
+
+```python
+def user_model_epoch(session, model, X, U, Y, batch_size):
+    fetches = {
+        "total_loss": model['total_loss'],
+        "final_state": model['final_state'],
+        "eval_op": model['train_op']
+    }
+    num_steps = X.shape[1]
+    all_idx = np.arange(X.shape[0])
+    np.random.shuffle(all_idx)
+    batches = prepare_batches(all_idx, batch_size)
+    initial_state = session.run(model['initial_state'])
+    current_state = initial_state
+    progress = tqdm(total=len(batches))
+    for idx in batches:
+        if len(idx) < batch_size:
+            continue
+            
+        feed_dict = {}
+        for i, (c, h) in enumerate(model['initial_state']):
+            feed_dict[c] = current_state[i].c
+            feed_dict[h] = current_state[i].h
+                
+        feed_dict[model['place_x']] = X[idx]
+        feed_dict[model['place_y']] = Y[idx]
+        feed_dict[model['place_u']] = U[idx].reshape(-1, 1)
+        
+        vals = session.run(fetches, feed_dict)
+        loss = vals["total_loss"]
+        current_state = vals["final_state"]
+        
+        progress.update(1) 
+        progress.set_description('%.3f' % loss)
+    progress.close()
+```
+
+完成一轮新的模型训练：
+
+
+```python
+session = tf.Session(config=None, graph=graph)
+session.run(init)
+
+np.random.seed(0)
+
+user_model_epoch(session, train_model, X_train, U_train, Y_train,
+                 batch_size = config.batch_size)
+```
+
+
+我们使用模型的方式也和之前的类似：
+
+
+```python
+def generate_prediction_user_model(uid, indptr, items, model, k):
+    n_groups = len(uid)
+    n_items = len(items)
+    
+    pred_all = np.zeros((n_items, k), dtype=np.int32)
+    initial_state = session.run(model['initial_state'])
+    fetches = {
+        "logits": model['logits'],
+        "final_state": model['final_state'],
+    }
+    
+    for g in tqdm(range(n_groups)):
+        start = indptr[g]
+        end = indptr[g+1]
+        u = uid[g]
+        current_state = initial_state
+        
+        feed_dict = {}
+        feed_dict[model['place_u']] = np.array([[u]], dtype=np.int32)
+        
+        for i, (c, h) in enumerate(model['initial_state']):
+            feed_dict[c] = current_state[i].c
+            feed_dict[h] = current_state[i].h
+        
+        prev = np.array([[0]], dtype=np.int32)
+        
+        for i in range(start, end):
+            feed_dict[model['place_x']] = prev
+            
+            actual = items[i]
+            prev[0, 0] = actual
+            
+            values = session.run(fetches, feed_dict)
+            current_state = values["final_state"]
+            
+            logits = values['logits'].reshape(-1)
+            pred = np.argpartition(-logits, k)[:k]
+            pred_all[i] = pred
+    return pred_all
+```
+
+最后，运行这个函数，生成验证集的预测，计算推荐场景的准确率：
+
+```python
+  pred_lstm = generate_prediction_user_model(uid_val, indptr_val, iid_val,
+                                             val_model, k=5)
+  accuracy_k(iid_val, pred_lstm)
+```
+
+
+我们看到，输出是0.252，即25%。结果的改进已经很明显了：几乎是上一个模型的4倍，也比基准模型好了25倍。这里我们省去了模型在测试集上的计算，但是读者可以自己完成（也应该完成），确认模型没有过拟合。
+
+###小结
+在这一章中，我们介绍了推荐系统。首先，我们学习了使用TensorFlow实现简单方法的基础理论，然后讨论了一些改进方法，例如推荐系统中BPR-Opt。这些模型在推荐系统实现中很重要也很有用。
+
+在第二节中，我们尝试使用递归神经网络和LSTM，这一新的方法构建推荐系统。我们把用户的购买历史当做输入序列，并且可以使用序列模型做出成功的推荐。
+
+在下一章中，我们会介绍强化学习。这个领域是得益于最近的深度学习进展，也是极大的推动前沿研究的一个领域：模型可以在许多游戏中打败人类。我们会学习引发变革的先进模型，也会学习如何使用TensorFlow实现真正的AI。
+
+## 第10章 基于增强学习的游戏
+
+与输入输出一一对应的监督学习不同，增强学习是另一类最大化问题：在给定环境下，寻找出一个行为策略以达到回报最大化（行为会互相作用，甚至会改变环境）。增强学习算法的目标不是一个明确而严格的结果（译者注：如分类回归问题的具体值，是一个明确而固定的数值），而是最大化最终得到的回报。此类算法会通过自由的反复试错来达成目标。如同幼童学步一般，算法会在实验环境中分析行为带来的反馈，然后找出实现最优回报的方式。这也类似人类尝试新游戏的情形：尝试寻求最优策略，在此之后尝试许多方法，然后最终决定行为准则。
+
+迄今为止，没有增强学习算法能够在通用学习上能够媲美人类。较之算法，人类可以从更少的输入中学习，并且能够在非常复杂多样，结构有无的许多环境中进行学习。但是增强学习在一些特定问题中表现出了超出人类的能力（是的，他们的表现优于人类）。在特定游戏中，假设训练时间充足，增强学习算法能够给出令人惊叹的结果（比如AlphaGo https://deepmind.com/research/alphago/ ——第一个在围棋这种需要长期战略与直觉的复杂游戏中打败了世界冠军的程序）。
+
+在本章中，我们将会呈现给您一个富有挑战性的项目：使用增强学习在雅达利游戏机上的“登月飞行器”游戏中学习如何正确使用指令。鉴于此游戏具有较少的指令，并可以根据少数几个数值描述游戏场景（甚至不用去看屏幕图像就能理解需要做什么。事实上此游戏第一版诞生于20世纪60年代，而且是纯文本的）并完成游戏，并且现在增强学习算法能够成功的解决它。
+
+神经网络和增强学习刚刚开始交融。在20世纪90年代早期，IBM公司的格里·特索罗（Gerry Tesauro，应为Gerald Tesauro）研究员编写了著名的TD-Gammon，结合了前馈网络与时间差分学习（一种蒙特卡洛与动态规划的结合算法）来训练TD-Gammon进行西洋双陆棋游戏。西洋双陆棋是一个双人使用若干个骰子进行的游戏，如果读者希望进一步了解这个游戏，可以通过以下美国双陆棋联盟的网站来了解它的规则：http://usbgf.org/learn-backgammon/backgammon-rules-and-terms/rulesof-backgammon/ 当时TD-Gammon在西洋双陆棋上有着较好的表现是受益于西洋双陆棋是一个基于掷骰子的非确定性游戏，但当时无法在更具有确定性的游戏中获得较好的结果。近些年来，得益于谷歌深度学习的研究者，神经网络被证明能够帮助解决西洋双陆棋以外的问题，并且它在任何人的计算机上运行。最近，强化学习被列于未来深度学习乃至机器学习的爆点榜单之首。读者可以从下述链接访问谷歌大脑的人工智能科学家Ian Goodfellow的榜单，并看到强化学习位于榜首：https://www.forbes.com/sites/quora/2017/07/21/whats-next-for-deep-learning/#6a8f8cd81002
+
+
+
+### 关于游戏
+
+“登月飞行器”是一个1979年左右在雅达利游戏机上的街机游戏。游戏发布载体为特殊设计的匣子，游戏画面基于黑白矢量图形，为一个月球着陆舱接近月球表面的侧视图。着陆舱需要在若干个指定的地点之一着陆。由于地形差异，这些着陆点具有不同的宽度和难度，在不同的着陆点着陆也会具有不同的得分。通过界面玩家能够得知飞船的高度、速度、燃料余量、得分以及已用时间。在月球引力作用下，玩家需要通过消耗燃料调节着陆舱的旋转与反推（需要考虑惯性）来使得着陆舱着陆。燃料是这个游戏的关键。
+
+当着陆舱燃料耗尽并接触到月面时游戏结束。在燃料耗尽之前，就算着陆舱已经坠毁，玩家也能继续游戏。玩家可用的指令有四个：左转、右转、推进，以及放弃着陆。当玩家使用推进命令时，着陆器将使用底部的推进器将着陆舱向其前方加速。而使用放弃着陆命令时，飞船将会调整姿态为头部朝上，并进行一次强力的推进以避免坠毁。
+
+这个游戏的有趣之处在于代价与回报非常清楚，但有些是显而易见的（比如尝试着陆中消耗的油料），有些则被推迟到了着陆舱着陆的时候（只有当着陆完全停止时，你才知道着陆成功与否）。操作着陆舱着陆需要经济的规划燃料的使用，尽量不要过于浪费。着陆会提供一个得分，当着陆越困难、越安全的时候，这个得分会越高。
+
+
+
+### OpenAI版游戏
+
+OpenAI Gym是一个开发和比较强化学习算法的工具包，在其网站上提供了描述文档(https://gym.openai.com/)。  该工具包包括一个运行于Python 2或Python 3的Python包及其网站API，API用于上传您自己的算法的性能结果，并将它们与其他算法进行比较（在此将不深入探讨工具包的此用途）。  
+
+这个工具包体现了强化学习的要素：一个环境和一个智能体：智能体可以在环境中执行或不执行操作，而环境将以新的状态(表示环境中的情况)和奖励来进行响应，奖励是一个分数，用于告诉智能体何种情况更优。Gym工具包提供了这个环境，因此您必须使用算法来编码智能体，让智能体在环境之中作出反应。环境由`env`处理，`env`是一个类，它带有一些关于强化学习中的环境的方法。当您使用语句为特定游戏场景创建它时，它会被实例化： `gym.make('environment')`。以下是官方文档中的一个示例： 
+
+```python
+import gym
+env = gym.make('CartPole-v0')
+for i_episode in range(20):
+	observation = env.reset()
+	for t in range(100):
+		env.render()
+		print(observation)
+		# taking a random action
+		action = env.action_space.sample()
+		observation, reward, done, info = \
+							env.step(action)
+		If done:
+			print("Episode finished after %i \
+					timesteps" % (t+1))
+			break
+```
+
+在本例中，运行环境是CartPole-V0。在CartPole-V0游戏中，需要处理一个控制问题，游戏场景是轨道上有一辆装有立杆的小车，立杆和小车由一个节点相接，玩家对小车施加向前或向后的力以保持杆尽可能长时间的直立。你可以通过在youtube上观看这个视频来观看游戏的详细情况：https://www.youtube.com/watch?v=qMlc43-sc-lg。 这是IIT Madras的动力学和控制实验室的实际实验的一部分，该实验使用了基于类神经元的自适应元素，此方法能解决许多困难的控制问题。
+
+Cartpole问题在以下论文中被提出：能解决困难的学习控制问题的类神经元自适应元素（http://ieeexplore.ieee.org/Document/6313077/），此论文由BARTO，Andrew G.；SUTTON，Richard S.；Anderson，Charles W发表于《IEEE transactions on systems, man, and Cybernetics》。 
+
+下面是在示例中使用的\`env\`的简要说明：  
+
+* `reset()`：将环境的状态重置为初始默认条件。它将返回初始条件的观察结果。
+* `step(action)`：做出动作，将环境向后推进一个时间片。它返回一个含有四个变量的向量：观察、奖励、完成状态和额外信息。观察表示当前的环境状态。在游戏中，环境状态是一个向量，不同的价值向量表示不同的环境。例如，在一个物理游戏CartPole-V0中，环境向量由购物车的位置、购物车的速度、杆的角度和杆的速度组成。奖励是前一个动作所取得的分数（若想得到当前总分数，您需要手动对所有奖励进行加和）。完成状态是一个布尔变量，它告诉您在游戏中是否处于结束状态(游戏结束)。额外信息将提供额外的诊断信息，这些信息不用于您的算法，而是用于调试环境。  
+* `render( mode='human', close=False)`：渲染一帧环境。默认模式为用户友好模式，该模式下它会进行一些用户友好的操作，比如可能弹出一个窗口。传递\`close\`标志将指示渲染引擎不生成此类窗口。  
+
+这些命令产生的效果如下：  
+
+* 设置CartPole-V0的初始环境
+* 运行1000个步骤
+* 随机选择对购物车施加正向或反向力
+* 将结果可视化
+
+这种方法的有趣之处在于您可以轻松地更换游戏，只需将一个不同的字符串提供给`gym.make`方法（例如，尝试MsPacman-V0或Breakout-V0，或者从可用列表中选择任意一个，可用列表可以通过`gym.print(envs.registry.all())`得到），此方法可以在不改变代码的情况下测试不同的环境。OpenAI Gym通过在所有环境中使用公共接口，使得测试用户的算法对不同问题的泛化能力变得简单。此外，它还为您根据该模式推理、理解和解决智能体环境问题提供了一个框架：在时间t-1时，一个状态和奖励被推送给一个智能体，该智能体以一个动作发生反应，产生一个新的状态，并在t时产生一个新的奖励：
+
+![](figures\)
+
+图1：环境和智能体如何通过状态、行为和奖励进行交互
+
+在OpenAI Gym中的每一个不同的游戏中，动作空间(智能体响应的命令)和观察空间(表示状态)都会发生变化。您可以在您设置了一个环境之后，通过使用一些打印命令来查看它们是如何变动的：
+
+```python
+print(env.action_space)
+print(env.observation_space)
+print(env.view_space.High)
+print(env.observation_space.low)
+```
+
+### 在Linux上安装OpenAI(Ubuntu14.04或16.04)
+
+建议在Ubuntu系统上安装OpenAI环境。OpenGym AI是在Linux系统创建的，而对Windows也有些许支持。根据您的系统配置，可能需要先安装一些附加软件：  
+
+```
+apt-get install -y python3-dev python-dev python-numpy libcupti-dev libjpeg-turbo8-dev make golang tmux htop chromium-browser git cmake zlib1gdev libjpeg-dev xvfb libav-tools xorg-dev python-opengl libboost-all-dev libsdl2-dev swig
+```
+
+ 我们建议使用Anaconda。您可以在https://www.anaconda.com/download/上找到此Python发行版的下载地址。  
+
+在设置系统需求之后，安装OpenGym AI及其所有模块非常简单： 
+
+```shell
+git clone https://github.com/openai/gym 
+cd gym 
+pip install -e .[all]
+```
+
+对于这个项目中，如何使用Box2D是一个重要问题。Box2D是一个2D物理引擎，在2D环境中提供类似仿真游戏的真实物理的渲染。可以通过在Python中运行以下命令来测试Box2D模块是否工作：  
+
+```python
+import gym 
+env = gym.make('LunarLander-v2') 
+env.reset() 
+env.render()
+```
+
+如果所提供的代码运行没有问题，则可以继续。在一些情况下，Box2D可能会出现问题，比如可能会出现 https://github.com/cbfinn/gps/issues/34 中报告的，或者其他问题。在基于Python3.4的conda环境中安装Gym可能有所帮助：  
+```shell
+conda create --name gym python=3.4 anaconda gcc=4.8.5 
+source activate gym 
+conda install pip six libgcc swig 
+conda install -c conda-forge opencv 
+pip install --upgrade tensorflow-gpu 
+git clone https://github.com/openai/gym 
+cd gym 
+pip install -e . 
+conda install -c https://conda.anaconda.org/kne pybox2d
+```
+这个安装序列应该允许您创建一个Conda环境，该环境适合我们将在本章中介绍的项目。  
+### 在OpenAI Gym中使用登月飞行器  
+LunarLander-v2是由OpenAI的工程师奥列格·克里莫夫(Oleg Klimov)开发的场景，灵感来自最初的雅达利游戏机上的月球着陆器游戏(https://github.com/olegklimov)。在此场景中，您需要将您的着陆舱带到始终位于坐标x=0和y=0的着陆台。此外，着陆舱的实际x和y坐标是已知的，它们的值存储在状态向量的前两个元素中，状态向量包含用于强化学习算法的所有信息，以决定在某个时刻采取的最佳行动。  
+状态向量使得问题变得容易许多。因为您不必处理不确定的自身位置或目标位置，而这在机器人中是一个常见问题。
+![](figures\)
+在每个时刻，着陆舱有四种可能的行动可供选择：  
+* 什么都不做
+* 左转
+* 右转
+* 反冲
+
+这个问题有趣的地方在于复杂的奖励系统： 
+
+* 从屏幕顶部移动到着陆台附近后以零速度着陆会获得100到140点的奖励(可以在着陆台外着陆)
+* 如果着陆舱选择离开着陆台而不是留下，它将失去先前的一些奖励
+* 每章（指一次游戏过程）在着陆舱撞毁或安全着陆时，分别提供额外的-100或 +100点奖励。  
+* 与地面接触的每条腿+10奖励
+* 点燃主引擎需要每帧消耗0.3点奖励(但燃料是无限的)
+* 过关给予200点奖励
+
+这个游戏与离散命令(实际上它们是二值的：全推力或无推力)配合得很好，正如模拟的作者所说，根据庞蒂亚金的最大原理（Pontryagin's maximum principle），最好是全速启动或完全关闭引擎。
+
+该游戏也可以使用一些简单的启发式方法来解决，比如基于目标距离并使用比例积分导数（proportional integral derivative，PID）控制器来控制下降的速度和角度。PID是一种用于有反馈条件下控制系统的工程解决方案。您可以从以下地址获得更详细的说明：https://www.csimn.com/CSI_pages/PIDforDummies.html 
+
+### 用深度学习来探索强化学习  
+
+在此项目中，我们不深入展开如何构建启发式算法或构造PID（但它仍然能解决人工智能中的许多问题）。相反，我们打算利用深度学习为智能体提供足够的智能来顺利的操作月球登陆器。
+
+强化学习理论为解决这类问题提供了几个框架： 
+
+* 基于价值的学习：通过评估处于某种状态的回报，比较不同可能状态下的奖赏，选择导向最佳状态的行为。Q学习（Q-learning，质量函数学习）就是这种方法的一个例子。  
+* 基于策略的学习：根据来自环境的奖励来评估不同的控制策略后选择最终达到最佳效果的策略。  
+* 基于模型的学习：在智能体内建立环境模型，从而允许智能体模拟不同的行为及其相应的奖励。
+
+在我们的项目中，我们将使用基于价值的学习框架；具体来说，我们将使用基于Q学习的经典强化学习方法，有证据表明这种方法在以下情况是有效的：游戏中智能体需要决定一系列将导致游戏后期延迟奖励的动作。该方法由C.J.C.H.Watkins于1989年在他的博士论文中设计，也称为Q学习。Q学习基于以下理念：一个智能体在环境中，考量当前状态的情况并定义一系列将导致最终回报的行为： 
+
+![](figures\)
+
+上面的公式描述了一个状态s在一个动作a之后是如何导致一个奖励r和一个新的状态s’的。从游戏的初始状态开始，该公式应用一系列动作，这些动作一个接一个地转换每个后续状态，直到游戏结束。然后，您可以将游戏想象为一系列动作所链接的状态。然后，您还可以描述上述公式如何通过一系列动作a将初始状态s转换为最终状态s’和最终奖励r。
+
+在强化学习中，策略是行动a的最序列。策略可以用一个称为Q的函数逼近，给定当前状态s和可能的动作a，作为输入，它将提供从该动作得到的最大报酬r的估计： 
+
+![](figures\)
+
+ 这种方法显然是贪婪的，这意味着我们只是在精确的状态下选择最佳的操作，因为我们期望总是在每一步中选择最佳的操作将导致最好的结果。因此，在贪婪的方法中，我们不考虑可能导致奖励的行为链，而只考虑下一个行为，a。不过，很容易证明，如果符合以下条件，我们可以有信心地采取贪婪的做法，并利用这种策略获得最大回报：  
+
+* 我们能够找到一个完美的策略先知，Q\*
+* 我们在一个信息完美的环境中工作(这意味着我们可以了解关于环境的一切)
+* 环境遵循马尔可夫原理(详情见提示框)
+
+马尔可夫原理指出，未来(状态，回报)只取决于现在，而不是过去，因此，我们可以简单地通过观察现状而忽略以前发生的事情来获得最好的结果。 
+
+事实上，如果我们将Q函数构建为一个递归函数，我们只需要探索(使用广度优先搜索方法)对要测试的操作的当前状态的影响，并且递归函数将返回最大可能的回报。  
+
+这种方法在计算机模拟中非常有效，但在现实世界中却毫无意义：  
+
+* 环境大多是基于概率的。即使你采取了行动，你也不一定能得到确切的回报
+* 环境与过去联系在一起，单靠现在无法描述未来，因为过去可能会产生隐藏的或长期的后果
+* 环境不是完全可以预测的，所以你不能事先知道一个行动的回报，但是你可以在事后知道它们(这被称为后验条件)
+* 环境非常复杂。你不能在一个合理的时间内计算出一个行动的所有可能的后果，因此你不能确定一个行动产生的最大回报
+
+解决方案是采用一个近似Q函数，它可以考虑概率结果，并且不需要通过预测来探索所有的未来状态。显然，它应该是一个真正的近似函数，因为在复杂的环境中构建值搜索表是不切实际的(有些状态空间可能需要连续的值，从而使可能的组合变得无限多)。此外，该函数可以离线学习，这意味着智能体需要利用以往的经验(这表明记忆能力非常重要)。 
+
+以前也有人尝试过用神经网络来逼近q函数，但唯一成功的应用是TD_Gammon，这是一个仅由多层感知器驱动的强化学习的双子棋程序。TD_Gammon达到了超越人类水平的游戏，但在当时，它的成功不能复制在不同的游戏，如国际象棋或围棋上。
+
+这在当时导致了一种信念，即神经网络并不真正适合于计算出一个Q函数，除非游戏是某种随机的(你必须在双子棋中掷骰子)。直到2013年，一篇关于深度强化学习的论文《使用深度强化学习玩雅达利游戏机》（Playing Atari with deep reinforcement learning，https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf），描述了Volodymyr Minh等人将Q学习应用于旧雅达利游戏，从而证伪了这个观点。
+
+这篇论文演示了如何使用神经网络学习Q函数来玩一系列的雅达利游戏(例如架束导弹、突围、拉力赛、乒乓球、Q伯特、海洋行动和空间入侵者)，只需输入视频(60 Hz采样率，210×160分辨率，RGB视频)并输出操纵杆和射击按钮命令。本文将这种方法命名为深度Q网络(Deep Q-Network， DQN)，并介绍了经验回放和探索与利用的概念，我们将在下一节中讨论这些概念。当尝试将深度学习应用于强化学习时，这些概念有助于克服一些关键问题： 
+
+* 没有足够的例子可供学习——这是强化学习所必需的，使用深度学习时更是不可或缺的。  
+* 在行动和有效奖励之间有较长的延迟，这需要在获得奖励之前处理一系列可变长度的行动。  
+* 一系列高度相关的动作序列(因为动作通常会影响到后续的动作)，这可能导致任何随机梯度下降算法过度适应最新的示例，或者只是非最优收敛(随机梯度下降期望随机示例，而不是相关示例)。  
+
+Mnih和其他研究人员的论文《通过深度强化学习实现人类级别的控制》(http://www.davidqiu.com:8888/research/nature14236.pdf)只是证实了DQN的有效性，即利用DQN进行了更多的游戏，并将DQN的性能与人类玩家和经典强化学习算法进行比较。在许多游戏中，DQN被证明比人类的表现得更好，尽管长期策略仍然是算法的一个问题。在某些游戏中，比如“突围”，智能体发现了一些狡猾的策略，比如挖一条隧道穿过墙壁，以轻松的方式把球送进并摧毁墙壁。在其他的比赛中，比如蒙特祖马的复仇，智能体仍然表现得较为迷茫。  
+
+在论文中，作者们详细地讨论了智能体如何理解赢得突围游戏的细节，并给出了DQN函数的响应表，展示了如何将高回报分数分配给先在墙上挖一个洞然后让球通过的行为。 
+
+### Q学习的技巧
+神经网络实现的Q学习是不稳定的，直到一些技巧使之成为可能并可行。在深度Q学习中有两个重要支柱，我们将随后讨论。尽管最近开发了其他的算法变体，以解决原解的性能和收敛性问题，但我们不展开讨论这些变体：双重Q学习，延迟Q学习，贪婪GQ，快速Q学习等。我们将要探索的两个主要支柱是经验回放以及探索与利用之间不断减少的权衡取舍。
+
+通过经验回放，我们简单地将所观察到的游戏状态存储在一个预先确定大小的队列中，当队列满时，将丢弃旧的序列。在存储的数据中有一些元组，包括当前状态、应用操作、结果得到的状态和获得的奖励。在此基础上我们需要考虑一个由当前状态和操作组成的元组。我们可以通过观察智能体在环境中行动导致的结果考虑导致结果的根本原因，进一步的，我们可以将元组(当前状态和动作)作为奖励的预测器(x向量)。在此基础上我们可以估计当前环境下与行动直接相关的奖励，以及在游戏结束时将获得的奖励来进行行为决策。
+
+给定这样的存储数据(作为智能体的记忆)，我们对其中的一些数据进行采样，以便创建一个批，并使用获得的批处理来训练我们的神经网络。但是，在将数据传递给网络之前，我们需要定义我们的目标变量（y向量）。由于抽样状态大多不是最终状态，所以我们可能会有一个零奖励或只是部分奖励来匹配已知的输入(当前状态和选择的动作)。部分奖励存在缺陷的地方是它只描述了我们需要知道的信息的一部分，而我们的目标是知道在我们目前的状态采取行动(我们的x值)后，游戏结束时我们将得到的全部奖励。
+
+在这种情况下，由于我们没有获得最终奖励，我们尝试使用我们现有的Q函数来近似这个值，以便估计剩余回报。这将是我们正在考虑的(状态，动作)元组的结果的最大值。得到它之后，我们将用Bellman方程对它的值进行衰减。
+
+在谷歌的软件工程师萨尔·坎迪多博士的这篇优秀的教程中，可以读到关于这种现在经典的强化学习方法的解释： http://robotics.ai.uiuc.edu/~scandido/?Developing_Reinforcement_Learning_from_the_Bellman_Equation ，其中将未来的奖励衰减后添加到了当前的奖励中。  
+
+使用小值(接近于零)的衰减使Q函数更倾向于短期奖励，而使用高衰减值(接近1)使Q函数更倾向于未来收益。
+
+第二个非常有效的技巧是利用系数来进行探索与利用之间的权衡。在探索过程中，期望智能体尝试不同的行动，以找到给定特定状态下的最佳行动方案。在利用过程中，智能体利用它在以前的探索中学到的知识，并简单地决定在这种情况下应该采取什么最好的行动。  
+
+在探索与利用之间找到一个好的平衡，与我们前面讨论的经验回放密切相关。在开始对DQN算法进行优化时，我们只需使用一组随机的网络参数，就像我们在本章的简单介绍性示例中所做的那样，简单的随机抽样。在这种情况下，智能体将探索不同的状态和操作，并形成初始Q函数。对于复杂的游戏，例如登月飞行器，使用随机选择不会使智能体走得太远，而且从长远来看，甚至可能会十分低效，因为只有在智能体之前做了一系列正确的事情时才能访问一些具有奖励的状态和操作，而随机操作很难达到这些状态。事实上，在这种情况下，DQN算法将很难找到适当地分配正确的奖励给一个行动，因为它将永远不会看到一次完整的游戏。由于游戏足够复杂，它不太可能被行动的随机序列解决。  
+
+正确的方法是在学习的机会和使用已学会的东西之间寻求平衡，以正确的动作序列让智能体深入到游戏较深的状态后学习尚未解决的问题。这类似于通过一系列连续的近似先找到一个解决方案，每次让智能体更接近于安全和成功着陆的正确动作序列。因此，智能体应该先随机学习，找出在特定情况下要做的最合适的事情，然后应用所学到的东西，进入新的情况，通过随机选择，这些新情况也将被依次解决、学习和应用。  
+这是通过使用递减值作为阈值来实现的。让智能体决定在游戏中的某个点上，是否采取随机选择，观察发生的事情，或者利用到目前为止学到的知识，并利用它在这一点上做出最佳的操作。从均匀分布[0，1]中选取一个随机数，智能体将其与递减值`epsilon`进行比较，如果随机数大于`epsilon`，则使用其学习的神经Q函数。否则，它将从可用的选项中选择一个随机操作。在此之后，`epsilon`将会略微减小。`epsilon`被初始化为最大值1.0，根据衰减因子的设置，它将随着时间的推移而或多或少地减小，得到一个不是零(不可能永不随机移动)的最小值，以便总是有可能通过意外的意外(最小的开放因素)学习新的和意想不到的东西。 
+
+### 理解DQN的局限性  
+即使是深度Q学习也存在一些限制，无论您是通过视觉图像或其他对于环境的观察来近似q函数：
+* 这种近似需要很长的时间才能收敛，有时它并不能很顺利地实现：你甚至可能看到神经网络的学习指标在很多时期都在恶化而不是变得更好。  
+* 作为一个基于贪心策略的方法，Q学习提供的方法与启发式方法没有什么不同：它指出了最好的方向，但不能提供详细的规划。当处理长期目标或需要分解为次级目标的目标时，Q学习表现得很糟糕。 
+* Q学习的机制导致的另一个结果是，它并不是从通用的角度来理解游戏的进行，而是从一个特定的角度来理解(它重复了它在训练中所体验到的有效的东西)。因此，任何引入游戏的新颖事物(在训练过程中从未体验过)都会破坏算法，使其完全无效。在算法中引入新游戏时也是如此，它根本无法执行。  
+
+### 开始编码  
+在经过长时间的强化学习和DQN方法之后，我们终于准备好开始编码了，对如何操作OpenAI GEM环境和如何设置Q函数的DQN近似有了所有的基本理解。我们只是开始导入所有必要的包：  
+```python
+import gym 
+from gym import wrappers 
+import numpy as np 
+import random, tempfile, os 
+from collections import deque 
+import tensorflow as tf
+```
+`tempfile`模块用于生成临时文件和目录，这些文件和目录可以用作数据文件的临时存储区域。`collections`模块中的`deque`命令创建一个双端队列（实际上它是一个列表），您可以在列表的开头或结尾添加删除元素。需要注意的是，它可以设置为给定的容量。当容量为满时，旧元素将被丢弃，以便为新元素创建位置。  
+
+我们将使用一系列表示智能体、智能体的大脑(这里是DQN)、智能体的记忆和环境的类来构造这个项目。环境类可以在OpenAI Gym中找到，但它需要我们编写代码以正确地连接到智能体。 
+
+### 定义智能体的大脑  
+
+项目的第一步是创建一个包含所有神经网络代码的类，`Brain`，这个类将用来计算Q函数的近似值。这个类将包含必要的初始化、用于创建合适的TensorFlow计算图的代码、一个简单的神经网络(不是一个复杂的深度学习结构，而是一个用于我们项目的简单的、实用的网络，您可以稍后用更复杂的网络结构替换它)，以及学习和预测操作的函数。 
+
+让我们从初始化开始。首先，我们需要知道与我们从游戏中得到的信息相对应的状态输入(nS)的大小，以及我们可以在游戏中执行的操作相对应的动作输出(nA)的大小。我们强烈建议为网络设置域(Scope，非必须)，它是一个字符串，帮助我们隔离为不同目的创建的网络。建议使用它的原因是在我们的项目中需要使用两个网络，一个用于处理下次的奖励，一个用于猜测最终奖励。  
+
+然后，我们需要定义优化器（这里使用Adam优化器）的学习率。 
+
+你可以从以下论文了解Adam优化器： https://arxiv.org/abs/1412.6980 。它是一种非常有效的基于梯度的优化方法，只需很少的调整即可正常工作。Adam优化算法是一种随机梯度下降算法，类似于带有动量的RMSProp算法。我们可以从加州大学伯克利分校计算机视觉评论快报上的这篇文章了解更多信息： https://theberkeleyview.wordpress.com/2015/11/19/berkeleyview-for-adam-a-method-forstochastic-optimization/ 。根据我们的经验，将样本分批训练深度学习算法是最有效的解决方案之一，它需要用户对学习速率进行一些调整。
+最后，我们还需要提供：
+* 神经网络架构(如过想替换示例中提供的基础网络)。
+* global_step，这是一个全局变量，它将提示迄今为止提供给DQN网络的训练批次的数量。
+* 用于存储TensorBoard日志的目录，TensorBoard是TensorFlow的标准可视化工具。
+
+```python
+class Brain:    
+	"""    
+	A Q-Value approximation obtained using a neural network.    
+	This network is used for both the Q-Network and the Target Network.
+	"""    
+	def __init__(self, nS, nA, scope="estimator",
+				learning_rate=0.0001,
+				neural_architecture=None,
+				global_step=None, 
+				summaries_dir=None):
+		self.nS = nS        
+		self.nA = nA        
+		self.global_step = global_step        
+		self.scope = scope        
+		self.learning_rate = learning_rate        
+		if not neural_architecture:            
+			neural_architecture = self.two_layers_network        
+		# Writes Tensorboard summaries to disk        
+		with tf.variable_scope(scope):            
+			# Build the graph
+			self.create_network(network=neural_architecture,
+			learning_rate=self.learning_rate)
+		if summaries_dir:                
+			summary_dir = os.path.join(summaries_dir,
+										"summaries_%s" % scope)
+		if not os.path.exists(summary_dir):
+			os.makedirs(summary_dir)                
+			self.summary_writer = \
+				tf.summary.FileWriter(summary_dir)  
+			else:                
+				self.summary_writer = None
+```
+` tf.summary.FileWriter `命令将事件文件在目标目录下(`summary_dir`)初始化，我们将在该目录中存储学习过程的度量。相关调用句柄保存在` self.summary_writer`中，稍后我们将使用它来存储我们关注的训练前后的相关指标，以监视和调试学习过程。  
+下一个要定义的方法是我们将用于这个项目的默认神经网络。它接受输入层和我们将要使用的隐层的各自节点数量作为输入。输入层是由我们正在使用的状态长度定义的，比如我们的例子中使用的向量，也可以是原始DQN文件中的图像。
+这些层可以简单地使用TensorFlow中Layers模块中的高层抽象接口来定义(https://www.tensorflow.org/api_guides/python/contrib.layers)。我们选择原生的全连接层，使用ReLU(整流线性激活函数)作为两个隐层的激活函数，输出层使用线性激活函数。
+32的隐层大小非常适合我们的任务，当然如果你愿意，可以增加它。此外，我们不在网络中使用Dropout。显然，这里的问题不是过拟合，而是学习样本的质量。只有通过不断提供有用的不相关状态下的序列，和相应的对最终回报的良好估计，才能提高学习内容的质量。有用的状态序列，特别是在探索与利用之间权衡的情况下，是不使网络过拟合的关键。在强化学习问题中，如果您陷入以下两种情况之一，您就已经过拟合了：
+* 次优性：算法提出次优解，即我们的着陆器学会了一种粗略的着陆方法后持续使用此方法，因为此方法至少着陆了。
+* 无助：算法陷入了一种学习的无助状态，也就是说，它没有找到正确着陆的方法，所以它只是接受了以尽可能不坏的方式撞毁。
+这两种情况对于强化学习算法(如DQN)来说确实很难克服，除非该算法有机会在游戏中探索其他解决方案。不时地采取随机行动并不是像是读者一开始认为的一种简单的把事情搞砸的方法，而是一种避免陷阱的策略。
+另一方面，在更大的网络中，失效的神经元可能会产生一些问题，我们需要使用`tf.nn.leaky_relu`来让它重新起效。失效的ReLU总是输出相同的值，通常是零，并且它会阻止反向传播更新。  
+从TensorFlow 1.4开始，就有了`leaky_relu`激活函数。如果您正在使用以前版本的TensorFlow，您可以创建一个： 
+```python
+def leaky_relu(x，alpha=0.2)：
+	return tf.nn.relu(x) - alpha * tf.nn.relu(-x)  
+```
+我们现在开始对我们的`Brain`类进行编码，为它添加一些更多的函数： 
+```python
+def two_layers_network(self, x, layer_1_nodes=32,
+							layer_2_nodes=32):
+	layer_1 = tf.contrib.layers.fully_connected(x, layer_1_nodes,
+										activation_fn=tf.nn.relu)    
+	layer_2 = tf.contrib.layers.fully_connected(layer_1,
+										layer_2_nodes, 
+										activation_fn=tf.nn.relu) 
+	return tf.contrib.layers.fully_connected(layer_2, self.nA, 
+										activation_fn=None) 
+```
+ 方法`create_network`结合了输入、神经网络、损失和优化器。损失只是将原始奖励与估计结果之间的差取平方，并将所学习的批次中的所有样本的损失取平均值。我们使用Adam优化器将损失最小化。  
+
+此外，还使用TensorBoard记录了一些值：  
+
+* 批的平均损失，以便在训练期间跟踪训练状况。  
+* 批最大预测奖励，以跟踪指示最成功的行动的预测。  
+* 批平均预测奖励，为了跟踪预测一般动作的趋势。
+
+下面是`create_network`的代码：
+
+```python
+ def create_network(self, network, learning_rate=0.0001):
+        # Placeholders for states input        
+        self.X = tf.placeholder(shape=[None, self.nS],                                 
+        						dtype=tf.float32, name="X")        
+        # The r target value        
+        self.y = tf.placeholder(shape=[None, self.nA],                                 
+        						dtype=tf.float32, name="y")        
+        # Applying the choosen network        
+        self.predictions = network(self.X)        
+        # Calculating the loss        
+        sq_diff = tf.squared_difference(self.y, self.predictions)        
+        self.loss = tf.reduce_mean(sq_diff)        
+        # Optimizing parameters using the Adam optimizer        
+        self.train_op = tf.contrib.layers.optimize_loss(self.loss,                        
+        				global_step=tf.train.get_global_step(),                        
+        				learning_rate=learning_rate,                        
+        				optimizer='Adam')        
+        # Recording summaries for Tensorboard        
+        self.summaries = tf.summary.merge([            
+        	tf.summary.scalar("loss", self.loss),            
+        	tf.summary.scalar("max_q_value",                             
+        		tf.reduce_max(self.predictions)),            
+        	tf.summary.scalar("mean_q_value",                             
+        		tf.reduce_mean(self.predictions))])
+```
+
+ 这个类包含了方法`predict`和`fit`。方法`fit`以状态矩阵s作为输入，以奖励r的向量作为输出。它还包括希望训练迭代的次数(在原论文中，建议每批只使用一个迭代，以避免对当前批过拟合)。然后在当前会话中，我们对输入与输出进行拟合，并输出用于追踪训练的记录值(我们创建网络时定义的)。 
+
+```python
+def predict(self, sess, s):
+	"""
+	Predicting q values for actions
+	"""
+	return sess.run(self.predictions, {self.X: s})
+
+def fit(self, sess, s, r, epochs=1):
+	"""
+	Updating the Q* function estimator
+	"""
+	feed_dict = {self.X: s, self.y: r}
+	for epoch in range(epochs):
+		res = sess.run([self.summaries, self.train_op,
+						self.loss,
+						self.predictions,
+						tf.train.get_global_step()],
+						feed_dict)
+		summaries, train_op, loss, predictions,
+									self.global_step = res
+    if self.summary_writer:
+    	self.summary_writer.add_summary(summaries,
+    									self.global_step)
+```
+
+`global_step`作为结果之一被返回。它是一个计数器，可以跟踪到目前为止在训练中使用的批数量，并且记录下来供以后使用。  
+
+## 为经验回放创建记忆  
+
+在定义了大脑(TensorFlow神经网络)之后，我们的下一步是定义记忆，即数据存储，这将为DQN的学习过程提供动力。在每一个用于训练的游戏会话中，一步由一个状态和一个动作组成，与随后的状态和该会话的最终奖励一起被记录下来(最终奖励只有在该会话结束时才会知道)。  
+
+添加一个标志告诉观察是否是终止状态就完成了记录信息的集合。其想法是将某些动作不仅与即时奖励(可能为空或非常少)关联，而且与结束奖励相关联，从而将该会话中的每一步与其关联起来。  
+
+`memory`类含有一个固定大小的队列，该队列中充满了以往经历的信息，我们可以很容易的对其进行采样和提取。由于它的大小固定，我们需要将较老的样本从队列中弹出，从而使可用的样本始终位于最后。  
+
+这个类包括了`__init__`方法，用于初始化双端队列并固定其大小，也包括`__len__`方法(以用来获取内存是否为满，等待数据足够丰富时才进行训练，此时样本具有更好的随机性和多样性)，`add_memory`用于在队列中添加样本，以及从记忆中恢复所有数据的`recall_memory`：
+
+```python
+class Memory:
+	"""
+	A memory class based on deque, a list-like container with
+	fast appends and pops on either end (from the collections
+	package)
+	"""
+	def __init__(self, memory_size=5000):
+		self.memory = deque(maxlen=memory_size)
+	def __len__(self):
+		return len(self.memory)
+
+    def add_memory(self, s, a, r, s_, status):
+    	"""
+    	Memorizing the tuple (s a r s_) plus the Boolean flag status,
+    	reminding if we are at a terminal move or not
+    	"""
+    	self.memory.append((s, a, r, s_, status))
+
+    def recall_memories(self):
+    	"""
+    	Returning all the memorized data at once
+    	"""
+    	return list(self.memory)
+```
+
+### 创建智能体  
+
+我们要编码的下一个类是智能体。它具有初始化和维护大脑(提供近似Q函数)和记忆的作用。更重要的是，它是与环境互动的主要对象。它的初始化设置了一系列的参数，这些参数大多是固定的（根据我们以往在这个游戏中训练智能体的经验）。当然你可以在在初始化智能体时显式更改它们：  
+
+* `epsilon = 1.0`是探索—利用参数的初始值。1.0迫使智能体完全依赖于探索，即随机移动。  
+* `epsilon_min = 0.01`设置探索—利用参数的最小值：值0.01表示着陆舱随机移动的可能性为1%，而不总是基于Q函数反馈。这意味着我们一直有一个非常小的机会找到另一个更优的方式完成游戏。  
+* `epsilon_decay = 0.9994`是调节`epsilon`减小到最小值的速度。在这个设置中，在大约5，000个游戏会话之后，它将被调整到最小值。一般来说，这个参数应该为算法提供至少200万个可供学习的样本。  
+* `gamma = 0.99`是奖励折现因子，我们近似的Q函数将根据它来衡量当前奖励和未来奖励，它控制了算法玩游戏的方式是短视或远视(在月球着陆器这个游戏中，最好是远视，因为奖励只在登月舱着陆时才会得到)。
+* `learing_rate = 0.0001`是Adam优化器学习样本的学习速率。  
+* `epochs = 1`是神经网络拟合批样本而使用的训练轮数。
+* `batch_size = 32`是批大小。
+* `memory = Memory(memory_size=250000)`是内存队列的大小。  
+
+使用预置参数可以确保智能体在当前项目正常工作。对于不同的OpenAI环境，您可能需要经过尝试找到不同的最佳参数。  
+
+初始化还将定义TensorBoard日志的放置位置(默认情况下是`experiment`目录)、用于估计下一个即时奖励的模型，以及估计最终奖励的另一个模型。此外，初始化中还将定义一个保存器(`tf.train.Saver`)，它可以将整个会话序列化后保存到磁盘，以便以后恢复它并将其用于玩真正的游戏。  
+
+上述两个模型在同一个会话中初始化，使用不同的域名(一个是`q`，由TensorBoard监视的估计下一个奖励的模型；另一个是`target_q`)。使用两个不同的域名可以方便地处理神经元的系数，从而可以用类中的另一个方法交换它们： 
+
+```python
+class Agent:
+	def __init__(self, nS, nA, experiment_dir):
+		# Initializing
+		self.nS = nS
+		self.nA = nA
+		self.epsilon = 1.0  # exploration-exploitation ratio
+		self.epsilon_min = 0.01
+		self.epsilon_decay = 0.9994
+		self.gamma = 0.99  # reward decay
+		self.learning_rate = 0.0001
+		self.epochs = 1  # training epochs
+		self.batch_size = 32
+		self.memory = Memory(memory_size=250000)
+
+        # Creating estimators
+        self.experiment_dir =os.path.abspath\
+	        			("./experiments/{}".format(experiment_dir))
+	    self.global_step = tf.Variable(0, name='global_step',
+	    									trainable=False)
+	    self.model = Brain(nS=self.nS, nA=self.nA, scope="q",
+	    					learning_rate=self.learning_rate,
+	    					global_step=self.global_step,
+	    					summaries_dir=self.experiment_dir)
+	    self.target_model = Brain(nS=self.nS, nA=self.nA,
+	    							scope="target_q",
+	    							learning_rate=self.learning_rate,
+	    							global_step=self.global_step)
+	
+        # Adding an op to initialize the variables.
+        init_op = tf.global_variables_initializer()
+        # Adding ops to save and restore all the variables.
+        self.saver = tf.train.Saver()
+
+        # Setting up the session
+        self.sess = tf.Session()
+        self.sess.run(init_op)
+```
+
+`epsilon`表示探索与利用之间的权衡，它在`epsilon_update`方法中被更新，该方法只是通过将实际`epsilon`乘以`epsilon_decay`来修改实际的`epsilon`，除非它已经达到了允许的最小值：
+
+```python
+def epsilon_update(self, t):
+    if self.epsilon > self.epsilon_min:
+        self.epsilon *= self.epsilon_decay
+```
+
+使用`save_weights`与`load_weights`方法来保存以及恢复会话：
+
+```python
+def save_weights(self, filename):
+	"""
+	Saving the weights of a model
+	"""
+	save_path = self.saver.save(self.sess,
+								"%s.ckpt" % filename)
+	print("Model saved in file: %s" % save_path)
+
+def load_weights(self, filename):
+	"""
+	Restoring the weights of a model
+	"""
+	self.saver.restore(self.sess, "%s.ckpt" % filename)
+	print("Model restored from file")
+```
+
+`set_weight`和`target_model_update`一起用Q网络的权重来更新目标Q网络(`set_weights`是一个通用的、可重用的函数，您也可以在其他解决方案中使用)。由于这两个作用域的命名不同，因此很容易从可训练变量列表中枚举每个网络的变量。通过枚举，当前会话将对变量执行赋值： 
+
+```python
+ def set_weights(self, model_1, model_2):
+ 	"""
+ 	Replicates the model parameters of one
+ 	estimator to another.
+ 	model_1: Estimator to copy the parameters from
+ 	model_2: Estimator to copy the parameters to
+ 	"""
+ 	# Enumerating and sorting the parameters
+ 	# of the two models
+ 	model_1_params = [t for t in tf.trainable_variables() \
+ 						if t.name.startswith(model_1.scope)]
+ 	model_2_params = [t for t in tf.trainable_variables() \
+ 						if t.name.startswith(model_2.scope)]
+ 	model_1_params = sorted(model_1_params,
+ 							key=lambda x: x.name)
+ 	model_2_params = sorted(model_2_params,
+ 							key=lambda x: x.name)
+ 	# Enumerating the operations to be done
+ 	operations = [coef_2.assign(coef_1) for coef_1, coef_2 \
+ 					in zip(model_1_params, model_2_params)]
+ 	# Executing the operations to be done
+ 	self.sess.run(operations)
+
+ def target_model_update(self):
+ 	"""
+ 	Setting the model weights to the target model's ones
+ 	"""
+ 	self.set_weights(self.model, self.target_model)
+```
+
+`act`方法是执行策略的核心，因为它将基于`epsilon`来决定当前移动是随机还是采取尽可能好的操作。如果它要采取尽可能好的操作，它将要求经过训练的Q网络为每个可能的下一步动作提供一个奖励估计(通过在月球登陆器游戏中按四个按钮的二进制编码)，它将返回将会获得最大预测奖励(解决方案的贪婪方法)的操作： 
+
+```python
+def act(self, s):
+	"""
+	Having the agent act based on learned Q* function
+	or by random choice (based on epsilon)
+	"""
+	# Based on epsilon predicting or randomly
+	# choosing the next action
+	if np.random.rand() <= self.epsilon:
+		return np.random.choice(self.nA)
+	else:
+		# Estimating q for all possible actions
+		q = self.model.predict(self.sess, s)[0]
+		# Returning the best action
+		best_action = np.argmax(q)
+		return best_action
+```
+
+本类的最后一个方法是`replay`。这个方法很关键，因为它使DQN算法的学习过程变为可能。因此我们在此深入讨论它的运作原理。重播方法所做的第一件事是从先前游戏场景的记忆中取一批样(我们在初始化时定义了批的大小，这些内存只是包含状态、动作、奖励、下一个状态的变量，以及是否是最终状态的标志变量)。随机抽样使模型能够通过对网络权值的逐步调整，一批又一批地找出最优的系数，从而学到最终的Q函数近似。
+
+然后该方法观察样本的最终标志，非最终奖励需要更新，以表示您在游戏结束时得到的奖励。这是通过使用目标网络来完成的，目标网络表示上一次学习结束时固定的Q函数网络的快照。向目标网络提供以上状态，在用伽玛因子折现后，将得到的报酬与当前报酬相加。  
+
+使用当前的Q函数可能会导致学习过程的不稳定性，导致无法得到一个令人满意的Q函数网络。 
+
+```python
+ def replay(self):
+ 	# Picking up a random batch from memory
+ 	batch = np.array(random.sample(\
+ 			self.memory.recall_memories(), self.batch_size))
+ 	# Retrieving the sequence of present states
+ 	s = np.vstack(batch[:, 0])
+ 	# Recalling the sequence of actions
+ 	a = np.array(batch[:, 1], dtype=int)
+ 	# Recalling the rewards
+ 	r = np.copy(batch[:, 2])
+ 	# Recalling the sequence of resulting states
+ 	s_p = np.vstack(batch[:, 3])
+ 	# Checking if the reward is relative to
+ 	# a not terminal state
+ 	status = np.where(batch[:, 4] == False)
+ 	# We use the model to predict the rewards by
+ 	# our model and the target model
+ 	next_reward = self.model.predict(self.sess, s_p)
+ 	final_reward = self.target_model.predict(self.sess, s_p)
+    
+    if len(status[0]) > 0:
+    	# Non-terminal update rule using the target model
+    	# If a reward is not from a terminal state,
+    	# the reward is just a partial one (r0)
+        # We should add the remaining and obtain a
+        # final reward using target predictions
+        best_next_action = np.argmax(\
+        				next_reward[status, :][0], axis=1)
+        # adding the discounted final reward
+        r[status] += np.multiply(self.gamma,
+        		final_reward[status, best_next_action][0])
+
+        # We replace the expected rewards for actions
+        # when dealing with observed actions and rewards
+        expected_reward = self.model.predict(self.sess, s)
+        expected_reward[range(self.batch_size), a] = r
+        # We re-fit status against predicted/observed rewards
+        self.model.fit(self.sess, s, expected_reward,
+        				epochs=self.epochs)
+```
+
+当非最终状态的奖励被更新时，批样本被输入到神经网络中进行训练。  
+
+### 指定环境
+
+要实现的最后一个类是`Environment`。实际上，环境是由`gym`命令提供的，尽管您需要一个好的封装来使它与前面的`agent`类一起工作。在初始化时，它启动月球着陆器游戏，并设置关键变量，如`nS`、`nA`(状态和动作的维度)、`agent`和累积奖励(通过提供最后100步的平均值来进行测试)： 
+
+```python
+class Environment:    
+    def __init__(self, game="LunarLander-v2"):        
+        # Initializing        
+        np.set_printoptions(precision=2)        
+        self.env = gym.make(game)        
+        self.env = wrappers.Monitor(self.env, tempfile.mkdtemp(),                               
+                                force=True, video_callable=False)        
+        self.nS = self.env.observation_space.shape[0]        
+        self.nA = self.env.action_space.n        
+        self.agent = Agent(self.nS, self.nA, self.env.spec.id)
+        
+        # Cumulative reward        
+        self.reward_avg = deque(maxlen=100)
+```
+
+ 然后，我们编写了`test`、`train`和`incremental`(增量训练)方法的代码，这些方法是`learn`方法的封装。  
+
+使用增量训练需要一些技巧，以免破坏迄今为止训练已经取得的结果。导致这个问题的原因是当我们重新启动时，`Brain`有预先训练过的系数，但实际上记忆是空的(我们称之为冷重启)。由于智能体的记忆是空的，过少且具有局限性而不能良好的支持学习。因此，所提供的示例的质量对于学习来说确实不怎么样(这些示例大部分是相互关联的，并且非常局限于少数几个新体验的场景)。通过使用非常低的`epsilon`(我们建议将其设置为最低，0.01)，可以减少训练被破坏的风险：通过这种方式，网络将在大多数情况下简单地重新学习自己的权重，因为它将为每个状态建议它已经知道的操作，它的性能不应该恶化，而是在内存中有足够的示例之前以稳定的方式振荡，并且它将在具有足量数据后再次开始改进。  
+
+下面是正确的训练和测试方法的代码： 
+
+```python
+def test(self):
+    self.learn(epsilon=0.0, episodes=100,
+                trainable=False, incremental=False)
+
+def train(self, epsilon=1.0, episodes=1000):
+    self.learn(epsilon=epsilon, episodes=episodes,
+                trainable=True, incremental=False)
+
+def incremental(self, epsilon=0.01, episodes=100):
+    self.learn(epsilon=epsilon, episodes=episodes,
+                trainable=True, incremental=True)
+```
+
+最后一种方法是`learn`，它用于将智能体与环境交互学习所需的所有东西准备好，并进行学习。该方法接受`epsilon`(从而覆盖智能体拥有的任何先前的`epsilon`)、在环境中运行游戏的次数、是否对其进行训练(布尔标志)，以及训练是否从以前的模型(另一个布尔标志)的训练中继续进行。  
+
+在第一个代码块中，我们可以为Q值近似函数加载先前训练的网络权重：  
+
+1. 测试网络，看看它是如何工作的； 
+2. 利用更多样本继续进行之前的训练。 
+
+然后，该方法深入到一个嵌套迭代中。外部迭代循环运行游戏的次数(每一次运行月球着陆器游戏都将进行到结束)。而内部迭代则是经过最多1000步组成的一次游戏运行。 
+
+在迭代的每一步中，神经网络将给出下一步的动作。如果它在测试中，它总是简单地提供下一个最佳动作的答案。如果它正在训练中，根据epsilon的值，它可能不会建议最好的动作，而是随机移动。 
+
+```python
+def learn(self, epsilon=None, episodes=1000,
+           trainable=True, incremental=False):
+   """
+   Representing the interaction between the enviroment
+   and the learning agent
+   """
+   # Restoring weights if required
+   if not trainable or (trainable and incremental):
+       try:
+           print("Loading weights")
+           self.agent.load_weights('./weights.h5')
+       except:
+           print("Exception")
+           trainable = True
+           incremental = False
+           epsilon = 1.0
+
+   # Setting epsilon
+   self.agent.epsilon = epsilon
+   # Iterating through episodes
+   for episode in range(episodes):
+       # Initializing a new episode
+       episode_reward = 0
+       s = self.env.reset()
+       # s is put at default values
+       s = np.reshape(s, [1, self.nS])
+
+       # Iterating through time frames
+       for time_frame in range(1000):
+           if not trainable:
+               # If not learning, representing
+               # the agent on video
+               self.env.render()
+           # Deciding on the next action to take
+           a = self.agent.act(s)
+           # Performing the action and getting feedback
+           s_p, r, status, info = self.env.step(a)
+           s_p = np.reshape(s_p, [1, self.nS])
+
+           # Adding the reward to the cumulative reward
+           episode_reward += r
+
+           # Adding the overall experience to memory
+           if trainable:
+               self.agent.memory.add_memory(s, a, r, s_p,
+                                           status)
+           # Setting the new state as the current one
+           s = s_p
+
+           # Performing experience replay if memory length
+           # is greater than the batch length
+           if trainable:
+               if len(self.agent.memory) > \
+                       self.agent.batch_size:
+                   self.agent.replay()
+                   
+           # When the episode is completed,
+           # exiting this loop
+           if status:
+               if trainable:
+                   self.agent.target_model_update()
+               break
+
+       # Exploration vs exploitation
+       self.agent.epsilon_update(episode)
+       # Running an average of the past 100 episodes
+       self.reward_avg.append(episode_reward)
+       print("episode: %i score: %.2f avg_score: %.2f"
+               "actions %i epsilon %.2f" % (episode,
+                                           episode_reward,
+                                           np.average(self.reward_avg),
+                                           time_frame,
+                                           epsilon)
+
+   self.env.close()
+   if trainable:
+       # Saving the weights for the future
+       self.agent.save_weights('./weights.h5')
+```
+
+在行动之后，我们收集所有信息(初始状态、选择的动作、获得的奖励和随后的状态)并保存到记忆中。在这个时间帧中，如果记忆足够大，可以为逼近Q函数的神经网络创建样本批，则运行训练。当该次游戏的所有时间帧都被消耗完时，当前DQN的权重被存储到另一个网络中，在下一次游戏中学习时，作为一个稳定的参考。 
+
+### 运行强化学习
+
+最后，在扯一大堆关于强化学习和DQN的内容，并编写了项目的完整代码之后，您可以使用脚本或Jupyter Notebook来运行它。利用将所有代码功能放在一起的`Environment`：
+
+```python
+lunar_lander = Environment(game="LunarLander-v2") 
+```
+
+在实例化之后，您需要运行`train`，从`epsilon=1.0`开始，并将目标设置为5000次游戏(这相当于大约220万个状态、行为和奖励的链式变量样本)。我们提供的实际代码参数被设置为训练完整的DQN模型，考虑到GPU的可用性及其计算能力，它可能需要一些时间：
+
+```python
+lunar_lander.train(epsilon=1.0, episodes=5000)
+```
+
+最后，该类将完成所需的训练，将模型保存在磁盘上(可以随时运行)。您可以使用一个简单的命令来运行TensorBoard，从shell运行：
+
+```shell
+tensorboard --logdir=./experiments --port 6006 
+```
+这些图表将出现在您的浏览器上，并且可以在`localhost:6006`上查看它们： 
+
+![](figures\)
+
+图4：训练中损失图，峰值代表学习中的突破，例如在80万时，它开始安全地降落在地面上。  
+
+损失图与其他项目不同的是，优化的过程仍然是损失逐渐减少，但在这一过程中出现了许多峰值和问题：  
+
+这里表示的图表是运行该项目一次的结果。由于训练过程有随机因素，因此在您自己的计算机上运行项目时，您可能会获得稍微不同的绘图。  
+
+![](figures\)
+
+图5：单批训练过程中最大Q值图  
+
+最大预测Q值和平均预测Q值说明了同样的情况。该网络在最后得到了改进，尽管它可以稍微回溯一点，并在更优值上停留很长一段时间：  
+
+![](figures\)
+
+图6：单批训练过程中平均Q值图  
+
+只有在最后100个最终奖励的平均值中，您才能看到一条逐渐增加的路径，这表示了DQN网络的持续和稳步改进：  
+
+![](figures\)
+
+图7：每个学习阶段结束时实际获得分数图，它更清楚地描述了DQN不断增长的过程。  
+
+使用来自训练输出的信息，而不是来自TensorBoard的信息，您还会发现平均操作数根据`epsilon`值的值变化。开始时，完成一局游戏所需的动作次数少于200次。当`epsilon`为`0.5`时，平均动作数趋于稳定增长，在750左右达到峰值(着陆舱已经学会用火箭来抵消重力)。  
+
+最后，网络发现这是一个次优策略，当`epsilon`低于`0.3`时，完成一局游戏的平均操作数也会下降。在这一阶段，DQN正在探索如何以更有效的方式成功地着陆：  
+
+图8：`epsilon`(探索/利用率)与DQN网络效率之间的关系，网络效率为完成一局游戏所使用操作数。  
+
+如果出于任何原因，您认为网络需要更多的示例和学习，您可以使用`incremental`方法重复学习，记住在这种情况下`epsilon`应该非常低：  
+
+```python
+lunar_lander.incremental(episodes=25, epsilon=0.01)  
+```
+
+训练结束后，如果您需要查看结果并了解平均每100局游戏DQN可以得分多少(理想的目标是分数>=200)，您可以运行以下命令：  
+
+```python
+lunar_lander.test()
+```
+
+### 鸣谢
+在这个项目结束时，我们非常感谢Peter Skvarenina，他的项目“登月飞行器II”(https://www.youtu.com/Watch?v=yiAmrZuBaYU)是我们项目的主要灵感来源，他也在我们制作自己的DQN的过程中给出了很多提示和建议。 
+
+### 总结 
+在这个项目中，我们探索了增强算法在OpenAI环境中可以实现什么，并且我们编写了一个TensorFlow程序，它能够学习如何在一个以智能体、状态、动作和随后的奖励为特征的环境中估计最终的奖励。这种方法称为DQN，目的是用神经网络方法逼近Bellman方程。本章的产出是一个程序，该程序可以在训练结束时通过读取游戏状态并在任何时候通过决策来采取正确的行动，以成功地玩“登月飞行器”游戏。 
