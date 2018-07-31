@@ -1,10 +1,9 @@
 ---
 title: "TF_DL"
 output:
-  word_document: default
-  pdf_document: default
-  html_document:
-    df_print: paged
+  word_document: 
+  toc: true
+  toc_depth: 3
 ---
 
 ## 第1章  用卷积网络识别交通标志
