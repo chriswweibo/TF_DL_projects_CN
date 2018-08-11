@@ -4,27 +4,33 @@ output:
   word_document: 
   toc: true
   toc_depth: 3
+  css: mystyle.css
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = TRUE,font="Courier New")
+```
+
 
 ## 第1章  用卷积网络识别交通标志
 
 
-作为本书的第一个项目，我们首先尝试用一个简单的模型解决交通标志识别问题.在这个问题上深度学习的表现非常好。简而言之，给定一副交通标志的彩色图像，我们的模型可以识别出它是什么信号。我们的介绍如下：
+作为本书的第一个项目，首先尝试用一个简单的模型解决交通标志识别问题.在这个问题上深度学习的表现非常优异。简单地说，给定一副交通标志的彩色图像，模型可以识别出它是什么信号。具体介绍如下：
 
 * 数据集是如何构成的
 * 应该使用哪种深度网络
 * 如何对数据集中的图像进行预处理
 * 如何训练，预测和关注性能
 
-### 数据集
+### 1.1 数据集
 
-由于要尝试用图像预测交通标志，因此我们需要使用为此而建立的数据集。幸运的是，德国 Neuroinformatik研究所的研究者建立了一个包含约40,000张不同图像的数据集，涵盖43种交通标志。我们用到的数据集是**德国交通标志识别基准（German Traffic Sign Recognition Benchmark， GTSRB）**竞赛的一个子集。该竞赛试图对为实现同一目标而建立的多个模型的性能打分。尽管数据集比较古老——来自2011年，但是对于我们的项目来说，它是一个很好的数据集。
+由于会使用图像预测交通标志，因此需要使用为此而建立的数据集。幸运的是，德国 Neuroinformatik研究所的研究者建立了一个包含约40000张不同图像的数据集，涵盖43种交通标志。用到的数据集是**“德国交通标志识别基准（German Traffic Sign Recognition Benchmark， GTSRB）”**竞赛的一个子集。该竞赛试图对为实现同一目标而建立的多个模型的性能打分。尽管数据集比较古老——来自2011年，但是对于本书的项目来说，它依然是一个很好的数据集。
 
 数据集下载地址：http://benchmark.ini.rub.de/Dataset/GTSRB_Final_Training_Images.zip。
 
-> 在运行代码之前，先下载文件并解压到代码所在的目录下。解压后，我们得到一个名为GTSRB的包含数据集的文件夹。作为作者，感谢为这一开源数据集做出贡献的人。另外，可以参考 http://cs231n.github.io/convolutional-networks， 以便了解更多关于CNN的知识。
+> 在运行代码之前，先下载文件并解压到代码所在的目录下。解压后，得到一个名为GTSRB的包含数据集的文件夹。作为本书作者，感谢为这一开源数据集做出贡献的人。另外，可以参考 http://cs231n.github.io/convolutional-networks，以便了解更多关于CNN的知识。
 
-让我们看一下例子。
+让我们看一些例子。
 
 “限速20千米/小时”:
 
@@ -41,15 +47,15 @@ output:
 
 正如所见，标志的亮度并不统一（有些很暗而有些很亮），尺寸不同，视角不同，背景不同，并且可能包含其他交通标志。
 
-数据集的组织方式如下：所有标签相同的图像在同一文件夹中。例如，在 GTSRB/Final_Training/Images/00040/这一文件夹下，所有的图像的标签都是40，而 GTSRB/Final_Training/Images/00005/中的图像的标签为5。注意，所有图像都是PPM格式，这是一种无损压缩格式，拥有很多开源的编码/解码器。
+数据集的组织方式如下：所有标签相同的图像在同一文件夹中。例如，在GTSRB/Final_Training/Images/00040/这一文件夹下，所有的图像的标签都是40，而 GTSRB/Final_Training/Images/00005/中的图像标签为5。注意，所有图像都是PPM格式，这是一种无损压缩格式，拥有很多开源的编码/解码器。
 
-### CNN网络
+### 1.2 CNN网络
 
-在本项目中，我们使用一个具有如下结构的非常简单的网络：
+本项目使用一个具有如下结构的非常简单的网络：
 
 ![](figures\8_2.jpg)
 
-在这一结构中，我们仍然有以下选择：
+在这一结构中，仍然有以下选项：
 
 * 二维卷积层中滤波器的个数和核大小
 * 池化层中核的大小
@@ -59,21 +65,18 @@ output:
 
 
 
-### 图像预处理
+### 1.3 图像预处理
 
-模型的第一步操作是读入图像并进行标准化。事实上，我们不能在图像尺寸不统一的情况下进行后续工作。因此，第一步，我们要加载图像并且将其变形为指定的尺寸（32x32)。除此之外，我们需要对标签进行独热编码，得到一个43维的矩阵，矩阵中的每一维只有一个元素有效；与此同时，我们把图像的颜色空间从RGB转为灰度图。观察图像可以发现，我们所需要的信息不是在标志的颜色中，而是在形状和设计中。
+模型的第一步操作是读入图像并进行标准化。事实上，我们不能在图像尺寸不统一的情况下进行后续工作。因此，第一步，要加载图像并且将其变形为指定的尺寸（32x32)。除此之外，需要对标签进行独热编码，得到一个43维的矩阵，矩阵中的每一维只有一个元素有效；同时，把图像的颜色空间从RGB转为灰度图。观察图像可以发现，所需要的信息不在标志的颜色中，而是在形状和设计中。
 
-接着，打开一个jupyter notebook，编写代码。首先，我们设置一些全局变量，包括类的数量（43）和变形后的图像的尺寸：
-
-
+接着，打开一个jupyter notebook，编写代码。首先，设置一些全局变量，包括类的数量（43）和变形后的图像的尺寸：
 
 ```python
 N_CLASSES = 43
 RESIZED_IMAGE = (32, 32)
 ```
 
-然后，我们定义一个函数，用来读取给定目录下的所有图像，把它们转化为给定形状，转为灰度图，并对标签做独热编码。因此，我们需要使用一个名为`dataset`的元组：
-
+然后，定义一个函数，用来读取给定目录下的所有图像，把它们转化为给定形状，转为灰度图，并对标签做独热编码。因此，需要使用一个名为`dataset`的元组：
 
 ```python
 import matplotlib.pyplot as plt
@@ -105,7 +108,7 @@ dataset = read_dataset_ppm('GTSRB/Final_Training/Images', N_CLASSES,RESIZED_IMAG
 print(dataset.X.shape) print(dataset.y.shape)
 ```
 
-`skimage`模块使得图像的读取、转化、变形操作非常容易。我们在实现中决定对原始的颜色空间（RGB）进行转化，只保留亮度分量。另一个好的变换是YUV，只有Y通道会作为灰度图保存。
+`skimage`模块可以简化图像的读取、转化、变形操作。我们在实现中决定对原始的颜色空间（RGB）进行转化，只保留亮度分量。另一个好的变换是YUV，只有Y通道会作为灰度图保存。
 
 运行代码的结果如下：
 
@@ -118,7 +121,7 @@ print(dataset.X.shape) print(dataset.y.shape)
 
 对于标签矩阵，行是待观测目标的索引，列是标签的独热编码。
 
-为了更好地理解观测矩阵，我们打印第一个样本的特征向量和标签：
+为了更好地理解观测矩阵，打印第一个样本的特征向量和标签：
 
 ```python
 plt.imshow(dataset.X[0, :, :, :].reshape(RESIZED_IMAGE)) #sample
@@ -127,7 +130,7 @@ print(dataset.y[0, :]) #label
 ![](figures\11_1.jpg)
 
 ```
- [[1. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+[[1. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
 
 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
 ```
@@ -148,9 +151,9 @@ print(dataset.y[-1, :]) #label
 
 可以发现，图像的特征向量维度为32*32。标签只在第一个位置值为1。
 
-这是我们建立模型需要的两部分信息。请格外注意形状，因为在用深度学习处理图像的过程中它们很关键。与经典机器学习矩阵相比，这里X的维度为4。
+这是建立模型需要的两部分信息。请格外注意形状，因为在用深度学习处理图像的过程中它们很关键。与经典机器学习矩阵相比，这里X的维度为4。
 
-预处理的最后一步是训练集/测试集的分割。我们希望在数据集的一个子集上训练模型，并在其补集，即测试集上测试性能。为此，我们需要用`sklearn`提供的功能。
+预处理的最后一步是训练集/测试集的分割。我们希望在数据集的一个子集上训练模型，并在其补集，即测试集上测试性能。为此，需要用`sklearn`提供的功能。
 
 ```python
 from sklearn.model_selection import train_test_split 
@@ -163,7 +166,7 @@ print(X_train.shape) print(y_train.shape)
 print(X_test.shape) print(y_test.shape)
 ```
 
-在这个例子中，我们用数据集中75%的样本训练，用余下25%的样本测试。下面是当前代码的实际输出：
+在这个例子中，使用数据集中75%的样本训练，而余下25%的样本进行测试。下面是当前代码的实际输出：
 
 ```python
 (29406, 32, 32, 1)
@@ -172,11 +175,11 @@ print(X_test.shape) print(y_test.shape)
 (9803, 43)
 ```
 
-### 训练模型并进行预测
+### 1.4 训练模型并进行预测
 
-首先，我们需要一个由训练数据生成分批处理的函数。事实上，在每次训练迭代中，我们需要插入来自训练集的分批处理样本。这里，我们需要创建一个函数，用于获取样本，标签，分批处理样本并返回分批处理生成器。
+首先，需要一个由训练数据生成分批处理的函数。事实上，在每次训练迭代中，需要输入来自训练集的分批处理样本。这里需要创建一个函数，用于获取样本，标签，分批处理样本并返回分批处理生成器。
 
-而且，为了引入训练数据的变化性，我们在函数中加入新的参数，即重洗数据以产生不同分批样本的概率。每个分批处理有不同的数据会使模型学习输入-输出的连接并且不记忆序列。
+而且，为了引入训练数据的变化性，在函数中加入新的参数，即重洗数据以产生不同分批样本的概率。每个分批处理有不同的数据支持模型学习输入-输出的连接并且不记忆序列。
 
 ```python
 def minibatcher(X, y, batch_size, shuffle): 
@@ -191,7 +194,7 @@ def minibatcher(X, y, batch_size, shuffle):
       yield X[idx[from_idx:to_idx], :, :, :], y[idx[from_idx:to_idx], :]
 ```
 
-为了测试这一函数，打印分批处理为10000时分批处理的形状：
+为了测试这一函数，打印批大小为10000时分批处理的形状：
 
 ```python
 for mb in minibatcher(X_train, y_train, 10000, True): 
@@ -207,7 +210,7 @@ for mb in minibatcher(X_train, y_train, 10000, True):
 
 不出所料，训练集中的29406个样本被分成了两个10000，和一个9406。当然，标签矩阵中元素的数量也是这些。
 
-终于可以建立模型了。首先，需要确定网络的模块。我们可以从创建全连接层开始，（作为参数）加入可变数量的单元，且不加入激活层。我们采用Xavier方法对系数（权重）进行初始化，偏置设为0。输出是输入经过权重，相加，考虑偏置后的组合。需要注意的是权重的维度是动态定义的，可以在网络的任何地方使用。
+终于可以建立模型了。首先，需要确定网络的模块。可以从创建全连接层开始，（作为参数）加入可变数量的单元，且不加入激活层。我们采用Xavier方法对系数（权重）进行初始化，偏置设为0。输出是输入经过权重，相加，考虑偏置后的组合。需要注意的是，权重的维度是动态定义的，可以在网络的任何地方使用。
 
 ```python                                        
 import TensorFlow as tf 
@@ -223,15 +226,15 @@ def fc_no_activation_layer(in_tensors, n_units):
     return tf.matmul(in_tensors, w) + b
 ```
 
-下面创建带激活的全连接层。特别地，这里的激活函数采用leaky ReLU。我们用如下方法来实现：
+下面创建带激活的全连接层。特别地，这里的激活函数采用leaky ReLU。用如下方法来实现：
 
 ```python
 def fc_layer(in_tensors, n_units): 
     return tf.nn.leaky_relu(fc_no_activation_layer(in_tensors, n_units))
 ```
-最后，创建一个卷积层，参数包含输入数据，核尺寸，滤波器（或神经元）个数。我们将采用与全连接层相同的激活函数。在此，输出层需要通过leaky ReLU激活：
+最后，创建一个卷积层，参数包含输入数据，核尺寸，滤波器（或神经元）个数。采用与全连接层相同的激活函数。在此，输出层需要通过leaky ReLU激活：
 
- ```python
+```python
 def conv_layer(in_tensors, kernel_size, n_units): 
     w = tf.get_variable('conv_W',
 					[kernel_size, kernel_size, in_tensors.get_shape()[3], n_units],           
@@ -242,7 +245,7 @@ def conv_layer(in_tensors, kernel_size, n_units):
                        tf.float32,
                        tf.constant_initializer(0.0))
     return tf.nn.leaky_relu(tf.nn.conv2d(in_tensors, w, [1, 1, 1, 1], 'SAME') + b)
- ```
+```
 
 现在建立池化层`maxpool_layer`。这里，窗口的尺寸和步长都是平方级的。
 
@@ -251,13 +254,13 @@ def maxpool_layer(in_tensors, sampling):
     return tf.nn.max_pool(in_tensors, [1, sampling, sampling, 1], [1, sampling, sampling, 1], 'SAME')
 ```
 
-最后要做的是定义dropout，用来标准化网络。dropout的创建相当简单。只需要记住，它在训练时会用到，预测时不会使用。因此，我们需要一个额外的操作去定义是否进行dropout：
+最后要做的是定义dropout，用来标准化网络。dropout的创建相当简单。只需要记住，它在训练时会用到，预测时不会使用。因此，需要一个额外的操作去定义是否进行dropout：
 
 ```python
 def dropout(in_tensors, keep_proba, is_training): 
     return tf.cond(is_training, lambda: tf.nn.dropout(in_tensors, keep_proba), lambda: in_tensors)
 ```
-最后，需要按照上述定义把各功能结合起来并创建模型。我们建立的模型包含以下几层：
+最后，需要按照上述定义把各功能结合起来并创建模型。建立的模型包含以下几层：
 
 1. 二维卷积，5*5，32个滤波器
 2. 二维卷积，5*5，64个滤波器
@@ -291,9 +294,9 @@ def model(in_tensors, is_training):
     return out_tensors
 ```
 
-现在，我们需要定义函数来训练模型并测试性能。注意，下面所有的代码都属于训练模型的函数，为了便于解释被拆成小块。
+现在，需要定义函数来训练模型并测试性能。注意，下面所有的代码都属于训练模型的函数，为了便于解释被拆成小块。
 
-函数的参数包括训练集、测试集及对应的标签，学习率，迭代次数，批大小。首先，需要定义TensorFlow占位符：每个分批处理，一个分批处理的标签，是否进行训练（主要用于dropout层）：
+函数的参数包括训练集、测试集及对应的标签，学习率，迭代次数，批大小。首先，需要定义TensorFlow占位符：每个批处理数据，一个分批处理的标签，是否进行训练（主要用于dropout层）：
 
 ```python
 from sklearn.metrics import classification_report, confusion_matrix 
@@ -304,7 +307,7 @@ def train_model(X_train, y_train, X_test, y_test, learning_rate, max_epochs, bat
     is_training =tf.placeholder(tf.bool)
 ```
 
-下面，定义输出，度量分数，优化器。这里，我们采用`AdamOptimizer`和多元逻辑回归`softmax(logits)`下的交叉熵作为损失函数：
+下面，定义输出，度量分数，优化器。这里，采用`AdamOptimizer`和多元逻辑回归`softmax(logits)`下的交叉熵作为损失函数：
 
 ```python
 logits = model(in_X_tensors_batch, is_training)
@@ -315,7 +318,7 @@ optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss)
 
 ```
 
-最后，使用分批处理的模型训练代码如下：
+最后，使用分批处理的模型训练，代码如下：
 
 ```python
 with tf.Session() as session:    
@@ -331,7 +334,7 @@ with tf.Session() as session:
       print(" train_loss_score=", np.mean(tf_score))
 ```
 
-训练之后，需要在测试集上测试模型。这里，我们用整个测试集测试，而不是分批处理。由于我们不使用dropout，对应的参数需要设为false:
+训练之后，需要在测试集上测试模型。这里，使用整个测试集测试，而不是分批处理。由于不使用dropout，对应的参数需要设为false:
 ```python
    print("TEST SET PERFORMANCE")
    y_test_pred, test_loss = session.run([out_y_pred, loss],                                         
@@ -356,7 +359,7 @@ with tf.Session() as session:
    plt.show() tf.reset_default_graph()
 ```
 
-最后，我们运行带有一些参数的函数。这里，学习率是0.001，批大小256，迭代10次：
+最后，运行带有一些参数的函数。这里，学习率是0.001，批大小256，迭代10次：
 
 ```python
 train_model(X_train, y_train, X_test, y_test, 0.001, 10, 256)
@@ -438,7 +441,7 @@ TEST SET PERFORMANCE test_loss_score= 0.04581982
 42  0.98     1.00     0.99       53 
 avg/total 0.99 0.99   0.99     9803
 ```
-可以看到，我们在测试集上达到了99%的准确率。此外，召回率和f1值也为99%。由于测试集的损失与最后一次迭代的损失相似，说明模型稳定，没有过拟合或欠拟合。
+可以看到，模型在测试集上达到了99%的准确率。此外，召回率和f1值也为99%。由于测试集的损失与最后一次迭代的损失相似，说明模型稳定，没有过拟合或欠拟合。
 
 混淆矩阵如下：
 
@@ -448,30 +451,29 @@ avg/total 0.99 0.99   0.99     9803
 
 ![](figures\20_1.jpg)
 
-### 后续问题
+### 1.6 后续问题
 
 * 尝试添加或去掉卷积层或全连接层。这些改变会导致性能怎样变化？
 
 * 这个简单的项目表明了dropout的必要性。改变dropout的比例，观察输出的过拟合和欠拟合情况。
 
-* 现在，拍一张你所在城市的交通标志图，在现实生活中测试一下训练好的模型！
+* 现在，拍一张所在城市的交通标志图，在现实生活中测试一下训练好的模型！
 
 
-
-### 小结
+### 1.7 小结
 
 在这一章中，我们看到了怎样用卷积神经网络识别交通标志。在下一章中，我们会用CNN完成更加复杂的任务。
 
 
 ## 第2章 用物体探测接口注释图像
 
-近年来，随着深度学习的发展，计算机视觉取得了巨大的飞跃，使计算机在视觉场景的理解上有了更高的水平。视觉任务中深度学习的潜力是巨大的：计算机视觉具有感知和理解周围环境的能力，从而在可移动领域（例如，自动驾驶汽车可以通过车上的相机探测出物体是行人，动物，还是机动车并做出行动指令）以及日常生活中的人机交互领域（例如，可以使机器人感知周围环境并做出反应）打开了人工智能大门。
+近年来，随着深度学习的发展，计算机视觉取得了巨大的飞跃，使得计算机在视觉场景的理解上有了更高的水平。视觉任务中深度学习的潜力是巨大的：计算机视觉具有感知和理解周围环境的能力，从而在可移动领域（例如，自动驾驶汽车可以通过车上的相机探测出物体是行人，动物，还是机动车并做出行动指令）以及日常生活中的人机交互领域（例如，可以使机器人感知周围环境并做出反应）打开了人工智能大门。
 
 在第1章中，我们介绍了ConvNets以及工作原理。在这一章里，我们会介绍一个简单的项目，借助因特网或者自己电脑的网络摄像头采集的图片，使用计算机理解相机和手机中的图片。项目的目的是找出图片中物体的类型和精确的位置。
 
-为了实现上述的分类和定位，我们引入TensorFlow的物体探测API，这是google的TensorFlow模型项目中的一部分，TensorFlow可以预训练一系列神经网络并封装窄自定义的应用中。
+为了实现上述的分类和定位，引入TensorFlow的物体探测API，这是google的TensorFlow模型项目中的一部分，TensorFlow可以预训练一系列神经网络并封装在自定义的应用中。
 
-在这一章，我们主要讨论以下几个问题：
+这一章主要讨论以下几个问题：
 
 * 在项目中使用恰当数据的优势
 * TensorFlow物体探测接口简介
@@ -479,27 +481,22 @@ avg/total 0.99 0.99   0.99     9803
 * 如何使用`moviepy`处理视频
 * 如何从网站中实时获取图像
 
-### 微软常见物体数据集
+### 2.1 微软常见物体数据集
 
 在计算机视觉方面，深度学习经常被用于解决分类问题，如ImageNet（也有其他数据集，例如PASCAL VOC，详见http://host.robots.ox.ac.uk/pascal/VOC/voc2012 ），以及适合解决问题的卷积网络（如Xception，GG16，VGG19，ResNet50，InceptionV3，以及MobileNet，这些网络在著名的`keras`程序包中都有引用，参见https://keras.io/applications/）。
 
-尽管基于ImageNet数据集的深度学习技术已经登峰造极，这种网络在面对真实世界的应用时还是存在很多困难。事实上，在实际应用中，我们不得不处理与ImageNet的样本差别巨大的数据。在Imagenet中，样本按照图像中唯一清晰的元素进行明确分类。理想情况下，待分类的物体处于图像中央位置，并且不被遮挡。而在实际图像中，大量物体服从随机分布。所有这些物体互不相同，进而会造成数据集的混乱。除此之外，由于可能被其它物体遮盖，常见的物体也不能准确而且直接地被察觉到。
+尽管基于ImageNet数据集的深度学习技术已经登峰造极，这种网络在面对真实世界的应用时还是存在很多困难。事实上，在实际应用中，模型不得不处理与ImageNet的样本差别巨大的数据。在Imagenet中，样本按照图像中唯一清晰的元素进行明确分类。理想情况下，待分类的物体处于图像中央位置，并且不被遮挡。而在实际图像中，大量物体服从随机分布。所有这些物体互不相同，进而会造成数据集的混乱。除此之外，由于可能被其它物体遮盖，常见的物体也不能准确而且直接地被察觉到。
 
-读者可以参照下列文献中的图例。
-
-图1：ImageNet中的图像样本，它们按照层级结构组织，允许采用一般或更精确的分类。
-
-来源：DENG，Jia等人的文章《ImageNet: A large-scale hierarchical image database》，接收在Computer Vision and Pattern Recognition, 2009.CVPR 2009.IEEE Conference on.IEEE, 2009.p.248-255。
 
 实际情况下，含有多个物体的图像有时很难和背景噪音区分。读者通常无法仅仅通过图像含有的拥有最高置信度的简单标签来创建有意义的项目。
 
-在实际应用中，读者需要有能力完成以下工作：
+在实际应用中，需要能够完成以下工作：
 
 * 物体识别，识别物体并分类，同一类中通常包含多种不同的物体。
 * 图像定位，找出图像中特定物体的位置。
 * 图像分割，每个像素点都具有标签，表示该点是物体还是背景，以便可以从背景中分离出感兴趣的区域。
 
-    正如LIN, Tsung-Yi等人的文章《Microsoft coco: common objects in context》（其接收在European conference on computer vision.Springer, Cham, 2014.p.740-755，文章见https://arxiv.org/abs/1405.0312）中所提到的， 训练卷积网络的必要性在于能够在微软常见物体数据集（MSCOCO）上创建能够实现上述部分或全部目标的上下文。该数据集包含91类对象，采用分层排序的方式，其中82类包含5000个以上有标签的实例。数据集共含有2500000个描述对象，它们分布在32800张图像中。
+    正如LIN, Tsung-Yi等人的文章《Microsoft coco: common objects in context》（其接收在European conference on computer vision.Springer, Cham, 2014.p.740-755，文章见https://arxiv.org/abs/1405.0312）中所提到的， 训练卷积网络的必要性在于能够在**“微软常见物体数据集（MSCOCO）”**上创建能够实现上述部分或全部目标的上下文。该数据集包含91类对象，采用分层排序的方式，其中82类包含5000个以上有标签的实例。数据集共含有2500000个描述对象，它们分布在32800张图像中。
 
 下面是MSCOCO数据集中可辨识的类：
 
@@ -516,63 +513,61 @@ avg/total 0.99 0.99   0.99     9803
 'clock', 86: 'vase', 87: 'scissors', 88: 'teddy bear', 89: 'hair drier',
 90: 'toothbrush'}
 ```
-尽管`ImageNet`数据集展示了分布在 14197122图像中的1000类目标（具体描述见https://gist.github.com/yrevar/942d3a0ac09ec9e5eb3a ），然而MSCOCO可以在较小数量的图像上展示目标物体的特殊特征（数据集通过亚马逊的mechanical turk收集，这是一种代价更高的方法，但也被ImageNet共享）。在这样的前提下，MS COCO图像可以被认为是`上下文关系和非图标对象视图`的优良例子，因为对象被安排在现实的位置和环境中。这一点可以从上述MSCOCO论文的相应例子得到证实:
+尽管ImageNet数据集展示了分布在14197122图像中的1000类目标（具体描述见https://gist.github.com/yrevar/942d3a0ac09ec9e5eb3a），然而MSCOCO可以在较小数量的图像上展示目标物体的特殊特征（数据集通过亚马逊的mechanical turk收集，这是一种代价更高的方法，但也被ImageNet共享）。在这样的前提下，MS COCO图像可以被认为是`上下文关系和非图标对象视图`的优良例子，因为对象被安排在现实的位置和环境中。这一点可以从上述MSCOCO论文的相应例子得到证实:
 
-![](figures\24_1.jpg)
+![图标和非图标图像示例。来源：LIN, Tsung-Yi, et al.Microsoft coco: common objects in context.In: European conference on computer vision.Springer, Cham, 2014.p.740-755.](figures\24_1.jpg)
 
-图2：图标和非图标图像示例。来源：LIN, Tsung-Yi, et al.Microsoft coco: common objects in context.In: European conference on computer vision.Springer, Cham, 2014.p.740-755.
 
  此外，MSCOCO的图像注释非常丰富，提供了图像中物体的等高线坐标。等高线可以很容易地转换成边框，这些边框限定了物体所在的图像位置。这是一种粗糙的定位方法，而不是原始的基于像素分割的训练方法。
 
-下图中，我们通过定义图像中的显著区域并创建这些区域的文本描述，仔细划分了拥挤的行。在机器学习中，这种方式可以转化为给图像中的每个像素分配标签，并尝试预测分割类（根据对应的文本描述）。历史上，相关工作直到2012年才随着ImageNet图像处理而完成，深度学习也被证明是一种更有效的解决方案。
+下图定义图像中的显著区域并创建这些区域的文本描述，仔细划分了拥挤的行。在机器学习中，这种方式可以转化为给图像中的每个像素分配标签，并尝试预测分割类（根据对应的文本描述）。历史上，相关工作直到2012年才随着ImageNet图像处理而完成，深度学习也被证明是一种更有效的解决方案。
 
 > 2012是计算机视觉的一个里程碑，因为深度学习第一次提供了比之前任何传统技术更好的结果（KRIZHEVSKY, Alex; SUTSKEVER, Ilya; HINTON, Geoffrey.E, Imagenet classification with deep convolutional neural networks. In：Advances in neural information processing systems.2012.p.1097-1105， https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf)。
 
-图像分割尤其适用于如下各种任务：
+图像分割非常适合如下各种任务：
 
 * 突出图像中的重要对象，例如医学疾病检测领域的应用
 * 在图像中定位物体，以便机器人能够拾取或操纵它们
 * 帮助自动驾驶汽车了解路况或无人机了解路况并完成导航
 * 通过自动提取图像的部分区域或去除图像背景来编辑图像 
 
-这种描述非常昂贵（这限制了MSCOCO中的实例数量），因为它必须完全手动完成，并且对精度有要求。有一些工具可以通过分割图像进行注释。读者可以在https://stackoverflow.com/questions/8317787/imagelabelling-and-annotation-tool中看到全部列表。如果读者想要自己通过分割来注释图像，那么我们推荐以下两个工具：
+这种任务非常昂贵（这限制了MSCOCO中的实例数量），因为它必须完全手动完成，并且对精度有要求。有一些工具可以通过分割图像进行注释。读者可以在https://stackoverflow.com/questions/8317787/imagelabelling-and-annotation-tool中看到全部列表。如果读者想要自己通过分割来注释图像，那么推荐以下两个工具：
 
 * LabelImg：https://github.com/tzutalin/labelImg
 * FastAnnotationTool：https://github.com/christopher5106/FastAnnotationTool
 
-所有这些工具也可以通过边框完成更简单的注释。它们可以帮助读者根据MSCOCO按照自己的分类重新训练一个模型（我们将在本章末尾再次介绍这一点）：
+所有这些工具也可以通过边框完成更简单的注释。它们可以帮助读者按照自己的分类重新训练一个模型（本章末尾会再次介绍这一点）：
 
-![“MSCOCO训练所用图像的像素级分割”](figures\26_1.jpg)
+![MSCOCO训练所用图像的像素级分割](figures\26_1.jpg)
 
-				MSCOCO训练所用图像的像素级分割
 
-### TensorFlow物体探测接口
+### 2.2 TensorFlow物体探测接口
 
-作为提升研究社区能力的一种方式，谷歌研究科学家和软件工程师经常开发最先进的模型并且促进开源。正如2016年10月谷歌研究博客https://research.googleblog.com/2017/06/supercharge-your-computer-vision-models.html 中所描述的，谷歌的内部物体探测系统在COCO探测挑战中拿到了冠军。这一比赛主要解决的是寻找图像中对象物体（估计物体在图像中某一位置的概率）和它们的边框（细节参见https://arxiv.org/abs/1611.10012 ）的问题。谷歌的解决方案不仅促成了大量论文，并且投入到了谷歌产品（如Nest摄像头https://nest.com/cameras/nest-aware/，图片搜索ttps://www.blog.google/products/search/now-image-search-can-jump-start-yoursearch-style/， and 以及谷歌街景https://research.googleblog.com/2017/05/updatinggoogle-maps-with-deep-learning.html ），更是在TensorFlow之上建立了大量的开源框架。
+作为提升研究社区能力的一种方式，谷歌研究科学家和软件工程师经常开发最先进的模型并且促进开源。正如2016年10月谷歌研究博客https://research.googleblog.com/2017/06/supercharge-your-computer-vision-models.html中所描述的，谷歌内部的物体探测系统在COCO探测挑战中拿到了冠军。这一比赛主要解决的是寻找图像中对象物体（估计物体在图像中某一位置的概率）和它们的边框（细节参见https://arxiv.org/abs/1611.10012 ）的问题。谷歌的解决方案不仅促成了大量论文，并且投入到了谷歌产品（如Nest摄像头https://nest.com/cameras/nest-aware/，图片搜索https://www.blog.google/products/search/now-image-search-can-jump-start-yoursearch-style/，以及谷歌街景https://research.googleblog.com/2017/05/updatinggoogle-maps-with-deep-learning.html ），更是在TensorFlow之上建立了大量的开源框架。
 
 上述框架经常提供一些有用的功能。下面是五个不同的预训练模型（构成所谓的预训练模型动物园）：
 
-* Single Shot Multibox Detector (SSD) with MobileNets
-* SSD with Inception V2
-* Region-Based Fully Convolutional Networks (R-FCN) with Resnet 101
-* Faster R-CNN with Resnet 101
-* Faster R-CNN with Inception Resnet v2
+* 使用MobileNets的Single Shot Multibox Detector（SSD）
+* 使用Inception V2的SSD
+* 使用Resnet的Region-Based Fully Convolutional Networks（R-FCN）
+* 使用Resnet的Faster R-CNN
+* 使用Inception Resnet v2的Faster R-CNN
 
 
- 模型在检测精度和检测过程的执行速度上都在不断提高。MobileNets, Inception和Resnet指的是不同类型的卷积神经网络结构。（MoblieNets，顾名思义，是用于优化移动电话的网络，结构尺寸小，执行速度快）。前面的章节中我们已经讨论过卷积神经网络的结构，读者可以参考上述框架了解更多相关见解。如果需要更多资料，读者可以在Joice Xu的博客中重温各个主题，博客地址：https://towardsdatascience.com/an-intuitive-guide-to-deepnetwork-architectures-65fdc477db41。
+ 模型在检测精度和检测速度上都在不断提高。MobileNets，Inception和Resnet指的是不同类型的卷积神经网络结构。（MoblieNets，顾名思义，是用于优化移动电话的网络，体积更小，速度更快）。前面的章节已经讨论过卷积神经网络的结构，读者可以参考上述框架了解更多相关知识。如果需要更多资料，读者可以在Joice Xu的博客中重温各个主题，博客地址：https://towardsdatascience.com/an-intuitive-guide-to-deepnetwork-architectures-65fdc477db41。
 
-**Single Shot Multibox Detector (SSD), Region-Based Fully convolutional networks (RFCN)**和**Faster Region-based convolutional neural networks (Faster R-CNN)**是用来检测图像中多个物体的新模型。在下面的介绍中，我们会解释它们的工作原理。
+**Single Shot Multibox Detector（SSD）, Region-Based Fully convolutional networks（RFCN）**和**Faster Region-based convolutional neural networks（Faster R-CNN）**是用来检测图像中多个物体的新模型。下面会解释它们的工作原理。
 
-  读者可以根据具体应用选择最合适的模型（需要进行一些实验），或对多个模型进行集成以便得到更好的结果（正如谷歌研究员为了赢得COCO比赛的所采取的策略）。
+读者可以根据具体应用选择最合适的模型（需要进行一些实验），或对多个模型进行集成以便得到更好的结果（正如谷歌研究员为了赢得COCO比赛的所采取的策略）。
 
 
-### R-CNN，R-FCN和SSD模型的基本知识
+### 2.3 R-CNN，R-FCN和SSD模型的基本知识
 
-即使读者清楚地知道卷积神经网络如何处理图像分类，但是如何使用神经网络通过定义边界框（一个矩形包围对象本身）将多个物体定位成一个图像，也可能不太明显。读者可以想到的第一个最简单的解决方案可能是滑动窗口，并在每个窗口上应用卷积神经网络。但是对于大多数现实世界的应用来说，这可能涉及非常昂贵的计算（就像给自动驾驶的汽车提供视觉处理，读者确实希望它能识别出障碍物并在碰撞之前停下）。
+即使读者清楚地知道卷积神经网络如何处理图像分类，但是如何使用神经网络通过定义边界框（一个矩形包围对象本身）将多个物体定位成一个图像，也并不容易。读者可以想到的第一个最简单的解决方案可能是滑动窗口，并在每个窗口上应用卷积神经网络。但是对于大多数现实世界的应用来说，这可能涉及非常昂贵的计算（就像给自动驾驶的汽车提供视觉处理，读者确实希望它能识别出障碍物并在碰撞之前停下）。
 
 读者可以参考博客https://www.pyimagesearch.com/2015/03/23/sliding-windowsfor-object-detection-with-python-and-opencv/，以便更好地了解用如何滑动窗口进行物体探测。博客中给出了将其与图像金字塔结合的有效例子。
 
-虽然滑动窗口相当直观，但其复杂性和计算冗余（在不同尺度的图像上穷举和处理）带来了诸多限制，另一种可能的`区域候选`算法也随即产生。这种算法采用图像分割（即根据不同区域颜色的差异将图像分为不同的部分）以枚举图像中可能存在的边框。算法的具体细节参见Satya allik的工作https://www.learnopencv.com/selective-search-for-object-detection-cpppython/。
+虽然滑动窗口相当直观，但其复杂性和计算冗余（在不同尺度的图像上穷举和处理）带来了诸多限制，另一种可能的**区域候选**算法也随即产生。这种算法采用图像分割（即根据不同区域颜色的差异将图像分为不同的部分）以枚举图像中可能存在的边框。算法的具体细节参见Satya allik的工作https://www.learnopencv.com/selective-search-for-object-detection-cpppython/。
 
 区域候选算法的关键是提供有限数量的边框，其数量远小于滑动窗口的数量。这使得它们可以应用到第一版R-CNN以及基于区域的卷积神经网络。工作原理如下：
 
@@ -585,29 +580,29 @@ avg/total 0.99 0.99   0.99     9803
 1. 它用CNN迅速处理图像，转化图像并应用到区域决策。这使得CNN需要处理的区域从数千降到一个。
 2. 采用多元逻辑回归和线性分类器而非支持向量机，这样使得CNN可以扩展，而不是简单地将数据传入不同模型。
 
-本质上，通过使用Faster R-CNN，我们再次创建了一个以特殊的过滤和选择层，区域决策层为特征的基于非神经网络算法的分类器。Faster R-CNN甚至改变了这些层，用区域决策神经网络取而代之。这使得模型更加复杂，但也比以往任何方法都更快、效果更好。
+本质上，通过使用Faster R-CNN，再次创建一个以特殊的过滤和选择层，区域决策层为特征的基于非神经网络算法的分类器。Faster R-CNN甚至改变了这些层，用区域决策神经网络取而代之。这使得模型更加复杂，但也比以往任何方法都更快、效果更好。
 
-无论如何，R-FCN比R-CNN更快，因为它是全卷积网络，在卷积层之后不需要全连接层，从输入到输出是通过卷积连接的端对端的网络。这使得网络更快（比最后一层是全连接层的CNN的权值数量少）。然而，这种速度上的提升时需要代价的，它们不再表征图像的不变性（卷积神经网络可以识别物体的分类，无论它是否经过旋转）。Faster R-CNN通过位置敏感得分图来弥补这一缺陷，这是一种检查FCN处理的原始图像的区域是否对应于要分类的区域的方法。 简而言之，不需要比较类，而是比较类的一部分。举例来说，他们不把狗分类，而是分为狗的左上部分，狗的右下部分等等。 这种方法可以确定图像中是否有狗，不管图中包含狗的哪一部分。显然，这种快速的方法是以较低的精度为代价的，因为位置敏感得分地图不能补充原始的卷积神经网络提取的所有特征。
+无论如何，R-FCN比R-CNN更快，因为它是全卷积网络，在卷积层之后不需要全连接层，从输入到输出是通过卷积连接的端对端的网络。这使得网络更快（比最后一层是全连接层的CNN的权值数量少）。然而，这种速度上的提升是需要代价的，它们不再表征图像的不变性（卷积神经网络可以识别物体的分类，无论它是否经过旋转）。Faster R-CNN通过位置敏感得分图来弥补这一缺陷，这是一种检查FCN处理的原始图像区域是否对应于要分类区域的方法。 简而言之，不需要比较类的全部，而是比较类的一部分。例如，不把狗分类，而是分为狗的左上部分，狗的右下部分等等。 这种方法可以确定图像中是否有狗，不管图中包含狗的哪一部分。显然，这种快速的方法是以较低的精度为代价的，因为位置敏感得分地图不能补充原始的卷积神经网络提取的所有特征。
 
-最后，我们来看一下SSD （Single Shot Detector）。它的速度更快，因为在处理图像的过程中，同时预测边框位置及其分类。SSD没有区域候选阶段，其边框的计算量很大。尽管它减少了重叠边框，但是它仍然是目前为止所提到的网络中需要处理最多边框的模型。SSD速度快的原因在于在寻找边框的同时进行分类，即同时完成所有任务。虽然方式执类似，但是它依然具有最快的速度。
+最后看一下SSD。它的速度更快，因为在处理图像的过程中，同时预测边框位置及其分类。SSD没有区域候选阶段，其边框的计算量很大。尽管它减少了重叠边框，但是它仍然是目前为止所提到的网络中需要处理最多边框的模型。SSD速度快的原因在于在寻找边框的同时进行分类，即同时完成所有任务。虽然方式执类似，但是它依然具有最快的速度。
 
 > 如果读者需要了解上述模型的更多细节，可以参考Joice Xu的论文：https://towardsdatascience.com/deep_learning_for_object_detection_a_comprehensive_review-73930816d8d9。
 
-总体来说，为了选择网络，我们必须综合考虑卷积神经网络的结构及其分类能力和复杂度，以及不同的检测模型。以最短的时间发现物体并对其进行分类，是它们共同作用的结果。
+总体来说，为了选择网络，必须综合考虑卷积神经网络的结构及其分类能力和复杂度，以及不同的检测模型。以最短的时间发现物体并对其进行分类，是它们共同作用的结果。
 
-> 如果读者渴望更多地了解我们解释的模型，读者可以参考《Speed/accuracy trade-offs for modern convolutional object detectors》.Huang J, Rathod V, Sun C, Zhu M, Korattikara A, Fathi A, Fischer I, Wojna Z, Song Y, Guadarrama S, Murphy K, CVPR 2017，网址是http://openaccess.thecvf.com/content_cvpr_2017/papers/Huang_SpeedAccuracy_Trade_Offs_for_CVPR_2017_paper.pdf。然而，我们建议读者自己动手实践，评价它们的性能是否足够好，执行的时间是否合理。这是一个权衡的问题，读者必须为自己的应用做出最好的决定。
+> 如果读者希望更多地了解模型，可以参考《Speed/accuracy trade-offs for modern convolutional object detectors》.Huang J, Rathod V, Sun C, Zhu M, Korattikara A, Fathi A, Fischer I, Wojna Z, Song Y, Guadarrama S, Murphy K, CVPR 2017，网址是http://openaccess.thecvf.com/content_cvpr_2017/papers/Huang_SpeedAccuracy_Trade_Offs_for_CVPR_2017_paper.pdf。然而，我们建议读者自己动手实践，评价它们的性能是否足够好，执行的时间是否合理。这是一个权衡的问题，读者必须为自己的应用做出最好的决定。
 
-### 展示我们的项目计划
+### 2.4 展示项目计划
 
-基于TensorFlow提供的强大工具，我们计划利用其API，创建一个类，这样可以以可见方式和在外部文件中注释图像。注释的意思是：
+基于TensorFlow提供的强大工具，我们可以利用其API，创建一个类，这样可以以可见方式和在外部文件中注释图像。注释的意思是：
 
 * 指出图像中的物体（如同在MSCOCO上训练模型所识别的那样）
-* 返回目标识别中的置信水平（我们只考虑最小概率阈值以上的物体。基于《Speed/accuracy trade-offs for modern convolutional object detectors》，将其设置为0.25）
-* 输出每个图像的边框两个相对顶点的坐标
+* 返回目标识别中的置信水平（只考虑最小概率阈值以上的物体。基于《Speed/accuracy trade-offs for modern convolutional object detectors》，将其设置为0.25）
+* 输出每个图像边框两个相对顶点的坐标
 * 将上述所有信息存储为JSON格式的文件
 * 如有需要，在原始图像上对边框进行可视化
 
-为了实现这些目标，我们需要：
+为了实现这些目标，需要：
 
 1. 下载一个训练好的模型（`-protobuf`以支持`.pb`格式）并放入内存，作为TensorFlow一个会话
 2. 重新编写TensorFlow提供的帮助代码，以便于更容易地将标签、类别和可视化工具加载到一个易于导入到脚本的类中。
@@ -615,15 +610,15 @@ avg/total 0.99 0.99   0.99     9803
 
 我们的项目从搭建一个合适的平台开始。
 
-### 为项目搭建合适的环境
+#### 2.4.1 为项目搭建合适的环境
 
-我们强烈建议安装Anaconda的conda并为项目创建一个单独的环境。如果读者系统中的`conda`可用，则可以进行以下操作：
+强烈建议安装Anaconda的`conda`并为项目创建一个单独的环境。如果读者系统中的`conda`可用，则可以进行以下操作：
 
 ```shell
 conda create -n TensorFlow_api python=3.5 numpy pillow activate TensorFlow_api
 ```
 
-激活环境后，读者通过`pip install`命令或`conda install`命令指向其他库（menpo，conda-forge），安装一些其他的程序包：
+激活环境后，通过`pip install`命令或`conda install`命令指向其他库（`menpo`，`conda-forge`），安装一些其他的程序包：
 
 ```
 pip install TensorFlow-gpu
@@ -651,32 +646,32 @@ git config core.sparseCheckout true
 echo "research/object_detection/*" >>.git/info/sparse-checkout
 git pull origin master
 ```
-我们可以获得经过校验的`object_detection`目录的全部内容，并且保证文件系统中没有其他目录或文件。
+
+获得经过校验的`object_detection`目录的全部内容，并且保证文件系统中没有其他目录或文件。
 
 注意，项目需要访问`object_detection`目录。因此，必须保证项目脚本存储在同一目录下。为了在其他项目中也能够使用此脚本，读者需要使用绝对路径来访问它。
 
-### protobuf编译
+#### 2.4.2 `protobuf`编译
 
-TensorFlow物体探测接口采用`protobufs`，即协议缓冲——谷歌的数据交换格式（https://github.com/google/protobuf），以方便配置模型及训练参数。在使用框架前，必须对该库进行编译。如果读者使用Unix（Linux或Mac）或Windows操作系统，编译需要不同的步骤。
+TensorFlow物体探测接口采用`protobuf`，即协议缓冲——谷歌的数据交换格式（https://github.com/google/protobuf），以方便配置模型及训练参数。在使用框架前，必须对该库进行编译。如果读者使用Unix（Linux或Mac）或Windows操作系统，编译需要不同的步骤。
 
-#### Winsdows安装
+##### 2.4.2.1 Winsdows安装
 
-首先，在https://github.com/google/protobuf/上找到`releasesprotoc-3.2.0-win32.zip`并解压到项目文件夹。现在，读者应该有了一个新的`protoc-3.4.0-win32`文件夹，包含`readme.txt`和两个目录：`bin`和`include`。文件夹包含协议缓冲编译程序的预编译二进制版本（`protoc`）。 读者需要做的是把`protoc-3.4.0-win32`加入系统路径。
+首先，在https://github.com/google/protobuf/上找到`releasesprotoc-3.2.0-win32.zip`并解压到项目文件夹。现在，读者应该有了一个新的`protoc-3.4.0-win32`文件夹，包含`readme.txt`和两个目录：`bin`和`include`。文件夹包含协议缓冲编译程序的预编译二进制版本（`protoc`）。 读者需要把`protoc-3.4.0-win32`加入系统路径。
 
 把路径加入系统变量后，执行以下命令：
 ```
 protoc-3.4.0-win32/bin/protoc.exe object_detection/protos/*.proto --python_out=.
 ```
-这样,Tensoflow物体探测接口就可以在电脑上运行了。
+这样，Tensoflow物体探测接口就可以在电脑上运行了。
 
-#### Unix安装
+##### 2.4.2.2 Unix安装
 
-  对于Unix环境，安装过程可以使用shell命令，具体的操作见：
-https://github.com/TensorFlow/models/blob/master/research/object_detection/g3doc/installation.md。
+对于Unix环境，安装过程可以使用shell命令，具体的操作见：https://github.com/TensorFlow/models/blob/master/research/object_detection/g3doc/installation.md。
 
-### 准备项目代码
+### 2.5 准备项目代码
 
- 我们可以通过加载必要的包来运行我们的`TensorFlow_detection.py`项目脚本：
+ 通过加载必要的包来运行`TensorFlow_detection.py`项目脚本：
 ```python
     import os
     import numpy as np
@@ -689,9 +684,9 @@ https://github.com/TensorFlow/models/blob/master/research/object_detection/g3doc
     import json
     import cv2
 ```
-为了能够处理视频，除`OpenCV3`之外，我们还需要`moviepy`包。`moviepy`包是一个开源项目，可以从http://zulko.github.io/moviepy/下载并免费使用，许可证来自MIT。正如它的主页中描述的，`moviepy`是一个可以进行视频编辑（可以剪切，合并，插入标题）、视频合成（非线性编辑）、视频处理或加入特效的工具。
+为了能够处理视频，除`OpenCV3`之外，还需要`moviepy`包。`moviepy`包是一个开源项目，可以从http://zulko.github.io/moviepy/下载并免费使用，许可证来自MIT。正如它的主页中描述的，`moviepy`是一个可以进行视频编辑（可以剪切，合并，插入标题）、视频合成（非线性编辑）、视频处理或加入特效的工具。
 
-这个包可以处理大多数常见的格式，包括GIF格式。它需要`FFmped`转换器（https://www.ffmpeg.org/）以便正确操作，因此在首次使用时它会启动失败，然后下载`FFmpeg`作为使用`imageio`中插件:
+这个包可以处理大多数常见的格式，包括GIF格式。它需要`FFmped`转换器（https://www.ffmpeg.org/）以便正确操作。因此在首次使用时它会启动失败，然后下载`FFmpeg`作为插件使用`imageio`:
 ```python
 try:
     from moviepy.editor import VideoFileClip
@@ -704,16 +699,16 @@ except:
     imageio.plugins.ffmpeg.download()
     from moviepy.editor import VideoFileClip
 ```
-最后，我们需要TensorFlow项目接口中`object_detection`下的两个有用的函数：
+最后，需要TensorFlow项目接口中`object_detection`下的两个有用的函数：
 ```python
     from object_detection.utils import label_map_util
     from object_detection.utils import visualization_utils as vis_util
 ```
-我们定义了`DetectionObj`类和它的`init`步骤。初始化只针对一个参数和模型名（最初的设置只可以接受性能较差但速度更快、更轻量的模型，例如SSD MobileNet），但一些内部参数可以改变，以适合类的使用：
+
+定义`DetectionObj`类和它的`init`步骤。初始化只针对一个参数和模型名（最初的设置可以接受性能较差但速度更快、更轻量的模型，例如SSD MobileNet），但一些内部参数可以改变，以适合类的使用：
 
 * `self.TARGET_PATH`指出了进行注释并保存的目录。
-
-* `self.THRESHOLD`修正由注释过程引起的概率阈值。事实上，任何模型都会输出每幅图形的低概率检测。概率过低的检测通常是错误的。因此，我们需要确定一个阈值，以便忽略这些并不可能的检测结果。经验告诉我们，0.25是一个很好的阈值，可以在几乎完全遮挡或视觉杂波的情况下来寻找不确定的目标。
+* `self.THRESHOLD`修正由注释过程引起的概率阈值。事实上，任何模型都会输出每幅图形的低概率检测。概率过低的检测通常是错误的。因此，需要确定一个阈值，以便忽略这些并不可能的检测结果。经验告诉我们，0.25是一个很好的阈值，可以在几乎完全遮挡或视觉杂波的情况下来寻找不确定的目标。
 
 ```python
 class DetectionObj(object):
@@ -795,7 +790,7 @@ class DetectionObj(object):
 ```
 `self.LABLES`变量非常易于调用，它包含一个对文本表示进行数字编码的字典。此外，`init`程序会加载并打开TensorFlow会话，并为`self.TF_SESSION`准备好环境。
 
-`load_frozen_model`和`download_frozen_model`这两个函数会帮助`init`从磁盘中加载选中的冻结模型。如果模型不可访问，它们会从网上下载tar格式的模型并且解压到合适的目录（即`object_detection`目录）下：
+`load_frozen_model`和`download_frozen_model`这两个函数会帮助`init`从磁盘中加载选中的冻结模型。如果模型不可访问，它们会从网上下载`tar`格式的模型并且解压到合适的目录（即`object_detection`目录）下：
 ```python
     def load_frozen_model(self):
             """
@@ -814,7 +809,7 @@ class DetectionObj(object):
 
        return detection_graph
 ```
-函数`download_frozen_model`使用了`tqdm`包，从而使新模型的互联网下载过程可视化。一些模型相当大（超过600MB），下载可能需要很长时间。提供流程的可见反馈和预估剩余时间可以让我们对操作过程更有信心：
+函数`download_frozen_model`使用了`tqdm`包，从而使新模型的互联网下载过程可视化。一些模型相当大（超过600MB），下载可能需要很长时间。提供流程的可见反馈和预估剩余时间可以让操作过程更有信心：
 ```python
 def download_frozen_model(self):
     """
@@ -858,7 +853,7 @@ for file in tar_file.getmembers():
                     os.path.join(self.CURRENT_PATH,
                     'object_detection'))
 ```
-下面的两个函数，`load_image_from_disk`和`load_image_into_numpy_array` 是可用必须的。它们可以从磁盘中选择图像并转化为适合任何TensorFlow模型的numpy数组：
+下面的两个函数，`load_image_from_disk`和`load_image_into_numpy_array` 可以从磁盘中选择图像并转化为适合任何TensorFlow模型的`numpy`数组：
 ```python
     def load_image_from_disk(self, image_path):
         return Image.open(image_path)
@@ -875,11 +870,11 @@ for file in tar_file.getmembers():
 ```
 `detect`函数是分类功能的核心。该函数接收图像列表。布尔标记`annotate_on_image`，可以控制脚本在给定的图像上可视化边框和注释。
 
-这个函数可以逐个处理不同尺寸的图像。但是一次只能处理一个。因此，它读取每张图像并通过增加一个新的维度来扩展数组的维度。这一过程是必要的，因为模型希望数组的大小满足：图像的数量 \* 高度 \* 宽度 \* 深度。
+这个函数可以逐个处理不同尺寸的图像。但是一次只能处理一个。因此，它读取每张图像并通过增加一个新的维度来扩展数组的维度。这一过程是必要的，因为模型希望数组的大小满足：图像的数量\*高度\*宽度\*深度。
 
-注意，我们可以将所有待预测的批处理图像打包成一个矩阵。如果所有图像的高度和深度都相同，这样可以很好地工作，处理起来很快。但是，我们的项目不满足这样的假设，因此需要逐个处理图像。
+注意，可以将所有待预测的批处理图像打包成一个矩阵。如果所有图像的高度和深度都相同，这样处理起来很快。但是，本书的项目不满足这样的假设，因此需要逐个处理图像。
 
-我们会按照名称取张量（`detection_boxes`, `detection_scores`, `detection_classes`, `num_detections`）。这些就是期望的模型输出。同时，我们把输入传递给输入张量`image_tensor`，它会对图像进行标准化以适合模型中每一层的处理。
+按照名称取张量（`detection_boxes`，`detection_scores`，`detection_classes`，`num_detections`）。这些就是期望的模型输出。同时，把输入传递给输入张量`image_tensor`，它会对图像进行标准化以适合模型中每一层的处理。
 
 结果存到一个列表中。如有需要，图像会带着检测边框一并展示：
 ```python
@@ -963,55 +958,51 @@ for file in tar_file.getmembers():
 ```
 函数`visualize_image`提供了一些可以修改的参数，以便适应我们在项目中的特殊需求。首先，`image_size`提供了屏幕上展示图像的尺寸。因此，过大或过小的图像都可以调整，以便和要求的尺寸相近。延迟参数`latency`，定义了每幅图像展示在屏幕上的秒数，这样可以锁定物体检测过程，直到处理下一幅图像。最后，`bluish_correction`是图像为**BGR**（这一格式颜色通道按**蓝-绿-红**的顺序组织，这是OpenCV库中的一种标准，详见https://stackoverflow.com/questions/14556545/why-opencv-usingbgr-colour-space-instead-of-rgb）而非**RGB**（**红-绿-蓝**）格式时提供的校正。模型需要的是RGB格式。
 ```python
-       def visualize_image(self, image_np, image_size=(400, 300), 
-                           latency=3, bluish_correction=True):
-           height, width, depth = image_np.shape
-           reshaper = height/float(image_size[0])
-                width = int(width/reshaper)
+  def visualize_image(self, image_np, image_size=(400, 300), 
+                      latency=3, bluish_correction=True):
+      height, width, depth = image_np.shape
+      reshaper = height/float(image_size[0])
+      width = int(width/reshaper)
 
-           height = int(height/reshaper)
-           id_img = 'preview_' + str(np.sum(image_np))
-                cv2.startWindowThread()
-                cv2.namedWindow(id_img, cv2.WINDOW_NORMAL)
+      height = int(height/reshaper)
+      id_img = 'preview_' + str(np.sum(image_np))
+      cv2.startWindowThread()
+      cv2.namedWindow(id_img, cv2.WINDOW_NORMAL)
 
-           cv2.resizeWindow(id_img, width, height)
+      cv2.resizeWindow(id_img, width, height)
 
-           if bluish_correction:
-                        RGB_img = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
-                        cv2.imshow(id_img, RGB_img)
+      if bluish_correction:
+                   RGB_img = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
+                  cv2.imshow(id_img, RGB_img)
 
-           else:
+      else:
 
-               cv2.imshow(id_img, image_np)
-               cv2.waitKey(latency*1000)
+          cv2.imshow(id_img, image_np)
+          cv2.waitKey(latency*1000)
 ```
 注释通过`serialize_annotations`函数写入磁盘。该函数为每幅图像创建一个JSON文件，数据包括检测的类，边框的顶点和检测的置信度。例如，这是狗的照片上的检测结果：
 ```python
-     "{"scores": [0.9092628359794617], "classes": ["dog"], "boxes": [[0.025611668825149536, 0.22220897674560547, 0.9930437803268433, 0.7734537720680237]]}"
+"{"scores": [0.9092628359794617], "classes": ["dog"], "boxes": [[0.025611668825149536, 0.22220897674560547, 0.9930437803268433, 0.7734537720680237]]}"
 ```
 JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的置信度）以及边框的顶点，并且给出了高度和宽度在原图中的百分比（相对值，不是绝对的像素点）：
 ```python
-       def serialize_annotations(self, boxes, scores, classes, filename='data.json'):
-            """
-            Saving annotations to disk, to a JSON file
-            """
-            threshold = self.THRESHOLD
-            valid = [position for position, score in enumerate( scores[0]) if score >threshold]
+  def serialize_annotations(self, boxes, scores, classes, filename='data.json'):
+      """
+      Saving annotations to disk, to a JSON file
+      """
+      threshold = self.THRESHOLD
+      valid = [position for position, score in enumerate( scores[0]) if score >threshold]
 
-       if len(valid) > 0:
+      if len(valid) > 0:
+        valid_scores = scores[0][valid].tolist()
+        valid_boxes  = boxes[0][valid].tolist()
+        valid_class = [self.LABELS[int(a_class)] for a_class in classes[0][valid]]
 
-            valid_scores = scores[0][valid].tolist()
-
-            valid_boxes  = boxes[0][valid].tolist()
-
-            valid_class = [self.LABELS[int(a_class)] for a_class in classes[0][valid]]
-
-           with open(filename, 'w') as outfile:
-
-                json_data = {'classes': valid_class,
-                             'boxes':valid_boxes,
+        with open(filename, 'w') as outfile:
+            json_data = {'classes': valid_class,
+                         'boxes':valid_boxes,
                              'scores': valid_scores}
-                json.dump(json_data, outfile)
+            json.dump(json_data, outfile)
 ```
 函数`get_time`可以很方便地将真实时间转化为字符串并存在文件名：
 ```python
@@ -1022,19 +1013,19 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
 
         return strftime("%Y-%m-%d_%Hh%Mm%Ss", gmtime())
 ```
-最后，我们准备三个检测渠道，分别处理图像，视频和网络摄像头。处理图像的渠道把每幅图像加载到一个列表中。视频渠道使`moviepy`中的`VideoFileClip`模型在简单通过`detect`函数之后，完成大量操作并被封装在`annotate_photogram`函数中。最后，网络摄像头渠道的快照依赖于简单的基于OpenCV'的VideoCapture函数`capture_webcam`，记录从网络摄像头返回的最后一些快照（操作考虑到了网络摄像头适应环境光线水平所需的必要时间）：
+最后，准备三个检测渠道，分别处理图像，视频和网络摄像头。处理图像的渠道把每幅图像加载到一个列表中。视频渠道使`moviepy`中的`VideoFileClip`模型在简单通过`detect`函数之后，完成大量操作并被封装在`annotate_photogram`函数中。最后，网络摄像头渠道的快照依赖于简单的基于OpenCV的VideoCapture函数`capture_webcam`，记录网络摄像头返回的最后一些快照（操作考虑到了网络摄像头适应环境光线水平所需的必要时间）：
 
 ```python
-       def annotate_photogram(self, photogram):
-        """
-            Annotating a video's photogram with bounding boxes
-            over detected classes
-        """
-            new_photogram, boxes, scores, classes, num_detections =self.detect(photogram)[0]
+  def annotate_photogram(self, photogram):
+  """
+      Annotating a video's photogram with bounding boxes
+      over detected classes
+  """
+      new_photogram, boxes, scores, classes, num_detections =self.detect(photogram)[0]
 
-            return new_photogram
+      return new_photogram
 ```
-`capture_webcam`函数利用`cv2.VideoCapture` （http://docs.opencv.org/3.0-beta/modules/videoio/doc/reading_and_writing_video.html） 获取网络摄像头的图像。由于摄像头需要首先适应拍照环境的光线，在将照片输入目标检测程序前，程序会丢弃开始的一些照片。这样，网络摄像头总有时间调节灯光设置：
+`capture_webcam`函数利用`cv2.VideoCapture`（http://docs.opencv.org/3.0-beta/modules/videoio/doc/reading_and_writing_video.html） 获取网络摄像头的图像。由于摄像头需要首先适应拍照环境的光线，再将照片输入目标检测程序前，程序会丢弃开始的一些照片。这样，网络摄像头总有时间调节灯光设置：
 ```python
     def capture_webcam(self):
         """
@@ -1068,6 +1059,7 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
         return camera_capture
 ```
 `file_pipeline`函数包括从存储图像到加载图像所需的所有步骤，并对它们进行可视化/注释：
+
 1. 从磁盘载入图像
 2. 对于加载好的图像进行物体检测
 3. 将每幅图像的注释结果写入JSON文件
@@ -1076,23 +1068,18 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
     def file_pipeline(self, images, visualize=True):
         """
         A pipeline for processing and annotating lists of
-        images to load from disk         """
+        images to load from disk         
+        """
 
         if type(images) is not list:
                 images = [images]
-
         for filename in images:
-
         single_image = self.load_image_from_disk(filename)
 
         for new_image, boxes, scores, classes, num_detections in self.detect(single_image):
-
            self.serialize_annotations(boxes, scores, classes,
-
            filename=filename + ".json")
-
            if visualize:
-
                self.visualize_image(new_image)
 ```
 `video_pipeline`会组织所有步骤，完成使用边框注释视频，并存入磁盘：
@@ -1139,44 +1126,41 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
 ```
 
 
-### 一些简单应用
+#### 2.5.1 一些简单应用
 
-作为代码配置的最后一部分，我们只演示三个简单的脚本，分别使用我们项目中三种不同的数据源：文件、视频、网络摄像头。
+作为代码配置的最后一部分，本书只演示三个简单的脚本，分别使用项目中三种不同的数据源：文件、视频、网络摄像头。
 
-我们的第一个测试脚本目标是从本地文件夹（当在其他文件夹操作时，导入操作不会生效，除非把整个项目文件夹加入Python路径）导入`DetectionObj`并注释以及可视化三幅图像。
+第一个测试脚本目标是从本地文件夹（当在其他文件夹操作时，导入操作不会生效，除非把整个项目文件夹加入Python路径）导入`DetectionObj`并注释以及可视化三幅图像。
 
-> 为了在读者的脚本中在Python路径中加入目录，在需要访问目录的脚本之前读者需要调用`sys.path.insert`命令：
+> 为了在Python路径中加入目录，访问目录的脚本之前需要调用`sys.path.insert`命令：
 ```python
-    import sys
-    sys.path.insert(0,'/path/to/directory')
+  import sys
+  sys.path.insert(0,'/path/to/directory')
 ```
 
-然后我们激活类，声明使用SSD MobileNet v1模型。之后，我们必须将每幅图像的路径放入列表并传递给`file_pipeline`方法：
+然后激活类，声明使用SSD MobileNet v1模型。之后，必须将每幅图像的路径放入列表并传递给`file_pipeline`方法：
 ```python
-    from TensorFlow_detection import DetectionObj
+  from TensorFlow_detection import DetectionObj
 
-    if__name__ == "__main__":
+  if__name__ == "__main__":
 
-       detection = DetectionObj(model='ssd_mobilenet_v1_coco_11_06_2017')
-        images = ["./sample_images/intersection.jpg",
+     detection = DetectionObj(model='ssd_mobilenet_v1_coco_11_06_2017')
+     images = ["./sample_images/intersection.jpg",
                 "./sample_images/busy_street.jpg",
                 "./sample_images/doge.jpg"]
-        detection.file_pipeline(images)
+     detection.file_pipeline(images)
 ```
 
-在我们收到检测结果之后，得到的输出放在交叉路口图像上，最终返回另一个图像，其包含具有足够置信度的物体的边框。
+在收到检测结果之后，输出放在交叉路口图像上，最终返回另一个图像，其包含具有足够置信度的物体的边框。
 
-![](figures/46_1.jpg)
-
-SSDMobileNet v1在交叉路口照片上的物体检测
+![SSDMobileNet v1在交叉路口照片上的物体检测](figures/46_1.jpg)
 
 
+运行脚本之后，三张图像和它们的注释会展示在屏幕上（每一幅图展示三秒）。而一个新的JSON文件会被存入磁盘（存储在目标路径，如果没有修改环境变量`TARGET_CLASS`，那么会存储在本地目录）。
 
-运行脚本之后，三张图像和它们的注释会展示在屏幕上（每一幅图展示三秒）。而一个新的JSON文件会被存入磁盘（存储在目标路径，如果我们没有修改环境变量`TARGET_CLASS`，那么会存储在本地目录）。
+经过可视化，可以看到与物体相关的边框，它们的置信度大于0.5。然而，在这种情况下，一个交叉路口的注释图像（在前面的图中描绘）中，并不是所有的汽车和行人都能被模型所发现。
 
-经过可视化，我们可以看到与物体相关的边框，它们的置信度大于0.5。然而，可以看到，在这种情况下，一个交叉路口的注释图像（在前面的图中描绘）中，并不是所有的汽车和行人都能被模型所发现。
-
-通过检查JSON文件，我们可以发现还有其他汽车和行人被模型发现，尽管它们的置信度较低。在文件中，我们会看到所有检测到的目标都至少具有0.25的置信度，这是很多目标检测研究中常用的一个阈值（读者可以通过修改变量`THRESHOLD`来改变它）。
+通过检查JSON文件，发现还有其他汽车和行人被模型发现，尽管它们的置信度较低。在文件中，可以看到所有检测到的目标都至少具有0.25的置信度，这是很多目标检测研究中常用的一个阈值（读者可以通过修改变量`THRESHOLD`来改变它）。
 
 这里读者可以看到JSON文件中产生的分数。只有8个检测到的物体得分高于阈值0.5，其它16个得分较低：
 
@@ -1190,14 +1174,14 @@ SSDMobileNet v1在交叉路口照片上的物体检测
     0.294520765542984, 0.2912806570529938, 0.2889115810394287,
     0.2781482934951782, 0.2767323851585388, 0.2747304439544678]
 ```
-同时，我们可以发现检测到的物体对应的类。很多置信度较低的汽车被检测到。事实上它们有可能是图中的其它车，也可能是误判。配合检测API的使用，读者可能需要调整阈值或使用其它模型。只有当它被不同的模型以较高阈值重复检测到时才保留，认为这是需要检测的物体：
+同时，发现检测到的物体对应的类。很多置信度较低的汽车被检测到。事实上它们有可能是图中的其它车，也可能是误判。配合检测API的使用，读者可能需要调整阈值或使用其它模型。只有当它被不同的模型以较高阈值重复检测到时才保留，认为这是需要检测的物体：
 
 ```python
    "classes": ["car", "person", "person", "person", "person", "car", "car",
     "person", "person", "person", "person", "person", "person", "person", "car", "car", "person", "person",
    "car", "car", "person", "car", "car", "car"]
 ```
-对视频的检测采用同样的脚本。这一次，读者只需要指出合适的方法——`video_pipeline`，视频的路径，并设置生成的视频是否需要有音频（默认音频被过滤）。脚本自己可以完成任务，并把修改和注释的视频保存在与原始视频相同的目录下（读者可以很快找到它，它在原有文件名前加上了`annotated_` ）：
+对视频的检测采用同样的脚本。这一次，读者只需要指出合适的方法——`video_pipeline`，视频的路径，并设置生成的视频是否需要有音频（默认音频被过滤）。脚本自己可以完成任务，并把修改和注释的视频保存在与原始视频相同的目录下（读者可以很快找到它，它在原有文件名前加上了`annotated_`）：
 ```python
    from TensorFlow_detection import DetectionObj
    if__name__ == "__main__":
@@ -1213,11 +1197,11 @@ if__name__ == "__main__":
 ```
 这个脚本会激活摄像头，适应光线，选择快照，将快照和注释保存到当前目录下的JSON文件中，并最终将快照和检测物体的边框展示在屏幕上。
 
-### 网络摄像头实时监测
+#### 2.5.2 网络摄像头实时监测
 
 目前的`webcam_pipeline`并不是实时的物体检测系统，因为它只是获取快照并应用检测程序来处理单张图像。这是必要的限制，因为处理网络摄像头数据流需要密集的I/O交换。具体来说，主要问题在于从网络摄像头到Python解释器的图像队列，会锁定Python直到传输完成。Adrian Rosebrock在他的图像研究网站上 提出了一个基于线程的简单解决方案，读者可以在网站http://www.pyimagesearch.com/2015/12/21/increasing_webcam_fps_withpython-and_opencv/上了解更多。
 
-他的想法非常简单。在Python中，由于**全局解释器锁 （global interpreter lock，GIL）**的存在，同一时间只能执行一个线程。如果存在某些阻止I/O操作的线程（例如下载文件或从网络摄像头获取图像），所有剩余的命令会因此而延迟，导致程序本身执行非常缓慢。为此可以产生一个很好的解决方案，即将阻塞的I/O操作转移到另一个线程。这样的线程共享一部分内存，程序线程可以继续执行它的指令和查询I/O线程，以便检查它是否已经完成了操作。 因此，如果将图像从网络摄像头转移到内存是一个阻塞操作，让另一个线程处理I/O可能是一种解决方法。主程序会查询I/O线程，从只包含最近接收的图像的缓冲区选择图像并在屏幕上进行展示。
+他的想法非常简单。在Python中，由于**全局解释器锁 （global interpreter lock，GIL）**的存在，同一时间只能执行一个线程。如果存在某些阻止I/O操作的线程（例如下载文件或从网络摄像头获取图像），所有剩余的命令会因此而延迟，导致程序本身执行非常缓慢。为此可以产生一个很好的解决方案，即将阻塞的I/O操作转移到另一个线程。这样的线程共享一部分内存，程序线程可以继续执行它的指令和查询I/O线程，以便检查它是否已经完成了操作。 因此，如果将图像从网络摄像头转移到内存是一个阻塞操作，那么让另一个线程处理I/O可能是一种解决方法。主程序会查询I/O线程，从只包含最近接收的图像的缓冲区选择图像并在屏幕上进行展示。
 ```python
 from TensorFlow_detection import DetectionObj
 from threading import Thread
@@ -1278,54 +1262,54 @@ if__name__ == "__main__":
 ```
 上面的代码使用`webcamStream`类来解决这一问题。借助TensorFlow接口（使用`ssd_mobilenet_v1_coco_11_06_2017`），它为网络摄像头I/O实例化了一个线程，允许Python主程序总能拥有最新接收到的图像。处理后的图像会通过`OpenCV`函数全部绘制在屏幕上，敲击空格键可以终止程序。
 
+### 2.6 致谢
 
+项目的所有相关内容起源于下面的论文：《Speed/accuracy trade-offs for modern convolutional object detectors》（https://arxiv.org/abs/1611.10012），源自：Huang J, Rathod V, Sun C, Zhu M, Korattikara A, Fathi A, Fischer I, Wojna Z, Song Y, Guadarrama S, Murphy K, CVPR 2017。
 
-### 致谢
+最后，需要感谢TensorFlow物体探测接口的所有开发者：Jonathan Huang，Vivek Rathod，Derek Chow，Chen Sun，Menglong Zhu，Matthew Tang，Anoop Korattikara，Alireza Fathi，Ian Fischer，Zbigniew Wojna，Yang Song，Sergio Guadarrama，Jasper Uijlings，Viacheslav Kovalevskyi, Kevin Murphy.，感谢他们实现了如此伟大的接口并且对所有人免费开源。
 
-项目的所有相关内容起源于下面的论文：《Speed/accuracy trade-offs for modern convolutional object detectors》（https://arxiv.org/abs/1611.10012 ），源自：Huang J, Rathod V, Sun C, Zhu M, Korattikara A, Fathi A, Fischer I, Wojna Z, Song Y, Guadarrama S, Murphy K, CVPR 2017。
+还要感谢Dat Tran，他在MIT许可项目的媒体上发表了两篇关于如何使用TaySoFoad对象检测API进行实时识别，甚至是定制化识别的文章（https://towardsdatascience.com/building_a_real_time_object_recognition_app_with_TensorFlow_and_opencvb7a2b4ebdc32及https://towardsdatascience.com/how_to_train_your_own_objectdetector-with_TensorFlows_object_detector_api_bec72ecfe1d9）。
 
-最后，我们需要感谢TensorFlow物体探测接口的所有开发者：Jonathan Huang, Vivek Rathod, Derek Chow, Chen Sun, Menglong Zhu, Matthew Tang, Anoop Korattikara, Alireza Fathi, Ian Fischer, Zbigniew Wojna, Yang Song, Sergio Guadarrama, Jasper Uijlings, Viacheslav Kovalevskyi, Kevin Murphy.，感谢他们实现了如此伟大的接口并且对所有人免费开源。
+### 2.7 小结
 
-我们也要感谢 Dat Tran，他在MIT许可项目的媒体上发表了两篇关于如何使用TaySoFoad对象检测API进行实时识别，甚至是定制化识别的文章（https://towardsdatascience.com/building_a_real_time_object_recognition_app_with_TensorFlow_and_opencvb7a2b4ebdc32 及 https://towardsdatascience.com/how_to_train_your_own_objectdetector-with_TensorFlows_object_detector_api_bec72ecfe1d9）。
-
-### 小结
-
-这个项目可以帮助我们迅速开展行之有效的而且毫无障碍的图像分类。它可以帮助我们更多地了解卷积网络在解决实际问题中起到的作用，也可以让我们更加关注问题本身（可能是更大规模的应用），并且注释图像，以便用选定的类中的图像训练更多的卷积网络。
+这个项目可以帮助迅速开展行之有效的而且毫无障碍的图像分类。它可以帮助我们更多地了解卷积网络在解决实际问题中起到的作用，也可以让我们更加关注问题本身（可能是更大规模的应用），并且注释图像，以便用选定的类中的图像训练更多的卷积网络。
 
 在这一项目中，读者可以学到图像处理过程中很多常用的技巧。首先，读者现在已经知道怎样处理不同类型的视觉输入，例如图像、视频、摄像头捕捉。读者也已经知道，怎样加载一个冻结的模型并使其工作，怎样使用TensorFlow模型。
 
-另一方面，读者肯定会在以后遇到一些困难。这可能会激励我们整合代码，使其发挥更大的作用。首先，我们讨论的模型很快会被更新、更高效的模型所取代（读者可以查看下面的链接以获取可用的模型：https://github.com/TensorFlow/models/blob/master/object_detection/g3doc/detection_model_zoo.md ），同时，读者需要合并新模型或创造自己的模型（参见https://github.com/TensorFlow/models/blob/master/object_detection/g3doc/defining_your_own_model.md ）。此外，读者需要结合模型以达到自己项目所需要的准确率（论文《Speed/accuracy trade-offs for modern convolutional object detectors》揭示了google研究员如何完成这一目标）。最后，读者需要调节卷积网络去识别新的类（相关资料见https://github.com/TensorFlow/models/blob/master/object_detection/g3doc/using_your_own_dataset.md ，这是一个长期的工程）。
+另一方面，读者肯定会在以后遇到一些困难。这可能会激励读者整合代码，使其发挥更大的作用。首先，模型很快会被更新、更高效的模型所取代（读者可以查看下面的链接以获取可用的模型：https://github.com/TensorFlow/models/blob/master/object_detection/g3doc/detection_model_zoo.md ），同时，读者需要合并新模型或创造自己的模型（参见https://github.com/TensorFlow/models/blob/master/object_detection/g3doc/defining_your_own_model.md）。此外，读者需要结合模型以达到自己项目所需要的准确率（论文《Speed/accuracy trade-offs for modern convolutional object detectors》揭示了google研究员如何完成这一目标）。最后，读者需要调节卷积网络去识别新的类（相关资料见https://github.com/TensorFlow/models/blob/master/object_detection/g3doc/using_your_own_dataset.md，这是一个长期的工程）。
 
-在下一章里，我们将研究图像中最先进的物体检测。我们会设计一个项目，该项目将引导读者对提交的图像做出完整的描述说明，而不仅仅是简单的标签和边框。
+下一章将研究图像中最先进的物体检测。我们会设计一个项目，该项目将引导读者对提交的图像做出完整的描述说明，而不仅仅是简单的标签和边框。
 
 ## 第3章 为图像生成描述
 
 描述生成是深度学习领域中最重要的应用之一，近年来得到了广泛的关注。图像描述模型涉及视觉信息和自然语言处理的结合。  
 
-在本章中，我们将了解：  
+本章会介绍：  
 
 * 描述生成领域的最新进展
 * 描述生成是如何工作的
 * 描述生成模型的实现
 
-### 什么是描述生成？  
+### 3.1 什么是描述生成？  
 
 描述生成是用自然语言来描述图像。在以前的研究中，描述生成模型使用物体检测模型以及生成文本的模板。随着深度学习的发展，这些模型已经被卷积神经网络和递归神经网络的结合所取代。  
 
 一个例子如下：  
 
-![](figures\53_1.png)
+![来源：https://arxiv.org/pdf/1609.06647.pdf](figures\53_1.png)
 
-有几个数据集可以帮助我们训练图像描述模型。  
+有一些数据集可以帮助训练图像描述模型。  
 
-### 探索图像描述数据集  
+### 3.2 探索图像描述数据集  
 
-有许多数据集可用于描述图像的任务。数据集通常是由向几个人显示一幅图像并要求每个人写一个关于该图像的句子得到的。通过该方法，同一图像可以得到多个描述。多个描述选项有助于更好地泛化。这个问题的难点在于模型性能的排序，对于每一代模型，最好由人类评估描述质量。对于这项任务来说，自动评估是较为困难的。首先研究一下`Flickr8`数据集。  
+有一些数据集可用于描述图像的任务。数据集通常是由向几个人显示一幅图像并要求每个人写一个关于该图像的句子得到的。通过该方法，同一图像可以得到多个描述。多个描述选项有助于更好地泛化。这个问题的难点在于模型性能的排序，对于每一代模型，最好由人类评估描述质量。对于这项任务来说，自动评估是较为困难的。首先研究一下`Flickr8`数据集。  
 
-### 下载数据集  
+#### 3.2.1 下载数据集  
 
-`Flickr8`是从Flickr收集的，不允许用于商业用途。地址是https://forms.illinois.edu/sec/1713398 。图像描述可以从以下网址下载http://nlp.cs.illinois.edu/HockenmaierGroup/8k-pictures.html 。我们需要分别下载文本和图像。可通过填写页面上表格获得访问权限：
+`Flickr8`是从Flickr收集的，不允许用于商业用途。地址是https://forms.illinois.edu/sec/1713398。图像描述可以从以下网址下载http://nlp.cs.illinois.edu/HockenmaierGroup/8k-pictures.html。需要分别下载文本和图像。可通过填写页面上表格获得访问权限：
+
 ![](figures\54_1.png)
+
 电子邮件将与下载链接一起发送。下载并解压缩后，文件应该如下所示：
 ```
 Flickr8k_text 
@@ -1367,9 +1351,9 @@ A snowboarder rides down a handrail without snow
 
 如上所示，一个图像对应多个描述。这也表示了图像描述任务的难度。  
 
-### 将单词转换为词嵌入  
+### 3.3 将词语转换为词嵌入  
 
-为了生成描述，英语单词必须转换为词嵌入。词嵌入是文字或图像的矢量或数字表示。如果将单词转换为向量形式，就可以使用这些向量执行算术运算，这是很有用的。  
+为了生成描述，词语必须转换为词嵌入。词嵌入是文字或图像的矢量或数字表示。如果将单词转换为向量形式，就可以使用这些向量执行算术运算，这是很有用的。  
 
 这种嵌入可以通过两种方法学习，如下图所示：  
 
@@ -1381,21 +1365,19 @@ A snowboarder rides down a handrail without snow
 
  一旦训练结束，词嵌入的可视化如下：
 
-![](figures\58_1.png)  
+![词语可视化](figures\58_1.png)  
 
 这种类型的嵌入可以用来执行词的向量运算。本章中词嵌入的概念会非常有用。  
 
-### 图像描述方法
+### 3.4 图像描述方法
 
-描述图像有几种方法。以前的方法是根据图像中存在的对象和属性构造句子。之后利用**递归神经网络（recurrent neural network, RNN）**生成句子。目前最精确的方法是基于注意力机制的描述方法。我们在本节中将详细探讨这些技术和结果。 
+描述图像有几种方法。以前的方法是根据图像中存在的对象和属性构造句子。之后利用**递归神经网络（recurrent neural network，RNN）**生成句子。目前最精确的方法是基于注意力机制的描述方法。本节将详细探讨这些技术和结果。 
 
-#### 条件随机场
+#### 3.4.1 条件随机场
 
-研究者们首先尝试了一种利用**条件随机场（conditional random field, CRF）**构造句子的方法。该方法利用图像中检测到的对象和属性来构造句子。这一过程所涉及的步骤如下：
+研究者们首先尝试了一种利用**条件随机场（conditional random field，CRF）**构造句子的方法。该方法利用图像中检测到的对象和属性来构造句子。这一过程所涉及的步骤如下：
 
-![](figures\59_1.png)
-
-*工作流示例（来源：http://www.tamaraberg.com/papers/generation_cvpr11.pdf）。*
+![工作流示例（来源：http://www.tamaraberg.com/papers/generation_cvpr11.pdf）](figures\59_1.png)
 
 CRF造出流畅句子的能力有限，生成的句子质量不高，如以下截图所示：
 
@@ -1403,15 +1385,14 @@ CRF造出流畅句子的能力有限，生成的句子质量不高，如以下�
 
 尽管对象和属性正确，但是这里显示的句子太结构化了。
 
-> Kulkarni等人在论文（http://www.tamaraberg.com/Papers/Generationcvpr11.pdf） 中提出了一种从图像中找出对象和属性并利用条件随机场（CRF）的生成文本方法。
+> Kulkarni等人在论文（http://www.tamaraberg.com/Papers/Generationcvpr11.pdf）中提出了一种从图像中找出对象和属性并利用条件随机场（CRF）生成文本的方法。
 
-### 基于卷积神经网络的递归神经网络
+#### 3.4.2 基于卷积神经网络的递归神经网络
 
 将递归神经网络与卷积神经网络特征相结合来生成句子，这使模型的端到端训练成为可能。以下是该模型的体系结构：
 
-![](figures\60_1.png)
+![LSTM模型(来源：https://arxiv.org/pdf/1411.4555.pdf)](figures\60_1.png)
 
-*LSTM模型(来源：https://arxiv.org/pdf/1411.4555.pdf)。*
 
 使用了多层LSTM来产生所需的结果。下图显示了该模型的一部分结果：
 
@@ -1419,38 +1400,36 @@ CRF造出流畅句子的能力有限，生成的句子质量不高，如以下�
 
 这些结果优于CRF。这说明了LSTM在生成句子方面的强大能力。
 
-> 参考文献：Vinyals等人，在论文（https://arxiv.org/pdf/1411.4555.pdf） 中提议通过将CNN和RNN堆叠起来对图像描述进行端到端的学习。
+> 参考文献：Vinyals等人在论文（https://arxiv.org/pdf/1411.4555.pdf）中建议通过将CNN和RNN堆叠起来对图像描述进行端到端的学习。
 
-#### 描述排名
+#### 3.4.3 描述排名
 
 描述排名是一种有趣的从一组描述中选择其中一种描述的方法。首先，根据图像的特征对图像进行排序，并选择相应的描述，如下图所示：
 
-![](figures\62_1.png)
+![资料来源：http://papers.nips.cc/paper/4470-im2text-describing-images-using-1-million-captioned-photographs.pdf](figures\62_1.png)
 
-*资料来源：http://papers.nips.cc/paper/4470-im2text-describing-images-using-1-million-captioned-photographs.pdf*
 
 可以使用一组不同的属性对以上图像重新进行排序。通过获得更多的图像可以大幅度提高质量，如下图所示：
 
-![](figures\62_2.png)
+![资料来源：http://papers.nips.cc/paper/4470-im2text-describing-images-using-1-million-captioned-photographs.pdf](figures\62_2.png)
 
-*资料来源：http://papers.nips.cc/paper/4470-im2text-describing-images-using-1-million-captioned-photographs.pdf*
 
 随着数据集中图像数量的增加，结果会变好。
-> 想了解有关描述排名的更多信息，请参阅 http://papers.nips.cc/paper/4470-im2text-describing-images-using-1-million-captionedphotographs.pdf。
 
-#### 密集描述
+> 想了解有关描述排名的更多信息，请参阅http://papers.nips.cc/paper/4470-im2text-describing-images-using-1-million-captionedphotographs.pdf。
+
+#### 3.4.4 密集描述
 
 密集描述是指一个图像上多个描述的问题。以下是该问题的架构：
 
-![](figures\63_1.png)
+![资料来源：https://www.cv-foundation.org/openaccess/content_cvpr_2016/papers/Johnson_DenseCap_Fully_Convolutional_CVPR_2016_paper.pdf](figures\63_1.png)
 
-*资料来源：https://www.cv-foundation.org/openaccess/content_cvpr_2016/papers/Johnson_DenseCap_Fully_Convolutional_CVPR_2016_paper.pdf*
 
 这种架构可以得到较优的效果。
 
 > 想了解更多信息，请参阅johnson等人的文章（https://www.cv-foundation.org/openaccess/content_cvpr_2016/papers/Johnson_DenseCap_Fully_Convolutional_CVPR_2016_paper.pdf） ，文中提出了一种密集描述的方法。
 
-#### RNN描述
+#### 3.4.5 RNN描述
 
 视觉特征可以与序列学习一起使用来形成输出。
 
@@ -1458,10 +1437,10 @@ CRF造出流畅句子的能力有限，生成的句子质量不高，如以下�
 
 这是一种用于描述生成的体系结构。
 
-> 详情请参阅Donahue等人的文章（https://arxiv.org/pdf/1411.4389.pdf） ，提出了用于图像描述的**长期递归卷积结构（Long-term recurrent convolutional
+> 详情请参阅Donahue等人的文章（https://arxiv.org/pdf/1411.4389.pdf），其提出了用于图像描述的**长期递归卷积结构（Long-term recurrent convolutional
 architectures，LRCN）**。
 
-#### 多模态描述
+#### 3.4.6 多模态描述
 
 图像和文本都可以映射到相同的嵌入空间以生成描述。
 
@@ -1469,21 +1448,29 @@ architectures，LRCN）**。
 
 需要解码器来生成描述。
 
-#### 基于注意力机制的描述
+#### 3.4.7 基于注意力机制的描述
 
-详情请参阅Xu等人在论文（https://arxiv.org/pdf/1502.03044）中提出了一种基于**注意力机制（attention mechanism）**的图像描述方法。
+详情请参阅Xu等人在论文（https://arxiv.org/pdf/1502.03044）中提出的一种基于**注意力机制（attention mechanism）**的图像描述方法。
 
 基于注意力的描述方法最近比较流行，得益于更好的准确性：
+
 ![](figures\65_1.png)
+
 这种方法按照描述的顺序训练注意力模型，以产生更好的结果：
+
 ![](figures\65_2.png)
-下面是一个使用了注意力描述机制LSTM的图表：
+
+下面是一个使用了注意力描述机制的LSTM图表：
+
 ![](figures\66_1.png)
+
 这里展示了几个示例，其中以时间序列的方式出色的展现了对象的可视化：
-![](figures\66_2.png)
+
+![以时间序列方式标出物体](figures\66_2.png)
+
 结果真的很好！
 
-### 实现描述生成模型
+### 3.5 实现描述生成模型
 
 首先，读取数据集并按照需要的方式进行转换。导入`os`库并声明数据集所在的目录，代码如下：   
 ```python
@@ -1519,7 +1506,7 @@ print(len(captions))
 40460  
 ```
 
-接下来需要生成图像到描述的映射。这将有助于训练时方便的查找描述。此外，描述数据集中的单词将有助于创建词汇表：   
+接下来需要生成图像到描述的映射。这将有助于训练时方便的查找描述。此外，描述数据集中的词语将有助于创建词汇表：   
 
 ```python
 image_caption_map = {} 
@@ -1572,7 +1559,7 @@ class ImageModel:
                            output=vgg_model.get_layer('fc2').output)
 ```
 
-权重将被下载并存储。第一次使用此代码可能需要一些时间（完成下载权重）。接下来再创建一个模型，以便使用第二个全连接层的输出。以下是从路径读取图像并进行预处理的方法：   
+权重将被下载并存储。第一次使用此代码可能需要一些时间（完成权重下载）。接下来再创建一个模型，以便使用第二个全连接层的输出。以下是从路径读取图像并进行预处理的方法：   
 
 ```python
 @staticmethod
@@ -1605,7 +1592,7 @@ def extract_feature_from_image_paths(self, work_dir, image_names):
     return features
 ```
 
-接下来，将提取的特征存储为一个`pickle`文件：  
+将提取的特征存储为一个`pickle`文件：  
 
 ```python
 def extract_features_and_save(self, work_dir, image_names, file_name):
@@ -1614,7 +1601,7 @@ def extract_features_and_save(self, work_dir, image_names, file_name):
         pickle.dump(features, p)
 ```
 
-接下来，初始化类并提取训练集和测试集的图像特征：
+初始化类并提取训练集和测试集的图像特征：
 
 ```python
 I = ImageModel() 
@@ -1677,11 +1664,11 @@ model.fit_generator(data_generator(batch_size=batch_size),
 
 这个模型可以通过训练用于产生图像描述。 
 
-### 小结  
+### 3.6 小结  
 
 在本章中，我们学习了图像描述技术。首先，我们了解了词向量的嵌入空间。然后，对几种图像描述处理方法进行了研究。接着实现了图像描述模型。  
 
-在下一章中，我们将研究**生成对抗网络（Generative Adversarial Networks，GAN）**的概念。GAN非常有趣而且有用，可以产生各种用途的图像。 
+下一章会研究**生成对抗网络（Generative Adversarial Networks，GAN）**的概念。GAN非常有趣而且有用，可以产生各种用途的图像。 
 
 ##第4章 为条件图像生成建立GAN
 
@@ -6230,7 +6217,7 @@ $$minimize\sum(r_{ui}-\hat{r}_{ui})^2+\lambda(\lVert p_u \rVert ^2 +\lVert q_i \
 
 这里我们实现之前章节中的公式：  
 
-$$\hat{r}_{ui}=\mu+b_i+b_u+q_i^Tp_u$$ 。
+$$\hat{r}_{ui}=\mu+b_i+b_u+q_i^Tp_u$$
 
 回忆一下目标函数：
 
@@ -7482,7 +7469,7 @@ conda install -c https://conda.anaconda.org/kne pybox2d
 * **基于模型的学习**：在智能体内建立环境模型，从而允许智能体模拟不同的行为及其相应的奖励。
 
 在我们的项目中，我们将使用基于价值的学习框架；具体来说，我们将使用基于Q-learning的经典强化学习方法。有证据表明这种方法在以下情况是有效的：游戏中智能体需要决定一系列导致后期延迟奖励的动作。该方法由C.J.C.H.Watkins于1989年在博士论文中设计。Q-learning基于以下理念：一个智能体在环境中，考量当前状态的情况并定义一系列导致最终回报的行为： 
-$$s \rightarrow^a r，s'$$
+$$s \rightarrow^a r,s'$$
 
 
 上面的公式描述了一个状态$s$在一个动作$a$之后是如何导致一个奖励$r$和一个新的状态$s'$的。从游戏的初始状态开始，该公式应用一系列动作，这些动作一个接一个地转换每个后续状态，直到游戏结束。然后，我们可以将游戏想象为一系列动作所链接的状态，还可以描述上述公式如何通过一系列动作$a$将初始状态$s$转换为最终状态$s’$和最终奖励$r$。
