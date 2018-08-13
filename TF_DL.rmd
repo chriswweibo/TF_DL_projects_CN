@@ -1672,79 +1672,75 @@ model.fit_generator(data_generator(batch_size=batch_size),
 
 ##第4章 为条件图像生成建立GAN
 
-Yann LeCun，Facebook人工智能的领导者，最近提出“生成对抗网络是机器学习中十年来最有趣的想法”。 这一观点也由于引起了学界对这一深度学习方法的浓厚兴趣而得以证实。如果读者阅读了最近有关深度学习的论文（          同时注意到相关话题的LinkedIn或Medium的内容趋势），就会发现GAN已经产生了非常多的变体。
+Yann LeCun，Facebook人工智能的领导者，最近提出“生成对抗网络是机器学习十年来最有趣的想法”。 这一观点也引起了学界对这一深度学习方法的浓厚兴趣,并得以证实。如果读者阅读了最近有关深度学习的论文（          同时注意到LinkedIn或Medium相关话题的内容趋势），就会发现GAN已经产生了非常多的变体。
 
-读者可以通过Hindu Puravinash,创建并持续更新的参考文献列表来了解GAN世界的发展，详见https://github.com/hindupuravinash/the-gan-zoo/blob/master/gans.tsv；也可以通过学习Zheng Liu的GAN时间线https://github.com/dongb5/GAN-Timeline 来达到这一目的，它可以帮助读者通过时间维度，理解所有相关内容。
+读者可以通过由Hindu Puravinash创建并持续更新的参考文献列表来了解GAN世界的发展，详见https://github.com/hindupuravinash/the-gan-zoo/blob/master/gans.tsv；也可以通过学习Zheng Liu的GAN时间线https://github.com/dongb5/GAN-Timeline来达到这一目的，它可以帮助读者按照时间维度，理解所有相关内容。
 
-GAN有能力去激发想象力，因为它们能展示人工智能的创造力，而不仅仅是它的计算能力。在本章中，我们将： 
+GAN可以激发想象力，因为它们能展示人工智能的创造力，而不仅仅是它的计算能力。本章将： 
 
-* 揭开GAN的神秘面纱，为读者提供所有必要的概念来理解GAN是什么，GAN现在能做什么，以及期望GAN做什么。 
+* 揭开GAN的神秘面纱，为读者提供所有必要的概念来理解GAN是什么，现在能做什么，以及期望GAN做什么。 
 
-* 演示如何基于初始的示例图像来生成图像（即所谓的非监督的GAN）
+* 演示如何基于初始的示例图像来生成图像（即所谓的非监督的GAN）。
 
 * 解释如何使利用GAN生成读者所需类型的结果图。
 
 * 建立一个基本的，完整的项目，可以处理不同的手写字符和图标数据集。 
 
-* 为读者提供如何在云（特别是亚马逊云）上训练GAN的基本指令              
+* 为读者提供如何在云（特别是亚马逊云）上训练GAN的基本指令。           
 
-GAN的成功很大程度上取决于使用的特定神经网络结构，以及它们所面对的问题和读者提供给它们的数据。 本章中我们选择的数据集可以提供满意的结果。我们希望读者能享受并被GAN的创造力所激励！
+GAN的成功很大程度上取决于使用的特定神经网络结构，以及它们所面对的问题和提供给它们的数据。 本章选择的数据集可以提供满意的结果，希望读者能享受并被GAN的创造力所激励！
 
 
-### GAN简介
+### 4.1 GAN简介
 
-我们将从最近的一些历史开始，因为GAN是读者能发现的整个人工智能和深度学习领域最新的想法之一。
+我们将从最近的一些历史开始。GAN是读者能发现的整个人工智能和深度学习领域最新的想法之一。
 
 一切起源于2014年，Ian Goodfellow和他的同事（Yoshua Bengio也在贡献者名单中）在蒙特利尔大学的计算机科学系发表了一篇关于**生成对抗网络（Generative Adversarial Nets，GAN）**的论文，提出了能够基于一系列初始样例生成新数据的框架：
 
-> GOODFELLOW, Ian等人的论文《Generative Adversarial Nets》。收录在"Advances in Neural Information Processing Systems.2014.p.2672-2680": https://arxiv.org/abs/1406.2661。
+> GOODFELLOW, Ian等人的论文《Generative Adversarial Nets》。收录在“Advances in Neural Information Processing Systems.2014.p.2672-2680”: https://arxiv.org/abs/1406.2661。
 
-考虑到以前使用马尔可夫链的尝试远不能令人信服，这种网络所产生的初始图像是惊人的。 在下图中，读者可以看到论文中提出的一些示例，分别来自于MNIST，以及多伦多人脸数据集（Toronto Face Dataset，TFD），一个非公开数据集和cifar10数据集。
+如果说以前使用马尔可夫链的尝试远不能令人信服，那么这种网络所产生的初始图像是惊人的。 在下图中，读者可以看到论文中提出的一些示例，分别来自于MNIST，以及多伦多人脸数据集（Toronto Face Dataset，TFD），一个非公开数据集和cifar10数据集。
 
-![](figures\72_1.jpg)
+![图1：GAN的第一篇论文中采用不同数据集生成新图像的样本 a) MNIST b) TFD c) 和 d) CIFAR-10 来源：GOODFELLOW, Ian, et al.Generative Adversarial Nets.In: Advances in Neural Information Processing Systems.2014.p.2672-2680](figures\72_1.jpg)
 
-*图1：GAN的第一篇论文中采用不同数据集生成新图像的样本 a) MNIST b) TFD c) 和 d) CIFAR-10 来源：GOODFELLOW, Ian, et al.Generative Adversarial Nets.In: Advances in Neural Information Processing Systems.2014.p.2672-2680*
 
-这篇论文被认为是颇具创新性的，因为它把一个非常深的神经网络和博弈理论结合在一个真正智能的体系结构中，它不需要像通常的反向传播那样需要更多的训练。GAN是一种生成模型，可以生成数据，因为它们刻画了模型分布图（例如，GAN学习数据分布）。因此，当GAN生成某种东西时，就好像是从那个分布中取样一样。 
+这篇论文被认为颇具创新性，因为它把一个非常深的神经网络和博弈理论结合在一个真正智能的体系结构中，它不需要像通常的反向传播那样需要更多的训练。GAN是一种生成模型，可以生成数据，因为它们刻画了模型分布图（例如，GAN学习数据分布）。因此，当GAN生成某种东西时，就好像是从那个分布中取样一样。 
 
-### 对抗方式是关键
+#### 4.1.1 对抗方式是关键
 
-理解GAN为何能成为如此成功的生成模型在于对抗。事实上，GAN的结构由两个不同的网络组成，它们基于各自误差进行优化，这个过程就是对抗过程。
+GAN为何能成为如此成功的生成模型在于对抗。事实上，GAN的结构由两个不同的网络组成，它们基于各自误差进行优化，这个过程就是对抗过程。
 
-我们可以从一个真实数据集着手，例如R，它包含不同种类的图像或数据（尽管图像是GAN的主要应用，但并不局限于此）。之后我们可以建立生成网络G，用来生成与真实数据尽可能相似的伪造数据；我们还需要建立一个判别器D，用来比较G生成的数据和真实数据，指出数据是否真实。
+我们可以从一个真实数据集着手，例如`R`，它包含不同种类的图像或数据（尽管图像是GAN的主要应用，但并不局限于此）。之后我们可以建立生成网络`G`，用来生成与真实数据尽可能相似的伪造数据；我们还需要建立一个判别器`D`，用来比较`G`生成的数据和真实数据，指出数据是否真实。
 Goodfellow用艺术伪造者这一比喻来描述生成器，而判别器是侦探（或是艺术评论家），必须揭露他们的罪行。伪造者和侦探之间存在一个挑战，因为伪造者需要更有技巧以便不被侦探发现，而侦探在寻找伪造者方面也需要提升。伪造者和侦探之间的一切无休无止，直到伪造的产品与原始的完全相似。事实上，当GAN是过拟合时，它们会重新输出原始数据。这似乎看起来很像市场竞争。而事实上它也确实是，因为GAN的想法就起源于竞争博弈论。
 
-> 在GAN中，生成器产生图像，直到判别器无法分辨它们的真假。生成器的一个明显的解决方案是简单地复制一些训练图像或采用判别器无法判断的看起来成功的生成图像。我们的项目中将应用的是单面标签平滑（one-sided label smoothing）技术的解决方案。具体描述见SALIMANS, Tim等人的论文《Improved techniques for training gans》。收录于“ Advances in Neural Information Processing Systems.2016.p.2234-2242”: https://arxiv.org/abs/1606.03498。
+> 在GAN中，生成器产生图像，直到判别器无法分辨它们的真假。生成器的一个明显的解决方案是简单地复制一些训练图像或采用判别器无法判断的看起来成功的生成图像。我们的项目将应用的是单面标签平滑（one-sided label smoothing）技术的解决方案。具体描述见SALIMANS, Tim等人的论文《Improved techniques for training gans》。收录于“ Advances in Neural Information Processing Systems.2016.p.2234-2242”: https://arxiv.org/abs/1606.03498。
 
-下面我们讨论GAN如何运作。首先，生成器G没有线索，完全随机地生成数据（事实上它甚至不考虑原始数据），因此它会被判别器D惩罚——此时分辨真实数据和伪造数据是很容易的。G承担误判责任，并开始尝试不同的取值以获得更好的D反馈。这一过程也是随机完成的，因为G能看见的是随机的输入Z，它无法接触真实的数据。在很多次尝试和失败后，在判别器的指导下，生成器最终会指出如何生成并开始生成可靠的输出。最后，经过足够长的时间，即使生成器并没有见到过其中任何一个示例，它也会完全复制所有原始数据。
+下面讨论GAN如何运作。首先，生成器`G`没有线索，完全随机地生成数据（事实上它甚至不考虑原始数据），因此它会被判别器`D`惩罚——此时分辨真实数据和伪造数据是很容易的。`G`承担误判责任，并开始尝试不同的取值以获得更好的`D`反馈。这一过程也是随机完成的，因为`G`能看见的是随机的输入`Z`，它无法接触真实的数据。在很多次尝试和失败后，在判别器的指导下，生成器最终会指出如何生成并开始生成可靠的输出。最后，经过足够长的时间，即使生成器并没有见到过其中任何一个示例，它也会完全复制所有原始数据。
 
-![](figures\74_1.jpg)
+![GAN工作的简单示例](figures\74_1.jpg)
 
-*图2：GAN架构工作的简单示例*
+#### 4.1.2 寒武纪爆发
 
-### 寒武纪爆发
+正如上文提到的，关于GAN的新论文每个月都在产生（读者可以在Hindu Puravinash上查找文献列表，在本章的开头已经提到过）。
 
-正如上文提到的，关于GAN的新论文每个月都在产生（读者可以在Hindu Puravinash上查找文献列表，在本章的开头我们已经提到过）。
-
-不管怎样，除了Goodfellow和他的同事们最初的描述实施方法的论文之外，值得注意的最著名的的实施方案是**深度卷积对抗网络（deep convolutional generative adversarial networks，DCGAN）**和**条件生成对抗网络（conditional GANs， CGAN）**。
+不管怎样，除了Goodfellow和他的同事们最初的描述实施方法的论文之外，值得注意的最著名的的实施方案是**深度卷积对抗网络（deep convolutional generative adversarial networks，DCGAN）**和**条件生成对抗网络（conditional GANs，CGAN）**。
 
 * DCGAN是基于CNN结构的GAN（RADFORD, Alec; METZ, Luke;CHINTALA, Soumith.Unsupervised representation learning with deep convolutionalgenerative adversarial networks.arXiv preprint arXiv:1511.06434, 2015: https://arxiv.org/abs/1511.06434）。
 
 
-* CGAN是在DCGAN的基础上，在输入标签上增加了一些条件，从而使得到的结果中包含期望的特征(MIRZA, Mehdi;OSINDERO, Simon.Conditional generative adversarial nets.arXiv preprint arXiv:1411.1784, 2014: https://arxiv.org/abs/1411.1784)。我们的项目会编写一个CGAN的类并在不同的数据集上训练它，来证明其功能。
+* CGAN是在DCGAN的基础上，在输入标签上增加了一些条件，从而使得到的结果中包含期望的特征（MIRZA, Mehdi;OSINDERO, Simon.Conditional generative adversarial nets.arXiv preprint arXiv:1411.1784, 2014: https://arxiv.org/abs/1411.1784）。本书的项目会编写一个CGAN的类并在不同的数据集上训练它，来证明其功能。
 
- 此外也有一些有趣的例子（我们的项目中不包括这些），给出了图像生成或改进的实际解决方案：
+ 此外也有一些有趣的例子（本书项目中不包括这些），给出了图像生成或改进的实际解决方案：
 
-* **循环·对抗生成网络（CycleGAN）**，将一幅图像转化为另一幅（经典的例子是将马变为斑马: ZHU, Jun-Yan, et al.Unpaired image-	to-image translation using cycle-consistent adversarial networks.arXiv preprint arXiv:1703.10593, 2017: https://arxiv.org/abs/1703.10593）。
+* **循环对抗生成网络（CycleGAN）**，将一幅图像转化为另一幅（经典的例子是将马变为斑马: ZHU, Jun-Yan, et al.Unpaired image-	to-image translation using cycle-consistent adversarial networks.arXiv preprint arXiv:1703.10593, 2017: https://arxiv.org/abs/1703.10593）。
 * **堆栈对抗生成网络（StackGAN）**可以根据描述图像的文本生成图像（ZHANG, Han, et al.Stackgan: Text to photo-realistic image synthesis with stacked generative adversarial networks.arXiv preprint arXiv:1612.03242, 2016: https://arxiv\.org/abs/1612.03242）。
-* **发现对抗生成网络（DiscoveryGAN ，DiscoGAN）** 传递不同图像之间的风格元素，	从而可以将一个流行物品，比如背包的纹理和装饰传递到一双鞋上（KIM, Taeksoo, et al.Learning to discover cross-domain relations with generative adversarial networks.arXiv preprint arXiv:1703.05192, 2017: https://arxiv.org/abs/1703.05192）。
+* **发现对抗生成网络（DiscoveryGAN ，DiscoGAN）** 传递不同图像之间的风格元素，从而可以将一个流行物品，比如背包的纹理和装饰传递到一双鞋上（KIM, Taeksoo, et al.Learning to discover cross-domain relations with generative adversarial networks.arXiv preprint arXiv:1703.05192, 2017: https://arxiv.org/abs/1703.05192）。
 * **SRGAN**把低质量的图像转化为高分辨率图像（LEDIG, Christian, et al.Photo-realistic single image super-resolution using a generative adversarial network.arXiv preprint arXiv:1609.04802, 2016: https://arxiv.org/abs/1609.04802）。
 
 
+##### 4.1.2.1 DCGAN
 
-###DCGANs
-
-DCGANs是GAN结构的第一个提升。通过足够多的迭代轮数和训练数据，DCGAN可以成功完成训练，并可以得到质量令人满意的输出。这使得它们很快成为GAN的基准并且有助于产生令人惊喜的成果，例如根据已知的神奇宝贝Pokemon产生新的Pokemon：https://www.youtube.com/watch?v=rs3aI7bACGc。或正如NVIDIA所做的，创造一些名人的脸，它们事实上并不存在但看起来像是真的：https://youtu.be/XOxxPcy5Gr4。这项工作使用了一个名为progressing growing的新训练方法，详见http://research.nvidia.com/sites/default/files/publications/karras2017gan- paper.pdf。它们的基本思想在于使用深度学习监督式网络中图像分类的卷积，并且采用了一些巧妙的技巧： 
+DCGAN是GAN结构的第一个提升。通过足够多的迭代轮数和训练数据，DCGAN可以成功完成训练，并可以得到质量令人满意的输出。这使得它们很快成为GAN的基准并且有助于产生令人惊喜的成果，例如根据已知的神奇宝贝Pokemon产生新的Pokemon：https://www.youtube.com/watch?v=rs3aI7bACGc。或正如NVIDIA所做的，创造一些名人的脸。它们事实上并不存在但看起来像是真的：https://youtu.be/XOxxPcy5Gr4。这项工作使用了一个名为progressing growing的新训练方法，详见http://research.nvidia.com/sites/default/files/publications/karras2017gan-paper.pdf。它们的基本思想在于使用深度学习监督式网络中图像分类的卷积，并且采用了一些巧妙的技巧： 
 
 * 在两个网络中都使用批归一化
 * 没有隐藏的全连接层	
@@ -1752,19 +1748,16 @@ DCGANs是GAN结构的第一个提升。通过足够多的迭代轮数和训练�
 * 采用ReLU作为激活函数
 
 
-###条件对抗生成网络CGANs
+##### 4.1.2.2 CGAN
 
 在条件对抗生成网络中，增加一个特征向量可以控制输出并更好地引导生成器认识到应该做什么。这样一个特征向量可以编码为图像应该导出的类（如果我们想创建虚构的演员面孔，这个类意味着图像是女人还是男人）或者是我们希望从图像中得到的一系列特定的特征（对于虚构的演员，可以是发型，眼睛或肤色）。这里的技巧是将信息合并到要学习的图像中并交给Z输入，这里的输入不再完全是随机的。判别器不仅仅需要从原始图像中判断出伪造图像，还需要找到伪造图像对应的标签（或特征）：
 
-![](figures\77_1.jpg)
-
-*图3：将Z输入与Y输入结合（有标签的特征向量）允许生成受约束的图像*
+![将Z输入与Y输入结合（有标签的特征向量）允许生成受约束的图像](figures\77_1.jpg)
 
 
+### 4.2 项目
 
-### 项目
-
-首先导入正确的库。除了Tensoflow之外，我们还需要使用`numpy`和`math`进行计算，`scipy`和`matplotlib`用来处理图像和图表，`warnings`、`random`和`distuils`来支持特定操作：
+首先导入正确的库。除了Tensoflow之外，还需要使用`numpy`和`math`进行计算，`scipy`和`matplotlib`用来处理图像和图表，`warnings`、`random`和`distuils`来支持特定操作：
 
 ```	python
 import numpy as np
@@ -1778,15 +1771,15 @@ from distutils.version import LooseVersion
 ```
 
 
-### 数据集
+#### 4.2.1 数据集
 
-第一步是提供数据。我们依赖已经完成预处理的数据集，但读者可以在自己的GAN中使用不同种类的图像数据。我们的想法是保持一个数据集类，它的任务是为我们以后构建的GANS类提供标准化和重构图像的批次。
+第一步是提供数据。本书依赖已经完成预处理的数据集，但读者可以在自己的GAN中使用不同种类的图像数据。想法是保持一个数据集类，它的任务是为以后构建的GANS类提供标准化和重构图像的批次。
 
-在初始化时，我们需要同时处理图像和标签（如果存在）。图像首先需要变形（如果它们的形状和示例的类中定义的不同），然后重洗数据。比起有序，例如按数据集中初始类的顺序，重洗能帮助GANs更好地学习。对于任何基于随机梯度下降（ stochastic gradient descent，sgd）机器学习方法这一点都是成立的：BOTTOU, Léon.Stochastic gradient descent tricks.In: Neural networks: Tricks of the trade.Springer, Berlin, Heidelberg, 2012.p.421-436: https://www.microsoft.com/en-us/research/wp-content/uploads/2012/01/tricks-2012.pdf）。 标签采用独热编码，为每一个类创建一个二进制变量，将其设置为1（其他类设为0）以保证标签可以转化为向量。
+在初始化时，需要同时处理图像和标签（如果存在）。图像首先需要变形（如果它们的形状和示例的类中定义的不同），然后重洗数据。比起按数据集中初始类的顺序的有序排列，重洗能帮助GAN更好地学习。对于任何基于随机梯度下降（stochastic gradient descent，sgd）机器学习方法这一点都是成立的，具体见：BOTTOU, Léon.Stochastic gradient descent tricks.In: Neural networks: Tricks of the trade.Springer, Berlin, Heidelberg, 2012.p.421-436: https://www.microsoft.com/en-us/research/wp-content/uploads/2012/01/tricks-2012.pdf）。 标签采用独热编码，为每一个类创建一个二进制变量，将其设置为1（其他类设为0）以保证标签可以转化为向量。
 
-> 例如，如果我们的类是 `{dog:0, cat:1}`, 我们需要两个独热编码向量来表示它们:` {dog:[1, 0], cat:[0, 1]}`。
+> 例如，如果类是 `{dog:0, cat:1}`, 那么需要两个独热编码向量来表示它们:` {dog:[1, 0], cat:[0, 1]}`。
 
-用这种方法，我们可以轻松地把向量作为另一个通道加入我们的图像，并在其中加入一些会被我们的GAN重现的视觉特征。另外，我们可以定义向量的顺序，组成更复杂的有特殊特征的类。例如，我们可以为希望生成的类指定编码，也可以指定它的一些特征：
+这种方法可以轻松地把向量作为另一个通道加入图像，并在其中加入一些会被GAN重现的视觉特征。另外，我们可以定义向量的顺序，组成更复杂的有特殊特征的类。例如，我们可以为希望生成的类指定编码，也可以指定它的一些特征：
 
 ```python
 class Dataset(object):     
