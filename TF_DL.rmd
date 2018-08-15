@@ -3536,7 +3536,7 @@ $> tensorboard --logdir=./logs/tf/stock_price_lstm
 
 ## 第6章 构建和训练机器翻译系统
 
-本项目的目标是训练一个**人工智能（artificial intelligence，AI）** 模型，以用于在两种语言之间进行翻译。具体的，将德语句子自动地翻译成英语。同时，本章所构建的模型可以适用于任何两种语言的互译。
+本项目的目标是训练一个**人工智能（artificial intelligence，AI）** 模型，用于在两种语言之间进行翻译。具体说来，将德语句子自动地翻译成英语。同时，本章所构建的模型可以适用于任何两种语言的互译。
 
 本章包括以下四个部分：
 
@@ -3545,11 +3545,11 @@ $> tensorboard --logdir=./logs/tf/stock_price_lstm
 * 机器翻译模型训练
 * 测试及翻译
 
-上述每个部分都是本章的关键点，按照上述顺序讲解有助于帮助读者形成清晰的画面。
+上述每个部分都是本章的关键点，按照上述顺序讲解有助于帮助读者理解。
 
-###机器翻译系统架构
+### 6.1 机器翻译系统架构
 
-一个机器翻译系统可以接收一种语言的任意字符串作为输入，并将其翻译成另一种语言中具有同样意思的语句。例如，谷歌翻译（其他IT公司也开发了自己的机器翻译系统）就是这样。在这些网页上，用户可以在100多种语言间进行选择并进行翻译。这些网页的使用也非常简单：在左边的输入框中输入你想翻译的句子（例如，hello world），然后选择你输入句子的语言（例如，英语），最后选择你想要翻译成的语言即可。
+一个机器翻译系统可以接收一种语言的任意字符串作为输入，并将其翻译成另一种语言中具有同样意思的语句。例如，谷歌翻译（其他IT公司也开发了自己的机器翻译系统）就是这样。在这些网页上，用户可以在100多种语言间进行选择并进行翻译。这些网页的使用也非常简单：在左边的输入框中输入需要翻译的句子（例如，hello world），然后选择输入句子的语言（例如，英语），最后选择要翻译成的语言即可。
 
 下面是一个把“Hello world” 翻译成法语的例子：
 
@@ -3558,16 +3558,16 @@ $> tensorboard --logdir=./logs/tf/stock_price_lstm
 是不是很简单呢？乍一看，读者可能认为这是一个简单的字典替换。单词可以被分块后在特定的英法词典上查找，用每个词的翻译来代替。可是，事实并非如此。在这个例子中，英语句子有两个单词，而法语句子有三个单词。更一般地，一些动词短语（例如，turn up、turn off、turn on、turn down等）、撒克逊属格、语法性别、时态、条件句等等，它们并不总是能够直接被翻译，正确的翻译往往需要考虑句子的上下文。
 
 这也解释了为什么在做机器翻译时，往往需要人工智能工具。
-具体地，对于很多**自然语言处理（natural language processing， NLP）**任务，往往需要用到**递归神经网络（recurrent neural networks， RNN）**。上一章已经介绍了RNN，此模型的最主要特征是适用于序列数据，即输入一个序列后可以输出一个序列。本章的目的是构建一个正确的模型，给定一个句子作为输入序列，将其对应的翻译作为输出。需要注意，天下没有免费的午餐：这个过程并不容易，其它解决方式也会有相同的结果。本章会给读者展示一种简单有效的解决方式。
+具体地，对于很多**自然语言处理（natural language processing， NLP）**任务，往往需要用到**递归神经网络（recurrent neural networks， RNN）**。上一章已经介绍了RNN，此模型的最主要特征是适用于序列数据，即输入一个序列后可以输出另一个序列。本章的目的是构建一个正确的模型，给定一个句子作为输入序列，将其对应的翻译作为输出。需要注意，天下没有免费的午餐：这个过程并不容易，其它解决方式也会有相同的结果。本章会给读者展示一种简单有效的解决方式。
 
-首先，本章从语料库开始：语料库可能是最难找的，因为它需要包含许多句子，并保证从一种语言到另一种语言的翻译正确。
-幸运的是，一个NLP方面著名的Python包，NLTK，包含了Comtrans语料库。Comtrans是**combination approach to machine translation**（机器翻译联合方法）的缩写，包含了德语、法语和英语语料的对齐。
+首先从语料库开始：语料库可能是最难找的，因为它需要包含许多句子，并保证从一种语言到另一种语言的翻译正确。
+幸运的是，一个NLP方面著名的Python包，NLTK，包含了Comtrans语料库。Comtrans是**combination approach to machine translation**（机器翻译联合方法）的缩写，包含了德语、法语和英语语料的对齐数据。
 
 本项目用这些语料的原因如下：
 
  	1. 方便下载，且方便在Python中引入。
 	2. 不需要为了从硬盘或互联网读入语料库而写函数。NLTK已将此步封装成了函数。
-	3. 它所需空间小，可以在许多笔记本电脑上使用。
+	3. 所需空间小，可以在许多笔记本电脑上使用。
 	4. 可以从互联网上免费下载。
 
 > 读者如果需要查询Comtrans项目的更多信息，可以登录http://www.fask.uni-mainz.de/user/rapp/comtrans/。
@@ -3608,7 +3608,7 @@ print(comtrans.aligned_sents()[0].alignment)
 ```
 德语中的第一个单词对应到英语里的第一个单词（*Wiederaufnahme*对应*Resumption*），第二个单词对应到第二和三个单词（*der*对应*of* 和*the*），第三个单词对应到第四个单词（*Sitzungsperiode*对应*session*）。
 
-###语料库预处理
+### 6.2 语料库预处理
 
 第一步是对语料库进行检索。上一节已经为读者介绍如何操作，接下来要把这些操作封装成一个正式的函数。为了方便其他脚本调用，将其封装到`corpora_tools.py`中。
 
@@ -3631,7 +3631,8 @@ def retrieve_corpora(translated_sentences_l1_l2='alignment-de-en.txt'):
 	return sentences_l1, sentences_l2
 ```
 此函数的参数是一个文件名：即包含NLTK COMTRANS语料库对齐语句的文件。函数返回两个句子列表（实际是个包含一系列标记的句子列表），其中一个是源语言（本例中是德语），另一个是需要翻译的目标语言（本例子中是英语）。
-  3. 在Python RePL上对此函数进行测试：
+
+  3. 对此函数进行测试：
   
 ```python
 sen_l1, sen_l2 = retrieve_corpora()
@@ -3662,7 +3663,7 @@ def clean_sentence(sentence):
 	clean_words = [re.split(regex_splitter, word.lower()) for word in sentence]
 	return [w for words in clean_words for w in words if words if w]
 ```
-  6. 在REPL中测试这个函数：
+  6. 测试这个函数：
   
 ```python
 clean_sen_l1 = [clean_sentence(s) for s in sen_l1]
@@ -3677,9 +3678,9 @@ DE: ['wiederaufnahme', 'der', 'sitzungsperiode']
 EN: ['resumption', 'of', 'the', 'session']
 ```
 
-接下来，需要过滤掉特别长的句子，这些句子不好处理。因为本章的目标是保证模型可以在本地机器上运行，所以应该将句子长度限制为*N*个标记。所以，设置*N＝20*，以便可以在24小时之内完成模型训练。如果读者的电脑性能比较好，可以将*N*设置的大一些。为了使函数足够通用，默认句子长度设置为0，即，空标记集。
+接下来，需要过滤掉特别长的句子，这些句子不好处理。因为本章的目标是保证模型可以在本地机器上运行，所以应该将句子长度限制为`N`个标记。所以设置`N＝20`，以便可以在24小时之内完成模型训练。如果读者的电脑性能比较好，可以将`N`设置的大一些。为了使函数足够通用，默认句子长度设置为0，即，空标记集。
 
-  1. 函数的逻辑很简单：如果句子的标记长度或其翻译的标记长度大于*N*，则这个句子和其对应的翻译会被删除：
+  1. 函数的逻辑很简单：如果句子的标记长度或其翻译的标记长度大于`N`，则这个句子和其对应的翻译会被删除：
   
 ```python
 def filter_sentence_length(sentences_l1, sentences_l2, min_len=0, max_len=20):
@@ -3705,11 +3706,12 @@ assert len(filt_clean_sen_l1) == len(filt_clean_sen_l2)
 ```
 过滤后还剩下将近15000个句子，基本上是原语料库的一半。
 
-接下来，为了使用人工智能模型，需要将文本转化成数字。为了实现这一目标，本章为每种语言都创建了一个词典。这个词典需要包含大部分的单词，因为本章会丢弃一些低频词汇。在tf-idf（一个文档中的词条词频乘以它的逆文档频率，即这个词条在多少个文档中出现过）中这也是常见的做法。丢弃罕见的词汇可以加速计算，并使得结果更具有可扩展性和通用性。本章还需要在每个词典中设置四个特殊的标记：
-  1. 用一种符号来表示补全（稍后会进行解释）
-  2. 用一种符号来分隔开两个句子
-  3. 用一种符号来标识句子结尾
-  4. 用一种符号来标记没见过的单词（例如很罕见的单词）
+接下来，为了使用人工智能模型，需要将文本转化成数字。为此，本章为每种语言都创建了一个词典。这个词典需要包含大部分的单词，因为本章会丢弃一些低频词汇。在tf-idf（一个文档中的词条词频乘以它的逆文档频率，即这个词条在多少个文档中出现过）中这也是常见的做法。丢弃罕见的词汇可以加速计算，并使得结果更具有可扩展性和通用性。本章还需要在每个词典中设置四个特殊的标记：
+
+  1. 一种符号来表示补全（稍后会进行解释）
+  2. 一种符号来分隔开两个句子
+  3. 一种符号来标识句子结尾
+  4. 一种符号来标记没见过的单词（例如很罕见的单词）
 
 本章创建了一个新的脚本`data_utils.py`，并将下面代码写入此脚本中：
 ```python
@@ -3844,8 +3846,9 @@ EN: 4 -> 22
 ```
 读者可以看到，输入和输出都用0补全成了固定的长度（0对应于词典中的`_PAD`），在输出句子的开头和结尾之前标记了1和2。文献已有证明，在输入句子的开头和输出句子的结尾进行补全，效果比较好。进行补全步骤后，输入句子长度为20个标记，输出句子长度为22个标记。
 
-###训练机器翻译模型
-目前为止我们已经讲述了如何对语料库进行预处理，接下来要讲述如何运用模型。模型已经训练好了，读者可直接从https://github.com/tensorflow/models/blob/master/tutorials/rnn/translate/seq2seq_model.py 进行下载。
+### 6.3 训练机器翻译模型
+
+目前为止我们已经讲述了如何对语料库进行预处理，接下来要讲述如何运用模型。模型已经训练好了，读者可直接从https://github.com/tensorflow/models/blob/master/tutorials/rnn/translate/seq2seq_model.py进行下载。
 
 > 上述代码片段以Apache 2.0方式授权。十分感谢将此模型开源的作者。2015版权所有者为TensorFlow的作者。受Apache  2.0版本许可保护，未经授权不得使用。读者可以从http://www.apache.org/licenses/LICENSE-2.0 获取授权副本。除非法律另有规定或书面、软件同意，授权分发参照 “原样提供，且不提供任何形式的保证和条件（AS IS BASIS , WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND ）”进行。读者可查看特定语言许可的条款，以及此许可下的一系列限制。
 
@@ -3904,7 +3907,7 @@ def cleanup_checkpoints(model_dir, model_checkpoints):
 	except FileExistsError:
 		pass
 ```
-最后为读者展示如何以可重用的方式创建模型：
+最后展示如何以可重用的方式创建模型：
 ```python
 def get_seq2seq_model(session, forward_only, dict_lengths, max_sentence_lengths, model_dir):
 	model = Seq2SeqModel(
@@ -3928,7 +3931,9 @@ def get_seq2seq_model(session, forward_only, dict_lengths, max_sentence_lengths,
 		session.run(tf.global_variables_initializer())     
 	return model
 ```
+
 此函数调用模型构建函数，并传入以下参数：
+
 * 源语言的词典大小（本例中的德语）
 * 目标语言的词典大小（本例中的英语）
 * 桶结构（由于已将所有的序列都补全成为了固定的长度，故本例的桶中只有一组数值）
@@ -3939,10 +3944,10 @@ def get_seq2seq_model(session, forward_only, dict_lengths, max_sentence_lengths,
 * 学习率
 * 学习率衰减因子
 * 模型的方向
-* 数据的类型（本例中用float16类型，即，一个float16类型字符占用2个字节）
+* 数据的类型（本例中用`float16`类型，即，一个`float16`类型字符占用2个字节）
 
 为了使模型训练的又快又好，本章直接在代码中对上述参数的值进行了设置，读者可以修改这些值来观察模型的性能变化。
-上述函数中最后一个if/else的作用是：如果模型已经存在，则直接从从检查点检索模型。实际上，在测试中的解码阶段，此函数也会做检索或构建模型的操作。
+上述函数中最后一个`if/else`的作用是：如果模型已经存在，则直接从从检查点检索模型。实际上，在测试中的解码阶段，此函数也会做检索或构建模型的操作。
 
 最后，训练机器翻译模型的函数如下：
 ```python
@@ -3975,9 +3980,9 @@ else float("inf")
 				print(" eval: perplexity {}".format(eval_ppx))           
 				sys.stdout.flush()
 ```
-此函数从构建模型开始。此外，为迭代过程中的每个检查点设置一些常量，并设置最大迭代次数。具体地，上述代码做到每100步保存一次模型， 并设置最大迭代次数为20000次。如果程序耗时太久，读者可以自行中断此程序：每个检查点都包含了训练好的模型，解码时可以运用最新的模型版本。
+此函数从构建模型开始。此外，为迭代过程中的每个检查点设置一些常量，并设置最大迭代次数。具体地，上述代码做到每100步保存一次模型，并设置最大迭代次数为20000次。如果程序耗时太久，读者可以自行中断此程序：每个检查点都包含了训练好的模型，解码时可以运用最新的模型版本。
 
-接下来为读者讲解每个循环中的内容。在每个循环中，模型会获取小批量的数据（之前设置的是64）。`get_batch`方法返回的对象是输入数据（即，源序列数据）、输出数据（目标序列数据）、以及模型的权重。 	`step`方法会对模型进行一次迭代。此方法会返回当前小批量数据上的模型的损失情况。模型训练就是这么简单！
+接下来为读者讲解每个循环中的内容。在每个循环中，模型会获取小批量的数据（之前设置的是64）。`get_batch`方法返回的对象是输入数据（即，源序列数据）、输出数据（目标序列数据）、以及模型的权重。 	`step`方法会对模型进行一次迭代。此方法会返回当前小批量数据上的模型损失情况。模型训练就是这么简单！
 
 平均困惑度（越低越好）可以用来衡量模型每100次迭代后表现如何，而存储检查点可以保存模型。困惑度可以用于衡量预测数据的不确定程度：越能确定下一个标记是什么，输出语句的困惑度就越低。 此外，重置计数器后，在小批量测试集数据（在本例中，直接对数据集进行随机小批量采样）上用同样的标准来度量，并打印其性能。然后，进行下一次的迭代。
 
@@ -4011,7 +4016,7 @@ eval: perplexity 1.8646006006241982
 [...]
 ```
 
-###测试和翻译
+### 6.4 测试和翻译
 
 翻译的代码在`test_translator.py`中。
 首先引入一些包，并设置已训练好的模型路径：
@@ -4024,7 +4029,7 @@ import data_utils
 from train_translator import (get_seq2seq_model, path_l1_dict, path_l2_dict, build_dataset)
 model_dir = "/tmp/translate"
 ```
-接下来，构建一个函数来解码RNN生成的输出序列。注意，序列是多维的，每一维代表着一个单词，它的值代表这个单词的概率。故我们需要挑选概率最大的那个单词。在反向词典的帮助下，可以很轻易的找出实际单词是什么。最后，去掉标志位（字符串中补全、开始及结束的标志）后将结果输出。
+接下来，构建一个函数来解码RNN生成的输出序列。注意，序列是多维的，每一维代表着一个单词，它的值代表这个单词的概率。因此需要挑选概率最大的那个单词。在反向词典的帮助下，可以很轻易的找出实际单词是什么。最后，去掉标志位（字符串中补全、开始及结束的标志）后将结果输出。
 
 本例对训练集中的前五个句子进行解码，这五个句子都是直接从原始语料库中抽出，读者可以在句子中插入新的字符串，或者用其他的语料库进行测试：
 
@@ -4102,27 +4107,29 @@ Ideal tokens out: [1, 87, 5, 267, 2096, 6, 16, 213, 47, 29, 27, 1941, 25, 1441, 
 Ideal sentence out: ['if', 'the', 'house', 'agrees', ',', 'i', 'shall', 'do', 'as', 'mr', 'evans', 'has', 'suggested', '.']
 Model output: if the house gave this proposal , i would like to hear mr byrne .
 ```
-上述结果可显示出，输出中虽然有些有问题的标记，但结果大部分是正确的。为了缓解这个问题，则需要更复杂的RNN，更长或更多样化的语料库。
+上述结果显示，输出中虽然有些有问题的标记，但结果大部分是正确的。为了缓解这个问题，则需要更复杂的RNN，更长或更多样化的语料库。
 
-###课后作业
+#### 6.4.1 课后作业
 
 本章模型是在同一个数据集上进行的测试和训练。这在数据科学中并不是理想做法，但是对于项目跑通也是必须的。读者可以尝试寻找更长的语料库，并把它分成两部分：一份用于训练，一份用于测试：
+
 * 尝试改变模型的设置：这些改变如何影响模型性能和训练时间？
-* 分析`seq2seq_model.py`的代码，请读者思考，如何把损失情况画到TensorBoard中？
+* 分析`seq2seq_model.py`的代码。请读者思考，如何把损失情况画到TensorBoard中？
 * NLTK同样包含法语语料库，如何将德语同时翻译成英语和法语？
 
-###小结
+### 6.5 小结
+
 本章为读者介绍了如何利用RNN构建一个机器翻译系统。具体地，本章讲解了如何组织语料库，如何训练模型以及如何进行测试。下一章会为读者讲解RNN的其他应用：聊天机器人。
 
 ## 第7章 训练像人类一样的聊天机器人 
 
-本章会介绍如何训练一个自动回答简单的通用问题的聊天机器人，以及创建HTTP端点并借助API提供答案。具体说来，我们会介绍：
+本章会介绍如何训练一个自动回答简单通用问题的聊天机器人，以及创建HTTP端点并借助API提供答案。具体说来，会介绍：
 
-- 什么是语料库，如何做语料库预处理
+- 语料库是什么，如何做语料库预处理
 - 如何训练聊天机器人，以及如何测试
 - 如何创建HTTP端点提供API
 
-### 项目简介
+### 7.1 项目简介
 
 如今，聊天机器人在帮助用户的应用上越来越广泛。许多公司，包括银行，移动通信公司，以及大型电子商务平台都使用聊天机器人帮助客户，以及售前支持。网站的问答页面并不能满足用户：每个用户都希望得到针对自己问题的回答，而这个问题可能并没有在问答页面中涉及。而且，聊天机器人可以帮助公司省去回答各种平凡问题的额外服务：这俨然是个双赢的方案。
 
@@ -4134,13 +4141,13 @@ Model output: if the house gave this proposal , i would like to hear mr byrne .
 
 第二种类型的聊天机器人更加先进，也更加复杂。其回答是使用RNN生成的，方式与机器翻译的一样（可以查看之前的章节）。这种聊天机器人可以提供更加个性化的回答，以及更加具体的回复。事实上，它们不会猜测聊天的主题，而使用RNN更好的理解用户的问题，给出最可能的答案。使用这种类型的聊天机器人回答两个不同问题，用户几乎不可能得到同一个答案。
 
-在本章中，我们会使用RNN构建第二种类型的聊天机器人。构建方法与之前章节的机器翻译系统类似。而且，我们会介绍如何把聊天机器人配置到HTTP的端点上，以便在网站上作为服务调用聊天机器人，甚至支持更简单的命令行调用。
+本章会使用RNN构建第二种类型的聊天机器人。构建方法与之前章节的机器翻译系统类似。而且，我们会介绍如何把聊天机器人配置到HTTP的端点上，以便在网站上作为服务调用聊天机器人，甚至支持更简单的命令行调用。
 
-### 输入语料库
+### 7.2 输入语料库
 
-不幸的是，我们并没有在互联网上找到开源的免费使用的面向客户的数据集。因此，我们会使用通用数据集来训练机器人，而不是真正关注客户服务领域的数据集。具体地说，我们会使用康纳尔大学的康奈尔电影对话语料库。这个语料库包含许多原始电影脚本中的对话。因此聊天机器人会为虚拟问题提供答案，而不是为真实问题提供答案。康奈尔的语料库包括来自617部电影的，1万多个电影角色的，超过20万条对话记录。
+不幸的是，互联网很难找到开源的免费使用的面向客户的数据集。因此，我们会使用通用数据集来训练机器人，而不是真正关注客户服务领域的数据集。具体地说，我们会使用康纳尔大学的“康奈尔电影对话语料库”。这个语料库包含许多原始电影脚本中的对话。因此聊天机器人会为虚拟问题提供答案，而不是为真实问题提供答案。康奈尔的语料库包括来自617部电影，1万多个电影角色的，超过20万条对话记录。
 
-> 数据集的链接：https://www.cs.cornell.edu/~cristian/Cornell_Movie-Dialogs_Corpus.html。我们要感谢公开这个语料库的作者：让实验，可重复性研究和知识共享更加容易。
+> 数据集的链接：https://www.cs.cornell.edu/~cristian/Cornell_Movie-Dialogs_Corpus.html。感谢公开这个语料库的作者：让实验，可重复性研究和知识共享更加容易。
 
 这个数据集是一个`.zip`压缩文件。解压之后，文件包含以下几个子文件：
 
@@ -4148,7 +4155,7 @@ Model output: if the house gave this proposal , i would like to hear mr byrne .
 
 - `Chameleons.pdf`是语料库的原始文件。尽管这个文件对聊天机器人没有多大意义，但是它介绍了对话中使用的语言，是深入理解语料库的优质信息。
 
-- `movie_conversations.txt` 包含所有对话结构。对于每一组对话，它包括两个对话角色的ID，电影的ID，和以时间顺序排列的语句（或者准确的说是，语言表达）ID列表。例如，文件的第一行是：
+- `movie_conversations.txt`包含所有对话结构。对于每一组对话，它包括两个对话角色的ID，电影的ID，和以时间顺序排列的语句（或者准确的说是，语言表达）ID列表。例如，文件的第一行是：
 
   `u0 +++$+++ u2 +++$+++ m0 +++$+++ ['L194', 'L195', 'L196', 'L197']`
 
@@ -4160,13 +4167,13 @@ Model output: if the house gave this proposal , i would like to hear mr byrne .
 
   因此，语言表达`L195`的内容是“Well, I thought we'd start with pronunciation, if that's okay with you”。它是由角色`u2`发出的，名字是电影`m0`中的`CAMERON`。
 
-- `movie_titles_metadata.txt` 包含电影的信息，例如电影名，年份，IMDB评分，IMDB投票数和流派。例如，电影`m0`的描述如下：
+- `movie_titles_metadata.txt`包含电影的信息，例如电影名，年份，IMDB评分，IMDB投票数和流派。例如，电影`m0`的描述如下：
 
   `m0 +++$+++ 10 things i hate about you +++$+++ 1999 +++$+++ 6.90 +++$+++ 62847 +++$+++ ['comedy', 'romance']`
 
   所以ID为`m0`的电影名称为“10 things i hate about you”，拍摄于1999年，是一部浪漫喜剧。它拥有6.3万IMDB的投票，平均分为6.9（满分为10分）。
 
-* `movie_characters_metadata.txt` 包含电影角色的信息，例如角色出现的电影名称，性别（如果知道的话）和影片字幕中的人物位置（如果知道的话）。例如，角色`u2`在文中的描述如下：
+- `movie_characters_metadata.txt`包含电影角色的信息，例如角色出现的电影名称，性别（如果知道的话）和影片字幕中的人物位置（如果知道的话）。例如，角色`u2`在文中的描述如下：
 
   `u2 +++$+++ CAMERON +++$+++ m0 +++$+++ 10 things i hate about you +++$+++ m +++$+++ 3`
 
@@ -4180,9 +4187,9 @@ Model output: if the house gave this proposal , i would like to hear mr byrne .
 
   可以看到，大部分文件都使用标记`+++$+++`来分割字段。另外，文件的格式看起来也很简单，利于解析。需要在解析文件的时候注意，文件格式不是UTF-8的，而是ISO-8859-1的。
 
-### 创建训练集
+### 7.3 创建训练集
 
-现在我们创建用于聊天机器人的训练集。我们需要以正确顺序组织角色间的所有对话。而上述语料库可以满足我们的需求。如果本地没有所需的`zip`文档，我们要先下载下来，然后把文件解压到一个临时文件夹中（Windows环境下，应该放在`C:\Temp`），我们只需读取 `movie_lines.txt`和`movie_conversations.txt` 文件，用于创建连续的语言表达数据集。
+现在创建用于聊天机器人的训练集。项目需要以正确顺序组织角色间的所有对话。而上述语料库可以满足我们的需求。如果本地没有所需的`zip`文档，我们要先下载下来，然后把文件解压到一个临时文件夹中（Windows环境下，应该放在`C:\Temp`），我们只需读取 `movie_lines.txt`和`movie_conversations.txt`文件，用于创建连续的语言表达数据集。
 
 现在我们可以在`corpora_downloader.py`中逐步创建几个函数。第一个函数是用于本地磁盘没有保存的情况下，从因特网上获取文件。
 
@@ -4198,12 +4205,12 @@ def download_and_decompress(url, storage_path, storage_dir):
         urllib.request.urlretrieve(url, zip_file)
         with zipfile.ZipFile(zip_file, "r") as zfh:
             zfh.extractall(directory)
-return
+    return
 ```
 
-这个函数的功能如下：它首先检查本地是否有“`README.txt`”文件；如果没有，下载文件（借助于`urllib.request`模块的`urlretrieve`函数）,并解压`zip`文件（使用`zipfile`模块）。
+这个函数的功能如下：它首先检查本地是否有“`README.txt`”文件；如果没有，下载文件（借助于`urllib.request`模块的`urlretrieve`函数），并解压`zip`文件（使用`zipfile`模块）。
 
-接着，读取对话文件，抽取语言表达ID的列表。注意，格式为：`u0 +++$+++ u2 +++$+++ m0 +++$+++ ['L194', 'L195', 'L196', 'L197']`，我们需要的是经过分隔符`+++$+++`分割后的第四个元素。而且，我们需要清除方括号和单引号，拿到纯粹的ID列。 因此，我们首先加载`re`模块，函数如下：
+接着，读取对话文件，抽取语言表达ID的列表。注意，格式为：`u0 +++$+++ u2 +++$+++ m0 +++$+++ ['L194', 'L195', 'L196', 'L197']`，需要的是经过分隔符`+++$+++`分割后的第四个元素。而且需要清除方括号和单引号，拿到纯粹的ID列。 因此，首先加载`re`模块，函数如下：
 
 ```python
 import re
@@ -4215,12 +4222,11 @@ def read_conversations(storage_path, storage_dir):
             conversations_chunks]
 ```
 
-
 正如之前所说，使用正确的编码格式读取文件，否则会报错。函数的输出是包含列的列。每一个列都包含角色间对话的语言表达ID。然后，读取和解析`movie_lines.txt`文件，抽取语言表达的文本。记住这个文件的形式如下：
 
 `L195 +++$+++ u2 +++$+++ m0 +++$+++ CAMERON +++$+++ Well, I thought we'd start with pronunciation, if that's okay with you`。
 
-这里，我们需要第一个和最后一个部分。
+这里需要第一个和最后一个部分。
 
 ```python
 def read_lines(storage_path, storage_dir):
@@ -4230,7 +4236,7 @@ def read_lines(storage_path, storage_dir):
     return {line[0]: line[-1].strip() for line in lines_chunks}
 ```
 
-最后一步是关于分割和对齐。我们希望一个集合内的结果有两次语言表达的序列。这样，我们可以在给定第一次语言表达的情况下，训练聊天机器人，以便给出下一句话。最终，我们希望得到一个智能聊天机器人，可以回复多个问题。函数如下：
+最后一步是关于分割和对齐。一个集合内的结果应该有两次语言表达的序列。这样就可以在给定第一次语言表达的情况下，训练聊天机器人，以便给出下一句话。最终希望得到一个智能聊天机器人，可以回复多个问题。函数如下：
 
 ```python
 def get_tokenized_sequencial_sentences(list_of_lines, line_text):
@@ -4242,7 +4248,7 @@ def get_tokenized_sequencial_sentences(list_of_lines, line_text):
 
 它的输出是一个生成器，其包含两次语句表达（右边的跟着左边的）的元组。而且每次语言表达都用空格分割。
 
-最后，我们可以把所有逻辑都封装在一个函数中，包括（如果本地没有的话）下载文件和解压文件，解析对话和文件行，格式化数据集为生成器。最终，我们可以把文件存在/tmp目录下：
+最后可以把所有逻辑都封装在一个函数中，包括（如果本地没有的话）下载文件和解压文件，解析对话和文件行，格式化数据集为生成器。最终，可以把文件存在`/tmp`目录下：
 
 ```python
 def retrieve_cornell_corpora(storage_path="/tmp",
@@ -4253,11 +4259,11 @@ def retrieve_cornell_corpora(storage_path="/tmp",
     return tuple(zip(*list(get_tokenized_sequencial_sentences(conversations, lines))))
 ```
 
-现在，我们的训练集看起来和机器翻译项目中的训练集很类似。事实上，它们不仅仅相似，而且目的相同，格式相同。因此我们可以使用之前章节中相同的代码。例如，`corpora_tools.py`文件可以不加修改直接用在这里（而且，它需要`data_utils.py`）。
+现在，训练集看起来和机器翻译项目中的训练集很类似。事实上，它们不仅仅相似，而且目的相同，格式相同。因此可以使用之前章节中相同的代码。例如，`corpora_tools.py`文件可以不加修改直接用在这里（而且，它需要`data_utils.py`）。
 
 有了这些文件，我们可以使用一些脚本检查聊天机器人的输入，进而深入研究一下语料库。
 
-我们可以使用之前章节中的`corpora_tools.py`查看语料库。获取康奈尔电影对话语料库，格式化语料，并打印出一个例子和它的长度：
+可以使用之前章节中的`corpora_tools.py`查看语料库。获取康奈尔电影对话语料库，格式化语料，并打印出一个例子和它的长度：
 
 ```python
 from corpora_tools import *
@@ -4285,6 +4291,7 @@ A: ['Well,', 'I', 'thought', "we'd", 'start', 'with', 'pronunciation,',
 ```
 
 清除句子中的停顿字符，把句子全部转成小写，并且限定每条句子最多20个单词（也就是说，对话序列只要包含超过20个单词的句子，就会被舍弃。）。后续的标准化分隔符如下：
+
 ```python
 clean_sen_l1 = [clean_sentence(s) for s in sen_l1]
 clean_sen_l2 = [clean_sentence(s) for s in sen_l2]
@@ -4317,7 +4324,7 @@ print("A:", list(zip(filt_clean_sen_l2[0], idx_sentences_l2[0])))
 ```
 
 
-打印出的结果如下。我们注意到词典包含1万5千个词语，但是并没有包含所有词语，而且超过1万6千个（出现较少的）词语并没有包含其中：
+打印出的结果如下。注意到词典包含1万5千个词语，但是并没有包含所有词语，而且超过1万6千个（出现较少的）词语并没有包含其中：
 ```
 [sentences_to_indexes] Did not find 16823 words
 [sentences_to_indexes] Did not find 16649 words
@@ -4343,7 +4350,6 @@ print("Q:", len(idx_sentences_l1[0]), "->", len(data_set[0][0]))
 print("A:", len(idx_sentences_l2[0]), "->", len(data_set[0][1]))
 ```
 
-
 和预期的一样，打印如下：
 ```
 # Prepared minibatch with paddings and extra stuff
@@ -4355,11 +4361,11 @@ Q: 19 -> 20
 A: 11 -> 22
 ```
 
-### 训练聊天机器人
+### 7.4 训练聊天机器人
 
-处理完语料库后，我们可以开始构建模型。这个项目需要一个序列生成的模型，因此我们可以使用RNN模型。而且，我们可以重用上个项目的代码：只需要修改一下数据集构建的方法，和模型的参数。然后复制上一章中的训练脚本，修改`build_dataset`函数，方便使用康奈尔的数据集。
+处理完语料库后，我们可以开始构建模型。这个项目需要一个序列生成的模型，因此可以使用RNN模型。而且，可以重用上个项目的代码：只需要修改一下数据集构建的方法，和模型的参数。然后复制上一章中的训练脚本，修改`build_dataset`函数，方便使用康奈尔的数据集。
 
-需要注意的是，本章使用的数据集比上一章的要大，因此我们需要限制语料库大小至几万行。在一台RAM为8G的4年老笔记本上，我们需要用前3万行，否则程序会耗尽内存，一直交换空间。使用少量例子的另一个好处是，字典也会变小，每个不超过1万个词语。
+需要注意的是，本章使用的数据集比上一章的要大，因此需要限制语料库大小至几万行。在一台RAM为8G的4年老笔记本上，需要用前3万行，否则程序会耗尽内存，一直交换空间。使用少量例子的另一个好处是，字典也会变小，每个不超过1万个词语。
 
 ```python
 def build_dataset(use_stored_dictionary=False):
@@ -4393,7 +4399,7 @@ def build_dataset(use_stored_dictionary=False):
 ```
 
 
-把这个函数放在（上一章定义的）`train_translator.py`文件中，并重命名为文件`train_chatbot.py`，然后我们可以开始训练聊天机器人。
+把这个函数放在（上一章定义的）`train_translator.py`文件中，并重命名为文件`train_chatbot.py`，开始训练聊天机器人。
 
 几次迭代后，读者可以终止程序，并得到类似以下的输出：
 
@@ -4423,13 +4429,13 @@ perplexity 2.878854805600354
 eval: perplexity 2.563583924617356
 ```
 
-如果改变参数，读者可以在不同的困惑度下终止程序。要得到最终结果，我们可以设置RNN的大小为256，层数为2，批大小为128个样本，学习率为1.0。
+如果改变参数，读者可以在不同的困惑度下终止程序。要得到最终结果，设置RNN的大小为256，层数为2，批大小为128个样本，学习率为1.0。
 
-现在，聊天机器人可以接受测试了。尽管我们可以使用上一章`test_translator.py`中的相同代码进行测试，但是我们还是希望可以完成一个更加精细的方案，也就是让聊天机器人通过API作为服务发布。
+现在，聊天机器人可以接受测试了。尽管我们可以使用上一章`test_translator.py`中的相同代码进行测试，但是还是希望可以完成一个更加精细的方案，也就是让聊天机器人通过API作为服务发布。
 
-### 聊天机器人API
+### 7.5 聊天机器人API
 
-首先，我们需要一个web框架，提供API。在这个项目中，我们选择Botttle，一种非常易用的轻量化简易框架。
+首先需要一个web框架，提供API。在这个项目中，选择Botttle，一种非常易用的轻量化简易框架。
 
 > 要安装这个程序包，在命令行中运行`pip install bottle`。要获取更多信息和代码，可以查看项目网页：https://bottlepy.org。
 
@@ -4461,7 +4467,7 @@ return sentences, data_set
 - 把分隔结果转换成字典ID列
 - 添加标记和补全，以保证默认的长度
 
-接着，我们需要一个函数把预测的序列ID转换成实际的词语序列。这个任务由函数`decode`完成，可以根据输入的句子和softmax函数预测最可能的输出。最后，代码返回不带补全和标记的句子（更全面的函数介绍在上一章）：
+接着，需要一个函数把预测的序列ID转换成实际的词语序列。这个任务由函数`decode`完成，可以根据输入的句子和`softmax`函数预测最可能的输出。最后，代码返回不带补全和标记的句子（更全面的函数介绍在上一章）：
 
 ```python
 def decode(data_set):
@@ -4502,7 +4508,7 @@ if __name__ == "__main__":
     run(host='127.0.0.1', port=8080, reloader=True, debug=True)
 ```
 
-首先，它会加载词典，并准备好逆序词典。然后，使用Bottle API创建一个（基于/api的URL） HTTP GET端点。当端点接收到HTTP GET请求时，函数的路径装饰器起作用。在这种情况下，`api()` 开始运行，它首先把句子读取为HTTP参数，然后调用`prepare_sentence`函数，最后运行解码程序。返回的结果是一个包含用户输入句子和机器人回答的词典。
+首先，它会加载词典，并准备好逆序词典。然后，使用Bottle API创建一个（基于/api的URL）HTTP GET端点。当端点接收到HTTP GET请求时，函数的路径装饰器起作用。在这种情况下，`api()` 开始运行，它首先把句子读取为HTTP参数，然后调用`prepare_sentence`函数，最后运行解码程序。返回的结果是一个包含用户输入句子和机器人回答的词典。
 
 最后，网络服务器打开，本地端口为port 8080。使用Bottle构建聊天机器人服务就是这么简单！
 
@@ -4541,7 +4547,7 @@ $> curl -X GET -G http://127.0.0.1:8080/api --data-urlencode "sentence=how are y
 
 要关闭网络服务器，使用`Ctrl + C`。
 
-#### 课后作业
+#### 7.5.1 课后作业
 
 下面是课后作业：
 
@@ -4549,15 +4555,15 @@ $> curl -X GET -G http://127.0.0.1:8080/api --data-urlencode "sentence=how are y
 * 因特网上有许多其他的训练集；试着看看模型之间答案的差异。哪一个数据集最适合客服机器人？
 * 读者能够修改模型，直接训练服务吗？也就是说，使用HTTP GET/POST传递句子？
 
-### 小结
+### 7.6 小结
 
-在本章中，我们已经实现了一个聊天机器人，可以通过HTTP端点和GET API回答问题。这是我们使用RNN所完成的又一个很棒的例子。在下一章中，我们会讨论另一个话题：如何使用TensorFlow创建推荐系统。
+本章已经实现了一个聊天机器人，可以通过HTTP端点和GET API回答问题。这是使用RNN所完成的又一个很棒的例子。下一章会讨论另一个话题：如何使用TensorFlow创建推荐系统。
 
 ## 第8章 检测重复的Quora问题
 
-Quora (www.quora.com)是一个社区驱动的问答网站。用户可以在上边公开的或者匿名的提出问题和回答问题。2017年1月， Quora第一次发布了一个包含问题对的数据集，其中的问题有可能是重复的。重复问题对在语义上是类似的。或者说，尽管两个问题使用不同的词汇，但是传达了相同的意思。为了给用户提供更好的答案集合展示以便尽快找出需要的信息，Quora需要为每一个问题都准备一个页面。这个工程量是非常大。主持人机制对于避免网站上的重复内容是很有帮助的，但是一旦每天回答的问题增多以及历史存量问题的扩大，这种机制就不容易扩展了。这种情况下，基于**自然语言理解（Natural Language Processing，NLP）**和深度学习的自动化项目就成了合适的方案。
+Quora（www.quora.com）是一个社区驱动的问答网站。用户可以在上边公开的或者匿名的提出问题和回答问题。2017年1月， Quora第一次发布了一个包含问题对的数据集，其中的问题有可能是重复的。重复问题对在语义上是类似的。或者说，尽管两个问题使用不同的词汇，但是传达了相同的意思。为了给用户提供更好的答案集合展示以便尽快找出需要的信息，Quora需要为每一个问题都准备一个页面。这个工程量是非常大。主持人机制对于避免网站上的重复内容是很有帮助的，但是一旦每天回答的问题增多以及历史存量问题的扩大，这种机制就不容易扩展了。这种情况下，基于**自然语言理解（Natural Language Processing，NLP）**和深度学习的自动化项目就成了合适的方案。
 
-本章会介绍如何构建基于TensorFlow的项目，以便理解Quora数据集中句子之间的相似性问题。本章的内容基于Abhishek Thakur （https://www.linkedin.com/pulse/duplicate-quora-question-abhishek-thakur/）的工作。他基于Keras库开发了一套方案 。给出的处理技术也可以用在其它有关语义相似性的问题。在这个项目中，我们会介绍： 
+本章会介绍如何构建基于TensorFlow的项目，以便理解Quora数据集中句子之间的相似性问题。本章的内容基于Abhishek Thakur（https://www.linkedin.com/pulse/duplicate-quora-question-abhishek-thakur/）的工作。他基于Keras库开发了一套方案。给出的处理技术也可以用在其它有关语义相似性的问题。这个项目会介绍： 
 
 * 文本数据的特征工程
 * TF-IDF和SVD
@@ -4565,20 +4571,20 @@ Quora (www.quora.com)是一个社区驱动的问答网站。用户可以在上�
 * 传统的机器学习模型，例如logistic回归，和使用`xgboost`的梯度提升
 * 深度学习模型，包括LSTM，GRU和1D-CNN
 
-学完本章，读者可以训练自己的深度学习模型，来解决类似的问题。首先，让我们看一下Quora数据集。
+学完本章，读者可以训练自己的深度学习模型，来解决类似的问题。首先，看一下Quora数据集。
 
-### 展示数据集
-这个数据集仅面向非商业目的（https://www.quora.com/about/tos），可以在Kaggle竞赛（https://www.kaggle.com/c/quora-question-pairs）和Quora的博客上（https://data.quora.com/First-Quora-Dataset-Release-Question-Pairs）获取。它包含404,351个问题对，其中255,045个负样本（非重复的）和149,306个正样本（重复的）。此数据集中，正样本的比例大约是40%。这说明存在轻度的数据不均衡，但是并不需要专门的处理。事实上，正如Quora博客所公布的，采用初始的采样策略，数据集中的重复样本要比非重复样本多得多。为了构建更加均衡的数据集，负样本需要通过相关问题进行升采样。这些问题是关于相同的主题，但是事实上并不相似。
+### 8.1 展示数据集
 
-开始项目之前，读者可以从亚马逊的S3仓库 http://qim.ec.quoracdn.net/quora_duplicate_questions.tsv下载数据集到工作目录中，大约55MB。
+这个数据集仅面向非商业目的（https://www.quora.com/about/tos），可以在Kaggle竞赛（https://www.kaggle.com/c/quora-question-pairs）和Quora的博客上（https://data.quora.com/First-Quora-Dataset-Release-Question-Pairs）获取。它包含404351个问题对，其中255045个负样本（非重复的）和149,306个正样本（重复的）。此数据集中，正样本的比例大约是40%。这说明存在轻度的数据不均衡，但是并不需要专门的处理。事实上，正如Quora博客所公布的，采用初始的采样策略，数据集中的重复样本要比非重复样本多得多。为了构建更加均衡的数据集，负样本需要通过相关问题进行升采样。这些问题是关于相同的主题，但是事实上并不相似。
+
+开始项目之前，读者可以从亚马逊的S3仓库http://qim.ec.quoracdn.net/quora_duplicate_questions.tsv下载数据集到工作目录中，大约55MB。
 
 下载完成后，读者可以挑几行检查一下数据情况。下图展示了数据集前几行的真实截图：
 
 !["Quora数据集的前几行"](figures\174_1.png)
 
-*Quora数据集的前几行*
 
-进一步查看数据，我们可以发现表示相同含义的问题对，也就是重复问题，如下：
+进一步查看数据，可以发现表示相同含义的问题对，也就是重复问题，如下：
 
 | Quora如何快速的标记需要修改的问题？          | 为什么Quora在我具体写出之前，几秒内就把我的问题标记为需要修改/澄清？ |
 | -------------------------------------------- | ------------------------------------------------------------ |
@@ -4608,23 +4614,24 @@ Quora (www.quora.com)是一个社区驱动的问答网站。用户可以在上�
 | 问题2的最多字符数 | 1169  |
 
 
-尽管问题2的最值大些，问题1和问题2基本上拥有同样的平均字符数。数据中显然有些噪音，因为我们不可能用一个字符构成一个问题。
+尽管问题2的最值大些，但是问题1和问题2基本上拥有同样的平均字符数。数据中显然有些噪音，因为不可能用一个字符构成一个问题。
 
 读者甚至可以通过绘制词云来得到完全不同的视角。数据集中的高频词可以在图中高亮展示：
 
-![](figures\176_1.png)
+![Quora数据集中高频词词云](figures\176_1.png)
 
-*图1：Quora数据集中高频词词云*
 
-一些词语的存在，例如Hillary Clinton和Donald Trump，提示我们数据是在特定历史时期收集的。其中的许多问题也是阶段性的，即只在数据收集的时间点上有意义。其他主题，例如programming language，World War或者earn money，不论是从人们的兴趣还是答案的有效性上讲，也许会持久一些。
+一些词语的存在，例如Hillary Clinton和Donald Trump，提示数据是在特定历史时期收集的。其中的许多问题也是阶段性的，即只在数据收集的时间点上有意义。其他主题，例如programming language，World War或者earn money，不论是从人们的兴趣还是答案的有效性上讲，也许会持久一些。
 
-查看数据之后，现在我们可以确定项目中要争取优化的目标。在这一章中，我们会使准确率作为度量来评估模型的性能。准确率关注于预测的有效程度，可能会丢失不同模型之间的重要差异，例如鉴别能力（模型检测重复问题的能力更强）或者概率分数的正确度（重复问题和非重复问题的有多大区别？）。 我们选择准确率是基于以下事实：这个度量是被Quora工程团队拿来确定数据集的基准表现（其博客提到了这一点： https://engineering.quora.com/Semantic-Question-Matching-with-Deep-Learning）。使用准确率可以让我们的结果更易于和Quora工程团队的结果，以及其他科研文献的结果进行评估和比较。另外，在实际应用中，本书的工作可以基于预测正确错误与否进行快速评估，而不用涉及其他考量。
+查看数据之后，可以确定项目中要争取优化的目标。这一章中会使准确率作为度量来评估模型的性能。准确率关注于预测的有效程度，可能会丢失不同模型之间的重要差异，例如鉴别能力（模型检测重复问题的能力更强）或者概率分数的正确度（重复问题和非重复问题的有多大区别？）。
 
-现在，我们首先介绍基础的特征工程。
+选择准确率是基于以下事实：这个度量是被Quora工程团队拿来确定数据集的基准表现（其博客提到了这一点： https://engineering.quora.com/Semantic-Question-Matching-with-Deep-Learning）。使用准确率可以结果更易于和Quora工程团队的结果，以及其他科研文献的结果进行评估和比较。另外，在实际应用中，本书的工作可以基于预测正确错误与否进行快速评估，而不用涉及其他考量。
 
-### 基础特征工程
+首先介绍基础的特征工程。
 
-开始编码之前，我们需要使用Python加载数据集，同时给Python环境提供项目必须的程序库。我们需要给系统安装一些库（最新版的就可以满足需求，不需要指定具体的版本号：
+### 8.2 基础特征工程
+
+开始编码之前，需要使用Python加载数据集，同时给Python环境提供项目必须的程序库。给系统安装一些库（最新版的就可以满足需求，不需要指定具体的版本号：
 
 * `Numpy` 
 * `pandas `
@@ -4635,24 +4642,24 @@ Quora (www.quora.com)是一个社区驱动的问答网站。用户可以在上�
 * ` pyemd `
 * `NLTK`
 
-因为我们会在项目中使用到每一个库，所以我们会提供具体的安装说明和建议。
+因为项目使用到每一个库，所以我们会提供具体的安装说明和建议。
 
-对于数据集操作，我们会使用`pandas` （`Numpy` 也会使用）。要安装`numpy`和`pandas`：
+对于数据集操作，使用`pandas`（`Numpy` 也会使用）。要安装`numpy`和`pandas`：
 
 ```
 pip install numpy 
 pip install pandas
 ```
-数据集可以通过使用`pandas`和具体的数据结构`pandas dataframe`加载到内存中（我们假设数据集和读者的脚本或者Jupyter notebook位于同一个目录下）：
+数据集可以通过使用`pandas`和具体的数据结构`pandas dataframe`加载到内存中（假设数据集和读者的脚本或者Jupyter notebook位于同一个目录下）：
 ```python
 import pandas as pd 
 import numpy as np
 data = pd.read_csv('quora_duplicate_questions.tsv', sep='\t') 
 data = data.drop(['id', 'qid1', 'qid2'], axis=1)
 ```
-我们会在本章中使用`data` 表示`pandas dataframe` 。使用TensorFlow模型的时候，我们也会给它提供输入。
+本章使用`data`表示`pandas dataframe`。使用TensorFlow模型的时候，也会给它提供输入。
 
-首先，我们可以构造一些基本的特征。这些基础特征包括基于长度的特征和基于字符串的特征：
+首先构造一些基本的特征。这些基础特征包括基于长度的特征和基于字符串的特征：
 
 1. 问题1的长度
 
@@ -4696,14 +4703,14 @@ data['common_words'] = data.apply(lambda x:
                                       .lower().split()))), axis=1)
                         
 ```
-为了后续引用方便，我们把这些特征标记为特征集-1或 `fs_1`:
+为了后续引用方便，把这些特征标记为特征集-1或`fs_1`:
 ```python
 fs_1 = ['len_q1', 'len_q2', 'diff_len', 'len_char_q1', 'len_char_q2', 
         'len_word_q1', 'len_word_q2','common_words']
 ```
 这个简单的方法可以便于后边机器学习模型中调用和合并不同特征集合，使得不同特征集合上的模型比较易于操作。
 
-### 创建模糊特征
+### 8.3 创建模糊特征
 
 下一个特征集合基于模糊字符串匹配。模糊字符串匹配也叫作近似字符串匹配，是找出近似匹配给定模式的字符串的过程。匹配的完全程度定义为，把字符串转换为精确匹配的原始操作步数。这些原始操作包括插入（在给定位置插入一个字符），删除（删除特定字符）和替换（用新的字符替换旧的字符）。
 
@@ -4720,7 +4727,7 @@ pip install fuzzywuzzy
 ```
 
 
-`fuzzywuzzy`需要`Python-Levenshtein`库（https://github.com/ztane/python-Levenshtein/）作为依赖库，它是使用C代码构造，是经典算法的快速实现。因此要使`fuzzywuzzy`做更快的计算,，我们还需要安装`PythonLevenshtein`库： 
+`fuzzywuzzy`需要`Python-Levenshtein`库（https://github.com/ztane/python-Levenshtein/）作为依赖库，它是使用C代码构造，是经典算法的快速实现。因此要使`fuzzywuzzy`做更快的计算,，还需要安装`PythonLevenshtein`库： 
 
 ```
 pip install python-Levenshtein
@@ -4743,7 +4750,7 @@ pip install python-Levenshtein
 
 7. 令牌排序比率
 
-下面是Quora数据的 `fuzzywuzzy` 例子特征： 
+下面是Quora数据的`fuzzywuzzy`例子特征： 
 
 ```python
 from fuzzywuzzy import fuzz
@@ -4759,7 +4766,7 @@ fuzz.QRatio("How can I start an online shopping (e-commerce) website?",
 ```
 
 
-另外，这个返回值是60。我们注意到，尽管这些 `QRatio`值都很接近，但是数据集中相似问题对的值要比非相似问题对的值要高。让我们再看同一个问题对的另一个特征：
+另外，这个返回值是60。注意到，尽管这些 `QRatio`值都很接近，但是数据集中相似问题对的值要比非相似问题对的值要高。再看同一个问题对的另一个特征：
 
 
 ```python
@@ -4767,20 +4774,19 @@ fuzz.partial_ratio("Why did Trump win the Presidency?",
                    "How did Donald Trump win the 2016 Presidential Election")
 ```
 
-
- 这时，返回值是73：
+这时，返回值是73：
 
 
 ```python
- fuzz.partial_ratio("How can I start an online shopping (e-commerce) website?", 
+fuzz.partial_ratio("How can I start an online shopping (e-commerce) website?", 
                     "Which web technology is best suitable for building a big E-Commerce website?")
 ```
 
 这时，返回值是57。
 
-使用`partial_ratio`方法，我们可以观察到两个问题对的分数差异显著升高。这意味着重复问题对和非重复问题对之间的鉴别更加容易。我们认为这个特征可以给模型加分不少。
+使用`partial_ratio`方法，我们可以观察到两个问题对的分数差异显著升高。这意味着重复问题对和非重复问题对之间的鉴别更加容易。这个特征可以给模型加分不少。
 
- 借助Python 的`pandas` 和 `fuzzywuzzy` 库，我们可以通过一行代码，使用这些特征：
+借助Python的`pandas`和`fuzzywuzzy`库，可以通过一行代码，使用这些特征：
 
 ```python
 data['fuzz_qratio'] = data.apply(lambda x: fuzz.QRatio(
@@ -4796,8 +4802,7 @@ data['fuzz_token_set_ratio'] = data.apply(lambda x: fuzz.token_set_ratio(str(x['
 data['fuzz_token_sort_ratio'] = data.apply(lambda x: fuzz.token_sort_ratio(str(x['question1']), str(x['question2'])), axis=1)
 ```
 
-
-  这个特征集合标记为特征集-2或`fs_2`：
+这个特征集合标记为特征集-2或`fs_2`：
 
 ```python
 fs_2 = ['fuzz_qratio', 'fuzz_WRatio', 'fuzz_partial_ratio',
@@ -4806,31 +4811,31 @@ fs_2 = ['fuzz_qratio', 'fuzz_WRatio', 'fuzz_partial_ratio',
 ```
 
 
-我们再一次把结果存储起来以便建模中使用。
+再一次把结果存储起来以便建模中使用。
 
 
-### 借助TF-IDF和SVD特征
+### 8.4 借助TF-IDF和SVD特征
 
- 接下来的特征集合基于TF-IDF和SVD。**词频-逆文档频率（Term Frequency-Inverse Document Frequency ，TF-IDF）**是信息检索基础中的一个算法。这个算法可以使用下面的公式解释：
+接下来的特征集合基于TF-IDF和SVD。**词频-逆文档频率（Term Frequency-Inverse Document Frequency ，TF-IDF）**是信息检索基础中的一个算法。这个算法可以使用下面的公式解释：
 
 $$TF(t)=C(t)/N$$
 
 $$IDF(t)=log(ND/ND_t)$$
 
-公式中的记号：$C(t)$ 是词项$t$出现在文档中的次数，$N$是文档中词项的总数，可以由此计算**词频（Term Frequency ，TF）。** $ND$是文档总数，$ND_t $是包含词频$t$的文档数，可以由此计算**逆文档频率（Inverse Document Frequency ，IDF）。** 一个词项的TF-IDF是词频和逆文档频率的乘积：
+公式中的记号：$C(t)$是词项$t$出现在文档中的次数，$N$是文档中词项的总数，可以由此计算**词频（Term Frequency ，TF）。** $ND$是文档总数，$ND_t $是包含词频$t$的文档数，可以由此计算**逆文档频率（Inverse Document Frequency ，IDF）。** 一个词项的TF-IDF是词频和逆文档频率的乘积：
 
 $$TF-IDF(t)=TF(t)*IDF(t)$$
 
 除了文档本身之外，不用借助任何先验知识，通过减少信息较少的公共词项（例如冠词）的权重，这个分数就可以给出区分不同文档的所有词项。
 
-> 如果需要更多关于TFIDF的实操解释，下面的在线教程可以帮助读者编码实现算法，并使用文本数据进行测试： https://stevenloria.com/tf-idf/。
+> 如果需要更多关于TF-IDF的实操解释，下面的在线教程可以帮助读者编码实现算法，并使用文本数据进行测试： https://stevenloria.com/tf-idf/。
 
 为了方便快速实现，我们借助于TF-IDF的`scikit-learn实现`。如果还没有安装`scikit-learn`，读者可以使用`pip`安装：
 
 ```
 pip install -U scikit-learn
 ```
-我们可以分别为问题1和问题2构造TF-IDF特征2（为了减少打字，我们会深度复制问题1） :
+分别为问题1和问题2构造TF-IDF特征2（为了减少打字，深度复制问题1） :
 
 ```python
 from sklearn.feature_extraction.text import TfidfVectorizer 
@@ -4850,7 +4855,7 @@ tfv_q2 = deepcopy(tfv_q1)
 
 需要注意的是，这里的参数并没有经过大量的实验验证。这些参数通常在其他自然语言处理问题，特别是文本分类上都有不错的效果。读者可能需要修改对应语言中的停用词列表。
 
-现在我们可以分别得到问题1和问题2的TF-IDF矩阵：
+现在可以分别得到问题1和问题2的TF-IDF矩阵：
 
 ```python
 q1_tfidf = tfv_q1.fit_transform(data.question1.fillna("")) 
@@ -4858,15 +4863,15 @@ q2_tfidf = tfv_q2.fit_transform(data.question2.fillna(""))
 ```
 
 
-> 在TF-IDF处理工程中，我们根据所有可用数据计算出TF-IDF矩阵（我们用了`fit_transform`方法）。这是Kaggle竞赛中的常用手段，可以帮助我们拿到高分。但是，如果面对真实场景，读者可能希望排除训练集和验证集中的一些数据，以便保证TF-IDF处理可以泛化到新的未知数据集中。
+> 在TF-IDF处理过程中，根据所有可用数据计算出TF-IDF矩阵（我们用了`fit_transform`方法）。这是Kaggle竞赛中的常用手段，可以帮助我们拿到高分。但是，如果面对真实场景，读者可能希望排除训练集和验证集中的一些数据，以便保证TF-IDF处理可以泛化到新的未知数据集中。
 
-有了TF-IDF特征后，我们继续介绍SVD特征。SVD是一种特征分解方法，即奇异值分解。它广泛应用于自然语言处理中，其中一个技术叫做**潜在语义分析（Latent Semantic Analysis，LSA）**。
+有了TF-IDF特征后，继续介绍SVD特征。SVD是一种特征分解方法，即奇异值分解。它广泛应用于自然语言处理中，其中一个技术叫做**潜在语义分析（Latent Semantic Analysis，LSA）**。
 
-> SVD和LSA的具体讨论超出了本书的范畴。读者可以参考下面两个简单明了的网上教程，了解其中的思想： https://alyssaq.github.io/2015/singular-value-decomposition-visualisation/ 和https://technowiki.wordpress.com/2011/08/27/latent-semantic-analysis-lsa-tutorial/
+> SVD和LSA的具体讨论超出了本书的范畴。读者可以参考下面两个简单明了的网上教程，了解其中的思想： https://alyssaq.github.io/2015/singular-value-decomposition-visualisation/ 和https://technowiki.wordpress.com/2011/08/27/latent-semantic-analysis-lsa-tutorial/。
 
-要创建SVD特征，我们再次使用`scikit-learn`实现。这个实现是传统的SVD的变种，叫做`TruncatedSVD`。
+要创建SVD特征，再次使用`scikit-learn`实现。这个实现是传统的SVD的变种，叫做`TruncatedSVD`。
 
->  `TruncatedSVD`是SVD方法的近似，提供了可靠而迅速的SVD矩阵分解。读者可以参考下面的网站，找到更多有关技术实现和应用的建议：http://langvillea.people.cofc.edu/DISSECTION-LAB/Emmie'sLSI-SVDModule/p5module.html。
+> `TruncatedSVD`是SVD方法的近似，提供了可靠而迅速的SVD矩阵分解。读者可以参考下面的网站，找到更多有关技术实现和应用的建议：http://langvillea.people.cofc.edu/DISSECTION-LAB/Emmie'sLSI-SVDModule/p5module.html。
 
 ```python
 from sklearn.decomposition import TruncatedSVD 
@@ -4874,13 +4879,13 @@ svd_q1 = TruncatedSVD(n_components=180)
 svd_q2 = TruncatedSVD(n_components=180)
 ```
 
-我们选择180个成分，进行SVD分解。这些特征都是在TF-IDF矩阵上计算的：
+选择180个成分，进行SVD分解。这些特征都是在TF-IDF矩阵上计算的：
 
 ```python
 question1_vectors = svd_q1.fit_transform(q1_tfidf) 
 question2_vectors = svd_q2.fit_transform(q2_tfidf)
 ```
-特征集-3来自于TF-IDF特征和SVD特征。例如，我们可以只用TF-IDF特征建模两个问题，或者使用TF-IDF特征加上SVD特征，然后加入模型进行学习。这些特征的解释如下：
+特征集-3来自于TF-IDF特征和SVD特征。例如，可以只用TF-IDF特征建模两个问题，或者使用TF-IDF特征加上SVD特征，然后加入模型进行学习。这些特征的解释如下：
 
 特征集-3(1) 或者记作`fs3_1`包含两个问题的TF-IDF，通过水平堆砌生成，最终传给机器学习模型： 
 
@@ -4926,7 +4931,7 @@ fs3_2 = tfv.fit_transform(q1q2)
 fs3_3 = np.hstack((question1_vectors, question2_vectors))
 ```
 
-我们可以类似创建更多TF-IDF和SVD组合特征，把它们分别记作`fs3-4` 和`fs3-5`。 下图给出了构造过程，读者可以练习着尝试编码。
+可以类似创建更多TF-IDF和SVD组合特征，把它们分别记作`fs3-4`和`fs3-5`。 下图给出了构造过程，读者可以练习着尝试编码。
 
 特征集-3(4)或者记作`fs3_4`：
 
@@ -4936,9 +4941,9 @@ fs3_3 = np.hstack((question1_vectors, question2_vectors))
 
 ![](figures\186_2.png)
 
-有了基础的特征集，以及TF-IDF和SVD特征，我们可以继续构造更加复杂的特征，进而支持后面的机器学习和深度学习模型。
+有了基础的特征集，以及TF-IDF和SVD特征，可以继续构造更加复杂的特征，进而支持后面的机器学习和深度学习模型。
 
-### 使用Word2vec词嵌入映射
+### 8.5 使用Word2vec词嵌入映射
 
 简单的讲，Word2vec模型就是两层的神经网络，它接收文本语料作为输入，输出语料库中每个词语的向量。通过拟合，意思相近的词语的向量也会彼此靠近。相比意思不同的词语而言，它们之间的距离也更小。
 
@@ -4948,11 +4953,11 @@ fs3_3 = np.hstack((question1_vectors, question2_vectors))
 
 ![](figures\187_1.png)
 
-如果我们使用谷歌新闻语料库上的预训练词向量，上面例子的所有词语，例如Germany，Berlin，France和Paris都可以表示为300维的向量。借助这些词语的Word2vec表示，把Berlin的向量减去Germany的向量，再加上France的向量，我们会得到一个与Paris向量非常接近的向量。因此Word2vec模型中的向量保留了词语的含义。这些向量所蕴含的信息会给我们的任务带来非常有用的特征。
+如果使用谷歌新闻语料库上的预训练词向量，上面例子的所有词语，例如Germany，Berlin，France和Paris都可以表示为300维的向量。借助这些词语的Word2vec表示，把Berlin的向量减去Germany的向量，再加上France的向量，会得到一个与Paris向量非常接近的向量。因此Word2vec模型中的向量保留了词语的含义。这些向量所蕴含的信息带来非常有用的特征。
 
 > 想要获得关于Word2vec应用的易懂且更多详尽的介绍，建议阅读https://www.distilled.net/resources/a-beginners-guide-to-Word2vec-aka-whats-the-opposite-of-canada/，或者如果需要更多严格数学定义的解释，推荐阅读这篇文章：http://www.1-4-5.net/~dmm/ml/how_does_Word2vec_work.pdf。
 
-要加载Word2vec特征，我们需要使用Gensim。如果没有安装Gensim，读者可以使用`pip`安装。同时，我们也建议安装`pyemd`库，因为会在WMD距离计算中用到。WDM函数可以帮助我们把两个Word2vec向量关联起来：
+要加载Word2vec特征，需要使用Gensim。如果没有安装Gensim，读者可以使用`pip`安装。同时，我们也建议安装`pyemd`库，因为会在WMD距离计算中用到。WDM函数可以把两个Word2vec向量关联起来：
 ```
 pip install gensim 
 pip install pyemd
@@ -4971,9 +4976,9 @@ model = gensim.models.KeyedVectors.load_word2vec_format(
     'GoogleNews-vectors-negative300.bin.gz', binary=True)
 ```
 
-现在，我们可以通过调用`model[word]`获取每一个词语的向量。但是，处理句子的时候，还会有新的问题。在这个例子中，我们需要问题1和问题2中所有词的向量，以便后续比较。我们可以使用以下代码。这段代码可以给出一条谷歌新闻句子中所有词语的向量，并最终给出归一化的向量。我们称之为句向量或者Sent2Vec。
+现在可以通过调用`model[word]`获取每一个词语的向量。但是，处理句子的时候，还会有新的问题。这个例子需要问题1和问题2中所有词的向量，以便后续比较。以下代码可以给出一条谷歌新闻句子中所有词语的向量，并最终给出归一化的向量。我们称之为句向量或者Sent2Vec。
 
-运行下面的函数前，确定已经安装了**自然语言工具包（Natural Language Tool Kit ，NLTK）** ：
+运行下面的函数前，确定已经安装了**自然语言工具包（Natural Language Tool Kit，NLTK）** ：
 
 ```
 $ pip install nltk
@@ -4987,8 +4992,7 @@ nltk.download('punkt')
 nltk.download('stopwords')
 ```
 
-
-NLTK可用之后，我们只需要运行下列代码，定义`sent2vec`函数：
+NLTK可用之后，只需要运行下列代码，定义`sent2vec`函数：
 ```python
 from nltk.corpus import stopwords 
 from nltk import word_tokenize 
@@ -5012,13 +5016,14 @@ def sent2vec(s, model):
         return np.zeros(300)
 ```
 
-当句子为空时，我们可以返回一个标准的零值向量。
+当句子为空时，可以返回一个标准的零值向量。
 
 要计算问题间的相似度，另外一个特征是词移距离（Word mover's distance）。词移距离使用Word2vec词嵌入技术，其找工作原理与给出两篇文档距离的测地距（earth mover's distance）类似。简单的说，词移距离提供了从一个文档到另一个文档移动所有词语所需的最小距离。
 
-> 词移距离由以下文章提出： KUSNER, Matt等人的《From word embeddings to document distances》。其收录于International Conference on Machine Learning. 2015. p. 957-966。该文章的下载地址：http://proceedings.mlr.press/v37/kusnerb15.pdf。需要实际操作介绍，读者可以参考Gensim的距离实现教程：https://markroxor.github.io/gensim/static/notebooks/WMD_tutorial.html。
+> 词移距离由以下文章提出：KUSNER, Matt等人的《From word embeddings to document distances》。其收录于International Conference on Machine Learning. 2015. p. 957-966。该文章的下载地址：http://proceedings.mlr.press/v37/kusnerb15.pdf。需要实际操作介绍，读者可以参考Gensim的距离实现教程：https://markroxor.github.io/gensim/static/notebooks/WMD_tutorial.html。
 
 最终的Word2vec（w2v）特征也包括其他距离，例如更常见的欧式距离或余弦距离。完整的特征集合也包含对两个文档向量分布的一些度量：
+
 1. 词移距离
 
 2. 归一化词移距离
@@ -5046,7 +5051,7 @@ def sent2vec(s, model):
 13. 问题2向量的峰度
 
 
-所以这些Word2vec特征记作`fs4`。
+所有这些Word2vec特征记作`fs4`。
 
 另一个w2v特征集合包含Word2vec向量自身的矩阵：
 
@@ -5064,8 +5069,7 @@ w2v_q2 = np.array([sent2vec(q, model)
                    for q in data.question2])
 ```
 
-
- 为了快速实现Quora问题的Word2vec词向量之间的不同距离度量，我们使用`scipy.spatial.distance`模块：
+为了快速实现Quora问题的Word2vec词向量之间的不同距离度量，使用`scipy.spatial.distance`模块：
 
 ```python
 from scipy.spatial.distance import cosine, cityblock, jaccard, canberra, euclidean, minkowski, braycurtis
@@ -5085,8 +5089,7 @@ data['braycurtis_distance'] = [braycurtis(x,y)
                                for (x,y) in zip(w2v_q1, w2v_q2)]
 ```
 
-
- 所有这些和距离相关的特征名都保存在`fs4_1`列中：
+所有这些和距离相关的特征名都保存在`fs4_1`列中：
 
 
 ```python
@@ -5103,7 +5106,7 @@ w2v = np.hstack((w2v_q1, w2v_q2))
 ```
 
 
-词移距离的函数首先对两个问题进行小写转换，并去除停用词，然后返回距离。然而，我们也可以把所有Word2vec向量转换为L2-归一化向量（每一个向量都转换为单元范式，即对向量的元素取平方和，结果的和为1），计算距离的归一化值。使用`init_sims`方法：
+词移距离的函数首先对两个问题进行小写转换，并去除停用词，然后返回距离。然而，也可以把所有Word2vec向量转换为L2-归一化向量（每一个向量都转换为单元范式，即对向量的元素取平方和，结果的和为1），计算距离的归一化值。使用`init_sims`方法：
 
 
 ```python
@@ -5122,14 +5125,13 @@ data['norm_wmd'] = data.apply(lambda x: wmd(x['question1'],
 fs4_2 = ['wmd', 'norm_wmd']
 ```
 
-
-完成最终计算，我们就结束了大部分重要特征的创建。这些特征是基本的机器学习模型所需的   ，也会作为深度学习模型的基线标准。下表展示了备用特征的截图：
+完成最终计算，结束大部分重要特征的创建。这些特征是基本的机器学习模型所需的   ，也会作为深度学习模型的基线标准。下表展示了备用特征的截图：
 
 ![](figures\192_1.png)
 
-现在让我们训练一些机器学习模型，以及其他Word2vec特征。
+现在训练一些机器学习模型，以及其他Word2vec特征。
 
-### 测试机器学习模型
+### 8.6 测试机器学习模型
 
 开始之前，根据系统情况不同，读者可能需要清理内存和释放空间，以防机器学习模型使用之前的数据结构。这个过程可以通过`gc.collect`实现，它可以删除所有过去的不再需要的变量，并检查可用内存，使用`psutil.virtualmemory`函数返回准确的结果：
 
@@ -5145,49 +5147,48 @@ gc.collect()
 psutil.virtual_memory()
 ```
 
+现在，汇总出到目前为止，所有创建的特征及其含义：
 
-现在，我们可以汇总出到目前为止，所有创建的特征及其含义：
+- `fs_1`: 基础特征列表
+- `fs_2`: 模糊特征列表
+- `fs3_1`: 不同问题的TF-IDF稀疏数据矩阵
+- `fs3_2`: 合并问题的TF-IDF稀疏数据矩阵
+- `fs3_3`: SVD稀疏数据矩阵
+- `fs3_4`: SVD统计特征列表
+- `fs4_1`: Word2vec距离特征列表 
+- `fs4_2`: 词移距离特征列表
+- `w2v`: 使用`Sent2Vec`函数后的转换表述的Word2vec向量矩阵
 
-- fs_1: 基础特征列表
-- fs_2: 模糊特征列表
-- fs3_1: 不同问题的TF-IDF稀疏数据矩阵
-- fs3_2: 合并问题的TF-IDF稀疏数据矩阵
--  fs3_3: SVD稀疏数据矩阵
-- fs3_4: SVD统计特征列表
-- fs4_1:  Word2vec距离特征列表 
-- fs4_2: 词移距离特征列表
-- w2v:  使用`Sent2Vec`函数后的转换表述的Word2vec向量矩阵
-
-我们会评估两个基础并且常见的机器学习模型，即logistic回归和`xgboost`程序包中的梯度下降。下表给出了Kaggle竞赛中，logistic回归和`xgboost`算法在不同特征集合上的表现：
+评估两个常见的基础机器学习模型，即logistic回归和`xgboost`程序包中的梯度下降。下表给出了Kaggle竞赛中，logistic回归和`xgboost`算法在不同特征集合上的表现：
 
 | 特征集合                                                 | logistic回归准确度 | `xgboost`准确度 |
 | -------------------------------------------------------- | ------------------ | --------------- |
-| 基础特征（fs1）                                          | 0.658              | 0.721           |
-| 基础特征+模糊特征（fs1+fs2）                             | 0.660              | 0.738           |
-| 基础特征+模糊特征+w2v特征（fs1+fs2+fs4）                 | 0.676              | 0.766           |
-| w2v向量特征（fs5）                                       | *                  | 0.780           |
-| 基础特征+模糊特征+w2v特征+w2v向量特征（fs1+fs2+fs4+fs5） | *                  | 0.814           |
-| TFIDF-SVD（fs3-1）                                       | 0.777              | 0.749           |
-| TFIDF-SVD（fs3-2）                                       | 0.804              | 0.748           |
-| TFIDF-SVD（fs3-3）                                       | 0.706              | 0.763           |
-| TFIDF-SVD（fs3-4）                                       | 0.700              | 0.753           |
+| 基础特征（`fs1`）                                          | 0.658              | 0.721           |
+| 基础特征+模糊特征（`fs1+fs2`）                             | 0.660              | 0.738           |
+| 基础特征+模糊特征+w2v特征（`fs1+fs2+fs4`）                 | 0.676              | 0.766           |
+| w2v向量特征（`fs5`）                                       | *                  | 0.780           |
+| 基础特征+模糊特征+w2v特征+w2v向量特征（`fs1+fs2+fs4+fs5`） | *                  | 0.814           |
+| TFIDF-SVD（`fs3_1`）                                       | 0.777              | 0.749           |
+| TFIDF-SVD（`fs3_2`）                                       | 0.804              | 0.748           |
+| TFIDF-SVD（`fs3-3`）                                       | 0.706              | 0.763           |
+| TFIDF-SVD（`fs3—4`）                                       | 0.700              | 0.753           |
 
 \* *由于对内存需求太高，这个模型没有训练。*
 
-我们可以把这些性能作为深度学习模型的基线或者最低标准，但是也不会完全照搬其中的工作。
+把这些性能作为深度学习模型的基线或者最低标准，但是也不会完全照搬其中的工作。
 
-接下来，我们会引入所有必须的程序包。对于logistic回归，我们会使用`scikit-learn`实现。
+接下来，引入所有必须的程序包。对于logistic回归，使用`scikit-learn`实现。
 
 `xgboost`是一个可扩展的和可移植的分布式梯度提升库（基于树结构的机器学习集成模型）。它是由华盛顿大学的陈天奇发明的，后来由Bing Xu实现了Python的封装，由Tong He实现了R的接口（读者可以通过主要发明者的网站了解到xgboost背后的故事： homes.cs.washington.edu/~tqchen/2016/03/10/story-and-lessons-behind-the-evolution-of-xgboost.html ）。`xgboost`可以在Python，R，Java，Scala，Julia和C++中使用，并且可以在单机上使用（利用多线程），也可以部署在Hadoop和Spark集群上。
 
-> 安装`xgboost`的具体说明可以在这里找到： github.com/dmlc/xgboost/blob/master/doc/build.md。
+> 安装`xgboost`的具体说明可以在这里找到：github.com/dmlc/xgboost/blob/master/doc/build.md。
 >
 > Linux和macOS系统上的`xgboost`安装很简单，但是Windows系统上的安装要稍微注意一下。 
 >
-> 我们给出Windows系统上的安装`xgboost`的具体步骤：
+> 下面给出Windows系统上的安装`xgboost`的具体步骤：
 >
 > 1. 首先下载安装Git的Windows版本（git-forwindows.github.io）
-> 2. 然后，需要在系统中安装MinGW编译器，可以根据系统的配置在 www.mingw.org 下载
+> 2. 然后，需要在系统中安装MinGW编译器，可以根据系统的配置在www.mingw.org下载
 > 3. 在命令行中，执行：
 >
 > ```
@@ -5232,7 +5233,7 @@ psutil.virtual_memory()
 > ```
 
 
-`xgboost`正确安装之后，我们可以引入机器学习算法模型： 
+`xgboost`正确安装之后，引入机器学习算法模型： 
 
 ```python
 from sklearn import linear_model
@@ -5241,7 +5242,7 @@ import xgboost as xgb
 ```
 
 
-由于我们会用到logistic回归求解器（它是一个https://github.com/EpistasisLab/tpot/issues/292中的`sag`求解器，根据数据的规模需要线性计算时间）：
+由于用到logistic回归求解器（它是一个https://github.com/EpistasisLab/tpot/issues/292中的`sag`求解器，根据数据的规模需要线性计算时间）：
 
 ```python
 scaler = StandardScaler() 
@@ -5253,7 +5254,7 @@ X = scaler.fit_transform(X)
 X = np.hstack((X, fs3_3))
 ```
 
-我们选定一些数据用于训练，首先过滤`fs_1`, `fs_2`, `fs3_4`, `fs4_1`和`fs4_2`集合中的变量，然后把`fs3_3`的稀疏SVD矩阵堆叠放置。我们也可以随机划分，分出1/10的数据用于验证（这样可以有效的评估模型的质量）：
+选定一些数据用于训练，首先过滤`fs_1`, `fs_2`, `fs3_4`, `fs4_1`和`fs4_2`集合中的变量，然后把`fs3_3`的稀疏SVD矩阵堆叠放置。也可以随机划分，分出1/10的数据用于验证（这样可以有效的评估模型的质量）：
 
 ```python
 np.random.seed(42) 
@@ -5269,8 +5270,8 @@ x_val = X[idx_val]
 y_val = np.ravel(y[idx_val])
 ```
 
-在第一个模型中，我们尝试使用logistic回归，并设定L2正则化参数C为0.1
-（最保守的正则化）。模型准备好后，我们在验证集合上测试效果（`x_val`是训练矩阵，`y_val`是正确答案）。结果可以通过准确率，即测试集上正确预测的占比，进行评估：
+在第一个模型中，尝试使用logistic回归，并设定L2正则化参数为0.1
+（最保守的正则化）。模型准备好后，在测试集合上测试效果（`x_val`是训练矩阵，`y_val`是正确答案）。结果可以通过准确率，即测试集上正确预测的占比，进行评估：
 
 ```python
 logres = linear_model.LogisticRegression(C=0.1,
@@ -5281,11 +5282,11 @@ log_res_accuracy = np.sum(lr_preds == y_val) / len(y_val)
 print("Logistic regr accuracy: %0.3f" % log_res_accuracy)
 ```
 
-等待片刻（求解器最多迭代1,000次，就会停止收敛），最终的测试集准确率是0.743。它会作为我们的第一个基准表现。
+等待片刻（求解器最多迭代1000次，就会停止收敛），最终的测试集准确率是0.743。它会作为第一个基准表现。
 
-现在，我们试着使用`xgboost`算法做预测。作为梯度提升算法的一种，它的方差（可以拟合复杂的预测函数，但要注意过拟合）比logistic回归要大， 而logistic回归的偏差较大（最后我们可以看到，它是系数的和）。我们可以从`xgboost`中得到更好的结果。我们可以把树的最大深度固定位为4（这个深度较浅，可以避免过拟合），并设置学习率为0.02（模型需要生成许多树，因为学习速率比较慢）。我们还可以设置一个监测列表，查看测试集上的表现。一旦误差超过50步不再减少，就尽早停止训练。
+现在，试着使用`xgboost`算法做预测。作为梯度提升算法的一种，它的方差（可以拟合复杂的预测函数，但要注意过拟合）比logistic回归要大， 而logistic回归的偏差较大（最后可以看到，它是系数的和）。我们可以从`xgboost`中得到更好的结果。可以把树的最大深度固定位为4（这个深度较浅，可以避免过拟合），并设置学习率为0.02（模型需要生成许多树，因为学习速率比较慢）。还可以设置一个监测列表，查看测试集上的表现。一旦误差超过50步不再减少，就尽早停止训练。
 
-> 在同一个集合上（比如例子中的验证集）尽早停止训练返回最终结果并不是好的尝试。在现实世界中，我们应该设置一个验证集以便调整模型运行，例如尽早停止，以及使用一个测试集来报告泛化情形下的结果。
+> 在同一个集合上（比如例子中的验证集）尽早停止训练返回最终结果并不是好的尝试。在现实世界中，应该设置一个验证集以便调整模型运行，例如尽早停止，以及使用一个测试集来报告泛化情形下的结果。
 
 设置完成之后，运行算法。这一次，训练的时间要比logistic回归的时间长：
 
@@ -5308,9 +5309,9 @@ print("Xgb accuracy: %0.3f" % xgb_accuracy)
 
 `xgboost`在验证集上的准确率是0.803。
 
-###  搭建TensorFlow模型
+### 8.7 搭建TensorFlow模型
 
-本章的深度学习模型会使用TensorFlow搭建，并在Abhishek Thakur的Keras代码上修改（读者可以阅读源代码：https://github.com/abhishekkrthakur/is_that_a_duplicate_quora_question）。Keras是一个Python库，提供TensorFlow的简单接口。Tensorflow有Keras的官方支持。使用Keras训练的模型可以轻松的转换为TensorFlow模型。Keras支持深度学习模型的快捷原型搭建和测试。在我们的项目中，我们会从头开始，完整的编写TensorFlow方案。
+本章的深度学习模型会使用TensorFlow搭建，并在Abhishek Thakur的Keras代码上修改（读者可以阅读源代码：https://github.com/abhishekkrthakur/is_that_a_duplicate_quora_question）。Keras是一个Python库，提供TensorFlow的简单接口。Tensorflow有Keras的官方支持。使用Keras训练的模型可以轻松的转换为TensorFlow模型。Keras支持深度学习模型的快捷原型搭建和测试。在项目中，我们会从头开始，完整的编写TensorFlow方案。
 
 首先，引入必要的库，特别是TensorFlow，打印信息，检查版本：
 
@@ -5321,8 +5322,7 @@ import tensorflow as tf
 print("TensorFlow version %s" % tf.__version__)
 ```
 
-
-现在，我们可以把数据加载到pandas数据库`df`中，也可以供本地磁盘加载。 我们把缺失值替换为空字符串，并把包含答案的`y`变量编码为1（重复问题）或0（非重复问题）：
+把数据加载到pandas数据库`df`中，也可以供本地磁盘加载。把缺失值替换为空字符串，并把包含答案的`y`变量编码为1（重复问题）或0（非重复问题）：
 
 ```python
 try:
@@ -5334,12 +5334,11 @@ df = df.fillna('') y = df.is_duplicate.values
 y = y.astype('float32').reshape(-1, 1)
 ```
 
+现在继续构建深度神经网络。
 
-现在我们可以继续构建深度神经网络。
+### 8.8 深度神经网络之前的处理
 
-### 深度神经网络之前的处理
-
-给神经网络输入数据之前，我们必须对数据进行切分，并转化为序列。因此，我们使用Keras的`Tokenizer`函数，并设置词语的最多数量为200,000 ，序列最长为40。任何多于40个词语的句子都会被切开保留前40个词语：
+给神经网络输入数据之前，必须对数据进行切分，并转化为序列。因此，使用Keras的`Tokenizer`函数，并设置词语的最多数量为200000，序列最长为40。任何多于40个词语的句子都会被切开保留前40个词语：
 
 ```python
 Tokenizer = tf.keras.preprocessing.text.Tokenizer 
@@ -5361,7 +5360,7 @@ word_index = tk.word_index
 
 `word_index`是一个词典，包含所有被切出的词语及其所对应的索引，以便跟踪切词器的运行效果。
 
-使用GloVe词嵌入算法的时候，我们必须加载到内存中，和之前获取Word2vec词嵌入方法类似。
+使用GloVe词嵌入算法的时候，必须加载到内存中，和之前获取Word2vec词嵌入方法类似。
 
 GloVe词嵌入模型可以通过shell命令方便的获取：
 
@@ -5373,9 +5372,9 @@ GloVe词嵌入算法与Word2vec算法类似，都可以根据词语共现把词�
 
 GloVe并不是从试图通过背景词来预测中心词语的神经网络优化中得来的，但是Word2vec却是。GloVe来自于经过降维（例如在准备数据中提到的SVD矩阵分解）的词语共现计数矩阵（矩阵记录了每一行的一个词语与每一列的一个词语共同出现了几次）。
 
-> 那么我们为什么使用GloVe，而不用Word2vec？事实上，二者的最大区别是GloVe词嵌入在某些问题上效果更好，而Word2vec词嵌入在其他问题上表现更好。在我们的项目中，经过试验发现GloVe词嵌入与深度学习结合效果更好。读者可以通过斯坦福大学的官方网页了解更多GloVe的信息和使用：https://nlp.stanford.edu/projects/glove/。
+> 那么为什么使用GloVe，而不用Word2vec？事实上，二者的最大区别是GloVe词嵌入在某些问题上效果更好，而Word2vec词嵌入在其他问题上表现更好。在本书的项目中，经过试验发现GloVe词嵌入与深度学习结合效果更好。读者可以通过斯坦福大学的官方网页了解更多GloVe的信息和使用：https://nlp.stanford.edu/projects/glove/。
 
-理解GloVe词嵌入后，我们可以创建`embedding_matrix`。 `embedding_matrix`来自GloVe文件的词嵌入向量（每一个向量300维）。
+理解GloVe词嵌入后，创建`embedding_matrix`。`embedding_matrix`来自GloVe文件的词嵌入向量（每一个向量300维）。
 
 下面的代码读入词向量文件，并存储在词嵌入矩阵中。这个矩阵最终会包含所有切分的词语，以及对应的向量：
 
@@ -5401,15 +5400,15 @@ glove_zip.close()
 
 首先创建空值`embedding_matrix`，然后每一个行向量准确对应矩阵的具体行数。词语和行之间的这种对应已经在切词器的编码过程中定义好，现在可以通过`word_index`词典调用。 
 
-`embedding_matrix`完成词嵌入加载后，我们就可以开始构建深度学习模型了。
+`embedding_matrix`完成词嵌入加载后，就可以开始构建深度学习模型了。
 
-### 深度神经网络搭建模块
+### 8.9 深度神经网络搭建模块
 
-在这一节中，我们会给出深度学习的关键函数。首先，我们会进行批输入（提供数据分块进行深度神经网络学习），然后准备复杂的LSTM结构的构建模块。
+这一节会给出深度学习的关键函数。首先，进行批输入（提供数据分块进行深度神经网络学习），然后准备复杂的LSTM结构的构建模块。
 
-> LSTM的结构在第7章中，长短期记忆网络——LSTM入门一节中给出。
+> LSTM的结构在第7章中，长短期记忆神经网络——LSTM入门一节中给出。
 
-我们用的第一个函数是`prepare_batches`。这个函数接收问题序列，并根据`step`值（批的多少）返回问题列表的列，其中里边的列是要学习的成批序列：
+第一个函数是`prepare_batches`。这个函数接收问题序列，并根据`step`值（批的多少）返回问题列表的列，其中里边的列是要学习的成批序列：
 
 ```python
 def prepare_batches(seq, step):    
@@ -5420,38 +5419,38 @@ def prepare_batches(seq, step):
     return res
 ```
 
-`dense`函数会根据提供的规模创建一个全连接的神经网络层，并用均值为0，标准差为2的平方根除以输入的特征数，的随机正态分布数字进行激活和初始化。
+`dense`函数会根据提供的规模创建一个全连接的神经网络层，并用均值为0，标准差为2的平方根除以输入的特征数的随机正态分布数字进行激活和初始化。
 
 一个恰当的初始化可以帮助输入的导数后向传播到较深的网络。事实上：
 
 - 如果给网络的初始化权重太小，导数会随着传播逐渐衰减，直到变得很微弱而无法触动激活函数。
 - 如果给网络的初始化权重太大，导数会随着传播逐渐增大（即所谓的梯度爆炸）。网络就不会收敛到一个合适的解，并且会因为处理的数值过大而中断。
 
-初始化过程要确保权重通过合理的设置而支持导数可以传播到很多层。深度学习中有许多初始化的过程，例如Glorot和Bengio的Xavier（其实，Xavier也是Glorot的姓）方法，以及He，Rang，Zhen和Sun在二人工作上提出的另一种方法，通常叫做He方法。
+初始化过程要确保权重通过合理的设置而且支持导数可以传播到很多层。深度学习中有许多初始化的过程，例如Glorot和Bengio的Xavier（其实，Xavier也是Glorot的姓）方法，以及He，Rang，Zhen和Sun在二人工作上提出的另一种方法，通常叫做He方法。
 
-> 权重初始化是神经网络架构中一个非常技术性的操作，也是很相关的一环。如果读者想要了解更多，可以首先阅读这篇博客，它也涉及到一些更加数学的解释：http://deepdish.io/2015/02/24/network-initialization/ 。
+> 权重初始化是神经网络架构中一个非常技术性的操作，也是很相关的一环。如果读者想要了解更多，可以首先阅读这篇博客。它也涉及到一些更加数学的解释：http://deepdish.io/2015/02/24/network-initialization/。
 
-在这个项目中，我们倾向于使用He方法初始化，因为它对整流单元的效果很好。整流单元，即ReLu，是深度学习的动力源，因为它支持梯度信号传播的同时可以避免梯度散失和梯度爆炸问题。从实际角度讲，用ReLu激活的神经元在大多说情况下抑制了零值。保证方差足够大进而有持续的输入和输出梯度通过每一层，就可以使得激活过程奏效，正如在下面的文章：HE, Kaiming,等人的《Delving deep into rectifiers: Surpassing human-level performance on imagenet classification》（收录于Proceedings of the IEEE international conference on computer vision. 2015. p. 1026-1034）所介绍的一样。这篇文章可以在 https://arxiv.org/abs/1502.01852上找到。
+这个项目倾向于使用He方法初始化，因为它对整流单元的效果很好。整流单元，即ReLu，是深度学习的动力源，因为它支持梯度信号传播的同时可以避免梯度散失和梯度爆炸问题。从实际角度讲，用ReLu激活的神经元在大多说情况下抑制了零值。保证方差足够大进而有持续的输入和输出梯度通过每一层，就可以使得激活过程奏效，正如在下面的文章：HE, Kaiming,等人的《Delving deep into rectifiers: Surpassing human-level performance on imagenet classification》（收录于Proceedings of the IEEE international conference on computer vision. 2015. p. 1026-1034）所介绍的一样。这篇文章可以在https://arxiv.org/abs/1502.01852上找到。
 
 ```python
 def dense(X, size, activation=None):
-he_std = np.sqrt(2 / int(X.shape[1]))     
-out = tf.layers.dense(X, units=size,           
+   he_std = np.sqrt(2 / int(X.shape[1]))     
+   out = tf.layers.dense(X, units=size,           
                       activation=activation,  
                       kernel_initializer=\ 
                       tf.random_normal_initializer(stddev=he_std))     
-return out
+   return out
 ```
 
-接下来，我们开始另一种神经网络层，时间分布的全连接层。
+接下来，开始另一种神经网络层，时间分布的全连接层。
 
 这种神经网络层用在递归神经网络中，保持输入和输出之间的一对一关系。带有标准全连接层的RNN结构（带有一定数量的细胞单元提供通道输出），接收行（样本）列（序列）矩阵，其结果矩阵的维度是行乘以通道（细胞单元）数量。如果使用时间分布的全连接层，它的输出维度会是行乘以列乘以通道数。事实上，一个全连接神经网络带有一个时间戳（对应每一列）。
 
-时间分布的全连接层经常用在诸如输入序列已知，并希望根据序列的出现，标记每一个输入的情形。这是一个标记任务的常见场景，例如多标签分类或者词性标注。在我们的项目中，我们会在GloVe词嵌入后使用时间分布的全连接层，以便处理每一个GloVe词向量随着问题序列中词语的出现而改变的现象。
+时间分布的全连接层经常用在诸如输入序列已知，并希望根据序列的出现，标记每一个输入的情形。这是一个标记任务的常见场景，例如多标签分类或者词性标注。本节项目会在GloVe词嵌入后使用时间分布的全连接层，以便处理每一个GloVe词向量随着问题序列中词语的出现而改变的现象。
 
-例如，假设有两个例子的序列（一对问题），每一个都有3个序列（词语），每一个序列都由4个元素（词嵌入）构成。如果我们有这样的数据集，并传给带有5个隐藏单元的时间分布全连接层，我们会得到大小为 (2, 3, 5)的张量。当输入通过时间分布全连接层时，每一个例子都保留了序列，但是词嵌入结果被5个隐藏单元替换掉了。继续把结果传给一个1轴上的维度约减过程，我们可以得到大小为 (2,5)的张量，这就是最终的向量。
+例如，假设有两个例子的序列（一对问题），每一个都有3个序列（词语），每一个序列都由4个元素（词嵌入）构成。如果我们有这样的数据集，并传给带有5个隐藏单元的时间分布全连接层，会得到大小为（2, 3, 5）的张量。当输入通过时间分布全连接层时，每一个例子都保留了序列，但是词嵌入结果被5个隐藏单元替换掉了。继续把结果传给一个1轴上的维度约减过程，可以得到大小为（2,5）的张量，这就是最终的向量。
 
-> 如果读者想重复之前的例子，如下：
+> 如果读者想重复之前的例子，代码如下：
 >
 > ```python
 > print("Tensor's shape:", X.shape)
@@ -5479,7 +5478,7 @@ def time_distributed_dense(X, dense_size):
 ```
 
 
-`conv1d`和`maxpool1d_globa`函数分别实现TensorFlow函数的封装：`tf.layers.conv1d`（https://www.tensorflow.org/api_docs/python/tf/layers/conv1d），它是一个卷积层；`tf.reduce_max` (https://www.tensorflow.org/api_docs/python/tf/reduce_max)，它计算输入张量所有维度上的最大值。在自然语言处理中，这种池化（也叫全局最大池化）比标准池化用的多，它也经常用在计算机视觉的深度学习实践中。 正如在交叉验证的问答中所提到的（https://stats.stackexchange.com/a/257325/49130），全局最大池化使用输入向量的最大值，然而标准池化根据池的大小返回由输入向量在不同池化下的最大值构成新向量：
+`conv1d`和`maxpool1d_global`函数分别实现TensorFlow函数的封装：`tf.layers.conv1d`（https://www.tensorflow.org/api_docs/python/tf/layers/conv1d），它是一个卷积层；`tf.reduce_max` （https://www.tensorflow.org/api_docs/python/tf/reduce_max），它计算输入张量所有维度上的最大值。在自然语言处理中，这种池化（也叫全局最大池化）比标准池化用的多。它也经常用在计算机视觉的深度学习实践中。 正如在交叉验证的问答中所提到的（https://stats.stackexchange.com/a/257325/49130），全局最大池化使用输入向量的最大值，然而标准池化根据池的大小返回由输入向量在不同池化下的最大值构成新向量：
 
 ```python
 def conv1d(inputs, num_filters, filter_size, padding='same'):     
@@ -5498,7 +5497,7 @@ def maxpool1d_global(X):
 
 核心函数`lstm`通过随机数生成器在每一次运行时都会被不同的初始化。而随机数生成器使用He初始化策略。`lstm`是TensorFlow中两个模块的封装：`tf.contrib.rnn.BasicLSTMCell`，对应基础的LSTM递归网络层（https://www.tensorflow.org/api_docs/python/tf/contrib/rnn/BasicLSTMCell），`tf.contrib.rnn.static_rnn`，负责创建由单元层刻画的递归神经网络（https://www.tensorflow.org/versions/r1.1/api_docs/python/tf/contrib/rnn/static_rnn）。
 
-> 基础的LSTM递归网络层实现基于以下文章：ZAREMBA，Wojciech；SUTSKEVER，Ilya；VINYALS，Oriol等人的《Recurrent neural network regularization》。 arXiv预印版arXiv:1409.2329, 2014，链接https://arxiv.org/abs/1409.2329。
+> 基础的LSTM递归网络层实现基于以下文章：ZAREMBA，Wojciech；SUTSKEVER，Ilya；VINYALS，Oriol等人的《Recurrent neural network regularization》。 arXiv预印版arXiv：1409.2329, 2014，链接是https://arxiv.org/abs/1409.2329。
 
 ```python
 def lstm(X, size_hidden, size_out):     
@@ -5518,12 +5517,11 @@ def lstm(X, size_hidden, size_out):
         return out
 ```
 
+现在已经有了所有必需的搭建模块，进而定义神经网路的架构以区分重复问题。
 
-现在，我们已经有了所有必需的搭建模块，进而定义神经网路的架构以区分重复问题。
+### 8.10 设计学习架构
 
-### 设计学习架构
-
-我们首先设置一些参数，例如GloVe词嵌入的特征数，滤波器的数量和长度，最大池化策略的长度和学习率：
+首先设置一些参数，例如GloVe词嵌入的特征数，滤波器的数量和长度，最大池化策略的长度和学习率：
 
 ```python
 max_features = 200000 
@@ -5539,11 +5537,11 @@ learning_rate = 0.001
 
 ![](figures\205_1.png)
 
-第一类输入包含一个有Glove算法初始化的词嵌入层，以及后续的时间分布全连接层。第二类输入包含1D卷积神经网络和GloVe模型词嵌入层。第三类输入是一个基于词嵌入的LSTM模型。其他三类输入与上述三个的模式相同，只不过是对应第二个问题。 
+第一类输入包含一个有GloVe算法初始化的词嵌入层，以及后续的时间分布全连接层。第二类输入包含1D卷积神经网络和GloVe模型词嵌入层。第三类输入是一个基于词嵌入的LSTM模型。其他三类输入与上述三个的模式相同，只不过是对应第二个问题。 
 
-我们首先定义了6个模型，然后把6种模型拼接起来。最终，6个模型拼接成1个，即来自6个模型的向量水平堆叠在一起。
+首先定义了6个模型，然后把6种模型拼接起来。最终，6个模型拼接成1个，即来自6个模型的向量水平堆叠在一起。
 
-尽管下面的代码很长，但是不难理解。每一步都从3个输入占位符开始：`place_q1`， `place_q2`和`place_y`，它们负责给所有6个模型传入第一个问题，第二个问题和目标响应。这些问题都通过GloVe（`q1_glove_lookup`和`q2_glove_lookup` ）以及随机均匀策略进行词嵌入。两种词嵌入都是300维。 
+尽管下面的代码很长，但是不难理解。每一步都从3个输入占位符开始：`place_q1`， `place_q2`和`place_y`，它们负责给所有6个模型传入第一个问题，第二个问题和目标响应。这些问题都通过GloVe（`q1_glove_lookup`和`q2_glove_lookup`）以及随机均匀策略进行词嵌入。两种词嵌入都是300维。 
 
 前两个模型`model_1`和`model_2`，获取GloVe词嵌入结果，并使用时间分布全连接层。
 
@@ -5613,7 +5611,7 @@ with graph.as_default():
 ```
 
 
-然后，我们添加5个带有dropout和批归一化的全连接层，完成整个架构。最后是一个带有sigmoid函数的输出层。整个模型使用基于对数损失的`AdamOptimizer`进行优化：
+然后，添加5个带有dropout和批归一化的全连接层，完成整个架构。最后是一个带有sigmoid函数的输出层。整个模型使用基于对数损失的`AdamOptimizer`进行优化：
     
 
 ```python
@@ -5638,7 +5636,7 @@ session.run(init)
 ```
 
 
-定义好架构后，我们初始化会话，并准备学习。一个好的习惯是，我们把可用数据分成训练集（9/10）和测试集（1/10）。设置随机种子可以支持重现结果：
+定义好架构后，初始化会话，准备学习。一个好的习惯是把可用数据分成训练集（9/10）和测试集（1/10）。设置随机种子可以支持重现结果：
 
 ```python
 np.random.seed(1)
@@ -5702,7 +5700,7 @@ for i in range(no_epochs):
 
 经过10轮训练，模型给出了82.5%的准确率。这比之前的基准表现提高了不少。当然，模型还可以通过更好的预处理和切词进一步提升效果。多训练几轮（至200轮）也可以提升准确率。词干提取和词形还原也可以把效果提升到88%，这也是Quora博客中提到的当前最好的效果。
 
-训练完成后，我们可以使用内存会话测试一些问题的评估。我们使用两个重复问题，但是该过程对于任何一对问题都是有效的。
+训练完成后，使用内存会话测试一些问题的评估。我们使用两个重复问题，但是该过程对于任何一对问题都是有效的。
 
 > 对于许多机器学习算法，其依赖于训练集上的数据分布，而真实问题的分布可能和训练集上的分布完全不同，这样使得算法预测变得更加困难。
 
@@ -5728,11 +5726,11 @@ print("Answer: %0.2f" % isduplicated(a, b))
 ```
 
 
-运行上面的代码，结果会给出，这是重复问题（answer : 1.0)。
+运行上面的代码，结果会给出：这是重复问题（answer : 1.0)。
 
-### 小结
+### 8.11 小结
 
-在这一章里，我们通过TensorFlow构建了一个深度神经网络，以便监测Quora数据集上的重复问题。这个项目带着我们讨论，修改，实操了之前章节中学到的各个操作：TF-IDF，SVD，经典机器学习算法，Word2vec和GloVe词嵌入和LSTM模型。
+这一章通过TensorFlow构建了一个深度神经网络，以便监测Quora数据集上的重复问题。这个项目讨论，修改，实操了之前章节中学到的各个操作：TF-IDF，SVD，经典机器学习算法，Word2vec和GloVe词嵌入和LSTM模型。
 
 最后，我们得到了一个准确率在82.5%的模型，这比传统的机器学习方法要好，也很接近当前Quora博客中报出的最好结果。
 
