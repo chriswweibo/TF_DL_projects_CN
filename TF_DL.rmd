@@ -2827,20 +2827,20 @@ Amazon EC2并不是唯一的云服务。我们之所以向推荐这个服务，�
 
 > 注意：此项目只是一个实验，只适用于已有的简单数据，无法保证真实场景中能有相同的性能。所以，请不要在真实场景中使用。请记住，投资有风险，本章无法保证读者一定会盈利。
 
-### 输入数据集 – 余弦曲线数据和股票价格
+### 5.1 输入数据集 – 余弦曲线数据和股票价格
 
 如上所述，本节会使用两组一维的信号数据作为时间序列进行实验。第一个数据是加入了均匀噪声的余弦信号。
 
 下面的函数用于生成余弦信号。函数的参数包括需要生成的数据的个数、信号频率，以及噪声强度。为保证实验可复现，函数体中设置了随机数种子:
 
 ```python
-  def fetch_cosine_values(seq_len, frequency=0.01, noise=0.1):
+def fetch_cosine_values(seq_len, frequency=0.01, noise=0.1):
 	  np.random.seed(101)
 	  x = np.arange(0.0, seq_len, 1.0)
 	  return np.cos(2 * np.pi * frequency * x) + np.random.uniform(low=-noise, high=noise, size=seq_len)
 ```
 
-输出10个数据点，振幅为0.1的余弦信号，并加入[-0.1,0.1)的随机噪声，运行： 
+输出10个数据点，振幅为0.1的余弦信号，并加入`[-0.1,0.1)`的随机噪声，运行： 
 
 ```python
   print(fetch_cosine_values(10, frequency=0.1))
@@ -2849,12 +2849,12 @@ Amazon EC2并不是唯一的云服务。我们之所以向推荐这个服务，�
 输出为：
 
 ```python
-	[ 1.00327973 0.82315051 0.21471184 -0.37471266 -0.7719616 -0.93322063 -0.84762375 -0.23029438 0.35332577 0.74700479]
+[1.00327973 0.82315051 0.21471184 -0.37471266 -0.7719616 -0.93322063 -0.84762375 -0.23029438 0.35332577 0.74700479]
 ```
 
 时间序列的每个点都可代表当天股票价格，是一维特征。本节会用这些数据作为股票价格。
 
-第二个信号数据来源于真实的金融市场。金融数据很珍贵、不易获取，所以本节用Python库`quandl`来获取这些数据。`quandl`易用、便宜（每天可免费查询固定次数），且非常适用于本章的任务（预测股票收盘价格）。如果读者从事的是自动交易，则需要更多的数据来支持，例如从此库的更高版本中获取数据，或利用一些其他的库或数据源。
+第二个信号数据来源于真实的金融市场。金融数据很珍贵、不易获取，所以本节用Python库`quandl`来获取这些数据。`quandl`易用、便宜（每天可免费查询固定次数），并且非常适用于本章的任务（预测股票收盘价格）。如果读者从事的是自动交易，则需要更多的数据来支持，例如从此库的更高版本中获取数据，或利用一些其他的库或数据源。
 Quandl是个API, Python库是API的包装器。读者可以在提示符中执行以下命令来查看返回的结果：
 
 ```
@@ -2872,28 +2872,28 @@ High,Adj. Low,Adj. Close,Adj. Volume
 ...
 ```
 
-这是CSV格式，每一行包含日期、开盘价、最高价、最低价、收盘价、调整价格、以及一些成交量指标，并按照日期由近到远排序。 由于本节需要的是调整后的收盘价，故只需要获取`Adj. Close`这一列。
+这是CSV格式，每一行包含日期、开盘价、最高价、最低价、收盘价、调整价格、以及一些成交量指标，并按照日期由近到远排序。由于本节需要的是调整后的收盘价，故只需要获取`Adj. Close`这一列。
 
 > 调整后的收盘价指的是经过股息、分割、合并等调整后的收盘价格。
 
 读者需要注意，许多在线服务提供的是未经调整的价格或直接给出的开盘价，所以其提供的数据可能会与Quandl提供的不一致。
 
-有了这些数据，需要构建一个Python函数，用Python API提取调整后的价格。本章只需要调用`quandl.get`函数，完整文档可在`https://docs.quandl.com/v1.0/docs`中 查看。注意，默认是升序排序，即价格是按照时间从远到近排序的。
+有了这些数据，需要构建一个Python函数，用Python API提取调整后的价格。本章只需要调用`quandl.get`函数，完整文档可在https://docs.quandl.com/v1.0/docs中查看。注意，默认是升序排序，即价格是按照时间从远到近排序的。
 
 这里所需函数应该能够进行缓存调用，并可以指定初始时间戳和截止时间戳，以及股票代号，以获取所需数据。代码如下:
 
 ```python
-  def date_obj_to_str(date_obj):
+def date_obj_to_str(date_obj):
 	  return date_obj.strftime('%Y-%m-%d')
-  def save_pickle(something, path):
+def save_pickle(something, path):
 	  if not os.path.exists(os.path.dirname(path)):
 		  os.makedirs(os.path.dirname(path))
 	  with open(path, 'wb') as fh:
 		  pickle.dump(something, fh, pickle.DEFAULT_PROTOCOL)
-  def load_pickle(path):
+def load_pickle(path):
 	  with open(path, 'rb') as fh:
 	  return pickle.load(fh)
-  def fetch_stock_price(symbol,from_date,to_date, cache_path="./tmp/prices/"):
+def fetch_stock_price(symbol,from_date,to_date, cache_path="./tmp/prices/"):
 	  assert(from_date <= to_date)
 	  filename = "{}_{}_{}.pk".format(symbol, str(from_date), str(to_date))
 	  price_filepath = os.path.join(cache_path, filename)
@@ -2915,27 +2915,27 @@ High,Adj. Low,Adj. Close,Adj. Volume
 下面的代码用于打印1月份Google的股票价格（股票代码为“GOOG”）：
 
 ```python
-  import datetime
-  print(fetch_stock_price("GOOG",
-						datetime.date(2017, 1, 1),
-						datetime.date(2017, 1, 31)))
+import datetime
+print(fetch_stock_price("GOOG",
+					datetime.date(2017, 1, 1),
+					datetime.date(2017, 1, 31)))
 ```
 
 输出为:
-```
-	[786.14, 786.9, 794.02, 806.15, 806.65, 804.79, 807.91, 806.36, 807.88, 804.61, 806.07, 802.175, 805.02, 819.31, 823.87, 835.67, 832.15, 823.31, 802.32, 796.79]
+```python
+[786.14, 786.9, 794.02, 806.15, 806.65, 804.79, 807.91, 806.36, 807.88, 804.61, 806.07, 802.175, 805.02, 819.31, 823.87, 835.67, 832.15, 823.31, 802.32, 796.79]
 ```
 
-为了让所有脚本都可以调用上述函数，建议读者把这些函数都写进一个Python文件中。例如，本书的代码都写在`tool.py`文件中。
+为了让所有脚本都可以调用上述函数，建议读者把这些函数都写进一个Python文件中。例如，本书的代码都写在`tools.py`文件中。
 
-### 数据集格式化
+### 5.2 数据集格式化
 
 经典的机器学习算法一般用预设好大小的数据做训练（即每条数据的特征数是固定的）。但是，用时间序列数据做训练和预测时无法预先定义时间长度，因为无法让模型既能作用在10天以来的数据上，又能作用在3年以来的数据上。
 
 很简单，本章在保持特征维度大小不变的情况下，改变观测的数目。每个观测值都代表了时间序列上的一个时间窗口， 向右滑动一格就可以创建一个新的观测值。代码如下：
 
 ```python
-  def format_dataset(values, temporal_features):
+def format_dataset(values, temporal_features):
 	  feat_splits = [values[i:i + temporal_features] for i in range(len(values) - temporal_features)]
 	  feats = np.vstack(feat_splits)
 	  labels = np.array(values[temporal_features:])
@@ -2946,21 +2946,20 @@ High,Adj. Low,Adj. Close,Adj. Volume
 
 建议读者将此函数写入`tools.py`文件中，以便后续使用。
 
-以下代码绘制出了余弦开始的两个摆动。本节将此代码保存在了一个名为`1_visualization_data.py的`Python脚本中:
+以下代码绘制出了余弦开始的两个摆动。本节将此代码保存在了一个名为`1_visualization_data.py`的Python脚本中:
 
 ```python
-  import datetime
-  import matplotlib.pyplot as plt
-  import numpy as np import seaborn
-  from tools import fetch_cosine_values, fetch_stock_price, format_dataset
-  np.set_printoptions(precision=2)
-
-  cos_values = fetch_cosine_values(20, frequency=0.1)
-  seaborn.tsplot(cos_values)
-  plt.xlabel("Days since start of the experiment")
-  plt.ylabel("Value of the cosine function")
-  plt.title("Cosine time series over time")
-  plt.show()
+import datetime
+import matplotlib.pyplot as plt
+import numpy as np import seaborn
+from tools import fetch_cosine_values, fetch_stock_price, format_dataset
+np.set_printoptions(precision=2)
+cos_values = fetch_cosine_values(20, frequency=0.1)
+seaborn.tsplot(cos_values)
+plt.xlabel("Days since start of the experiment")
+plt.ylabel("Value of the cosine function")
+plt.title("Cosine time series over time")
+plt.show()
 ```
 
 代码很简单，引入几个包后，便绘制出周期为10（频率为0.01）、20个点的余弦时间序列:
@@ -2970,10 +2969,10 @@ High,Adj. Low,Adj. Close,Adj. Volume
 为了让时间序列数据可作为机器学习算法的输入，需要将其格式化。以下代码将时间序列数据处理成五列的观测矩阵:
 
 ```python
-  features_size = 5
-  minibatch_cos_X, minibatch_cos_y =format_dataset(cos_values,features_size)
-  print("minibatch_cos_X.shape=", minibatch_cos_X.shape)
-  print("minibatch_cos_y.shape=", minibatch_cos_y.shape)
+features_size = 5
+minibatch_cos_X, minibatch_cos_y =format_dataset(cos_values,features_size)
+print("minibatch_cos_X.shape=", minibatch_cos_X.shape)
+print("minibatch_cos_y.shape=", minibatch_cos_y.shape)
 ```
 
 输入是20个点的时间序列，输出是一个15x5的观测矩阵和长度为15的标签向量。当然，如果改变特征大小，观测矩阵的行数也会发生改变。
@@ -2981,9 +2980,9 @@ High,Adj. Low,Adj. Close,Adj. Volume
 为了便于读者理解，在这里对上述操作进行可视化展示。例如，把观测矩阵的前5个观测序列及其对应的标签（红色标记）在图中画出：
 
 ```python
-  samples_to_plot = 5
-  f, axarr = plt.subplots(samples_to_plot, sharex=True)
-  for i in range(samples_to_plot):
+samples_to_plot = 5
+f, axarr = plt.subplots(samples_to_plot, sharex=True)
+for i in range(samples_to_plot):
 	  feats = minibatch_cos_X[i, :]
 	  label = minibatch_cos_y[i]
 	  print("Observation {}: X={} y={}".format(i, feats, label))
@@ -2991,10 +2990,10 @@ High,Adj. Low,Adj. Close,Adj. Volume
 	  axarr[i].plot(range(i, features_size + i), feats, '--o')
 	  axarr[i].plot([features_size + i], label, 'rx')
 	  axarr[i].set_ylim([-1.1, 1.1])
-  plt.xlabel("Days since start of the experiment")
-  axarr[2].set_ylabel("Value of the cosine function")
-  axarr[0].set_title("Visualization of some observations: Features (blue) and Labels (red)")
-  plt.show()
+plt.xlabel("Days since start of the experiment")
+axarr[2].set_ylabel("Value of the cosine function")
+axarr[0].set_title("Visualization of some observations: Features (blue) and Labels (red)")
+plt.show()
 ```
 
 画出的图如下所示：
@@ -3002,21 +3001,21 @@ High,Adj. Low,Adj. Close,Adj. Volume
 
 从图中可以看出，时间序列数据已被转化为观测向量，每个向量的长度是5。
 
-接下来为读者展示将股票价格输出为时间序列时的可视化结果。首先，本节挑选了一些美国著名的公司来查看它们过去一年的股票价格走势（读者也可自行选择喜欢的公司）。下图只展示了2015和2016年的股票价格走势。由于后续也会使用到这些数据，所以需要将其缓存下来：
+接下来为读者展示将股票价格输出为时间序列时的可视化结果。首先，本节挑选了一些著名的美国公司来查看它们过去一年的股票价格走势（读者也可自行选择喜欢的公司）。下图只展示了2015和2016年的股票价格走势。由于后续也会使用到这些数据，所以需要将其缓存下来：
 
 ```python
-  symbols = ["MSFT", "KO", "AAL", "MMM", "AXP", "GE", "GM", "JPM", "UPS"]
-  ax = plt.subplot(1,1,1)
-  for sym in symbols:
+symbols = ["MSFT", "KO", "AAL", "MMM", "AXP", "GE", "GM", "JPM", "UPS"]
+ax = plt.subplot(1,1,1)
+for sym in symbols:
 	  prices = fetch_stock_price(
 	  sym, datetime.date(2015, 1, 1), datetime.date(2016, 12, 31))
 	  ax.plot(range(len(prices)), prices, label=sym)
-  handles, labels = ax.get_legend_handles_labels()
-  ax.legend(handles, labels)
-  plt.xlabel("Trading days since 2015-1-1")
-  plt.ylabel("Stock price [$]")
-  plt.title("Prices of some American stocks in trading days of 2015 and  2016")
-  plt.show()
+handles, labels = ax.get_legend_handles_labels()
+ax.legend(handles, labels)
+plt.xlabel("Trading days since 2015-1-1")
+plt.ylabel("Stock price [$]")
+plt.title("Prices of some American stocks in trading days of 2015 and  2016")
+plt.show()
 ```
 
 价格走势图如下所示:
@@ -3026,26 +3025,26 @@ High,Adj. Low,Adj. Close,Adj. Volume
 
 这样简单的处理后，数据就准备好了，接下来可以开始进行模型部分的实操了。
 
-### 用回归模型来预测未来的股票价格
+### 5.3 用回归模型来预测未来的股票价格
 
 准备好了观测矩阵和实值标签，本节先将这个问题看作回归问题。回归问题其实很简单：给定一个数值类型向量，预测一个数值类型的值。把这个问题当做回归问题，理想情况下，需要使得算法认为特征间相互独立。如果不做强制，那么，从同一个时间序列中通过滑动窗口得到的特征将被认为相互依赖。本节先从特征相互独立这个简单的假设开始，下节会展示如何利用时间的相关性来提高性能。
 
-为了评估模型，本节构建了一个函数，输入为观测矩阵、实际的标签，以及预测的标签，输出为评估指标：均方误差**mean square error，MSE）**和平均绝对误差**mean absolute error，MAE）**。函数同时将训练、测试、预测性能在同一张图中画出，以便读者能直观地观测到模型的性能。另外，本节设置了一个基准：即简单地将最后一天的价格作为预测价格，与模型预测给出的结果作比较。
+为了评估模型，本节构建了一个函数，输入为观测矩阵、实际的标签，以及预测的标签，输出为评估指标：**均方误差（mean square error，MSE）**和**平均绝对误差（mean absolute error，MAE）**。函数同时将训练、测试、预测性能在同一张图中画出，以便读者能直观地观测到模型的性能。另外，本节设置了一个基准：即简单地将最后一天的价格作为预测价格，与模型预测给出的结果作比较。
 
-另外，本节仍然需要一个辅助函数来将矩阵转化为一维数组。由于后续还要在多个脚本中使用此辅助函数，所以将此函数写在`tool.py`中。
+另外，本节仍然需要一个辅助函数来将矩阵转化为一维数组。由于后续还要在多个脚本中使用此辅助函数，所以将此函数写在`tools.py`中。
 
 ```python
-  def matrix_to_array(m):
+def matrix_to_array(m):
 	  return np.asarray(m).reshape(-1)
 ```
 
 然后，定义评估函数。评估函数写进`evaluate_ts.py`文件中，以便其他脚本调用：
 
 ```python
-  import numpy as np
-  from matplotlib import pylab as plt 
-  from tools import matrix_to_array
-  def evaluate_ts(features, y_true, y_pred):
+import numpy as np
+from matplotlib import pylab as plt 
+from tools import matrix_to_array
+def evaluate_ts(features, y_true, y_pred):
 	  print("Evaluation of the predictions:")
 	  print("MSE:", np.mean(np.square(y_true - y_pred)))
 	  print("mae:", np.mean(np.abs(y_true - y_pred)))
@@ -3080,49 +3079,49 @@ High,Adj. Low,Adj. Close,Adj. Volume
 首先，引入一些包，并为`numpy`和`tensorflow`设置一下随机数种子。
 
 ```python
-  import matplotlib.pyplot as plt
-  import numpy as np import tensorflow as tf
-  from evaluate_ts import evaluate_ts
-  from tensorflow.contrib import rnn
-  from tools import fetch_cosine_values, format_dataset
+import matplotlib.pyplot as plt
+import numpy as np import tensorflow as tf
+from evaluate_ts import evaluate_ts
+from tensorflow.contrib import rnn
+from tools import fetch_cosine_values, format_dataset
 
-  tf.reset_default_graph()
-  tf.set_random_seed(101)
+tf.reset_default_graph()
+tf.set_random_seed(101)
 ```
 
 接下来，构建余弦信号，并将其转换成一个观测矩阵。本例将特征大小设置为20（这个数大约相当于一个月的工作日天数）。此时，此回归问题可描述为：给定余弦曲线上20个点，预测下一个点的值。
 本节分别用250条观测数据作为训练集和测试集，这个数字基本等于一年可获取的数据量（一年的工作日天数小于250天）。本例会生成一个余弦信号曲线，并将此曲线分成两部分：前半部分用于训练，后半部分用于测试。读者可以按照自己的需求重新进行划分，并观测以下参数变化时，模型性能的变化：
 
 ```python
-  feat_dimension = 20
-  train_size = 250
-  test_size = 250
+feat_dimension = 20
+train_size = 250
+test_size = 250
 ```
 
-1. 这个脚本会定义一些Tensorflow所需要的参数。具体为以下参数：学习率、优化器类型、`epoch`数（训练时使用全部训练样本训练的轮数）。这些值并不是最优组合，读者可自行调整以提高模型性能:
+1. 这个脚本会定义一些Tensorflow所需要的参数。具体为以下参数：学习率、优化器类型、迭代轮数（训练时使用全部训练样本训练的轮数）。这些值并不是最优组合，读者可自行调整以提高模型性能:
 
 ```python
-  learning_rate = 0.01
-  optimizer = tf.train.AdamOptimizer
-  n_epochs = 10
+learning_rate = 0.01
+optimizer = tf.train.AdamOptimizer
+n_epochs = 10
 ```
 
 2. 接下来是为训练和测试来准备观测矩阵。注意，在训练和测试中会使用`float32`（4个字节长度）以加速Tensorflow。
 
 ```python
-  cos_values = fetch_cosine_values(train_size + test_size + feat_dimension)
-  minibatch_cos_X, minibatch_cos_y = format_dataset(cos_values,feat_dimension)
-  train_X = minibatch_cos_X[:train_size, :].astype(np.float32)
-  train_y = minibatch_cos_y[:train_size].reshape((-1,1)).astype(np.float32)
-  test_X = minibatch_cos_X[train_size:, :].astype(np.float32)
-  test_y = minibatch_cos_y[train_size:].reshape((-1, 1)).astype(np.float32)
+cos_values = fetch_cosine_values(train_size + test_size + feat_dimension)
+minibatch_cos_X, minibatch_cos_y = format_dataset(cos_values,feat_dimension)
+train_X = minibatch_cos_X[:train_size, :].astype(np.float32)
+train_y = minibatch_cos_y[:train_size].reshape((-1,1)).astype(np.float32)
+test_X = minibatch_cos_X[train_size:, :].astype(np.float32)
+test_y = minibatch_cos_y[train_size:].reshape((-1, 1)).astype(np.float32)
 ```
 
 有了这些数据，就可以为观测矩阵和标签设置占位符。由于这只是一个通用的脚本，所以不设置样本集数据量，仅设置特征数：
 
 ```python
-  X_tf = tf.placeholder("float", shape=(None, feat_dimension), name="X")
-  y_tf = tf.placeholder("float", shape=(None, 1), name="y")
+X_tf = tf.placeholder("float", shape=(None, feat_dimension), name="X")
+y_tf = tf.placeholder("float", shape=(None, 1), name="y")
 ```
 
 下面是本项目的代码：回归算法在Tensorflow中的实现。
@@ -3141,38 +3140,39 @@ def regression_ANN(x, weights, biases):
 同样的，读者可以更改初始化方式，来调整模型性能：
 
 ```python
-  weights = tf.Variable(tf.truncated_normal([feat_dimension, 1], mean=0.0, stddev=1.0), name="weights")
-  biases = tf.Variable(tf.zeros([1, 1]), name="bias")
+weights = tf.Variable(tf.truncated_normal([feat_dimension, 1], mean=0.0, stddev=1.0), name="weights")
+biases = tf.Variable(tf.zeros([1, 1]), name="bias")
 ```
 
 3. 最后，本节展示如何在`tensorflow`中计算预测结果（本例较简单，模型的输出就是预测结果）、误差（本例使用MSE），以及如何进行模型训练（利用之前设置的优化器和学习率来最小化MSE）：
 
 ```python
-  y_pred = regression_ANN(X_tf, weights, biases)
-  cost = tf.reduce_mean(tf.square(y_tf - y_pred))
-  train_op = optimizer(learning_rate).minimize(cost)
+y_pred = regression_ANN(X_tf, weights, biases)
+cost = tf.reduce_mean(tf.square(y_tf - y_pred))
+train_op = optimizer(learning_rate).minimize(cost)
 ```
 
-接下来进入`tensorflow`部分，来介绍如何训练模型。
+接下来进入`tensorflow`部分，介绍如何训练模型。
 
 4. 首先进行变量初始化。然后，写一个循环，把训练集喂给`tensorflow`（用占位符）。每轮迭代后，输出训练集上的MSE:
 
 ```python
-  with tf.Session() as sess:
+with tf.Session() as sess:
 	  sess.run(tf.global_variables_initializer())
-	#在每个epoch中，模型会使用所有的训练数据进行训练
-	  for i in range(n_epochs):
-		  train_cost, _ = sess.run([cost, train_op], feed_dict={X_tf: train_X, y_tf: train_y})
-		  print("Training iteration", i, "MSE", train_cost)
+	# For each epoch, the whole training set is feeded into the tensorflow graph
+
+for i in range(n_epochs):
+		train_cost, _ = sess.run([cost, train_op], feed_dict={X_tf: train_X, y_tf: train_y})
+		print("Training iteration", i, "MSE", train_cost)
 	
-	# 训练完毕后，需要检查一下模型目前在测试集上的表现
+	# After the training, let's check the performance on the test set
 	  test_cost, y_pr = sess.run([cost, y_pred], feed_dict={X_tf: test_X, y_tf: test_y})
 	  print("Test dataset:", test_cost)
    
-	#评估结果
+	# Evaluate the results
 	  evaluate_ts(test_X, test_y, y_pr)
 	
-	#画出预测结果
+	# How does the predicted look like?
 	  plt.plot(range(len(cos_values)), cos_values, 'b')
 	  plt.plot(range(len(cos_values)-test_size, len(cos_values)), y_pr, 'r--')
 	  plt.xlabel("Days")
@@ -3183,7 +3183,7 @@ def regression_ANN(x, weights, biases):
 
 训练完毕后，可以看到测试集上MSE评估结果。另外，本节还为读者展示模型的性能。
 
-直接用脚本中设置的默认值来训练模型，其效果不如非建模方式的效果。随着迭代次数的增加，即各个参数的调整，效果也在提升。例如，设置学习率为0.1，训练的轮数设置为1000，脚本的输出会接近以下结果：
+直接用脚本中设置的默认值来训练模型，其效果不如非建模方式。随着迭代次数的增加，即各个参数的调整，效果也在提升。例如，设置学习率为0.1，训练的轮数设置为1000，脚本的输出会接近以下结果：
 
 ```
   Training iteration 0 MSE 4.39424
@@ -3214,33 +3214,33 @@ def regression_ANN(x, weights, biases):
 
 接下来，本章在股票价格上使用同样的模型。建议读者把下面的代码保存到一个新文件中，并命名为`3_regression_stock_price.py`。这里只需要改变导入的包名，其余的不用改动。
 
-下例用的是微软股票价格，其股票代码是“`MSFT`”。本章开头的函数，可以轻松获取微软2015年和2016年的股票价格，并把价格数据格式化为观测矩阵。下面代码仍包含float32数据类型转换和训练集/测试集划分。本例应用2015年的数据进行训练，来预测2016年的股票价格：
+下例用的是微软股票价格，其股票代码是“`MSFT`”。本章开头的函数，可以轻松获取微软2015年和2016年的股票价格，并把价格数据格式化为观测矩阵。下面代码仍包含`float32`数据类型转换和训练集/测试集划分。本例应用2015年的数据进行训练，来预测2016年的股票价格：
 
 ```python
-  symbol = "MSFT" feat_dimension = 20
-  train_size = 252
-  test_size = 252 - feat_dimension
+symbol = "MSFT" feat_dimension = 20
+train_size = 252
+test_size = 252 - feat_dimension
 
-  # Settings for tensorflow
-  learning_rate = 0.05
-  optimizer = tf.train.AdamOptimizer
-  n_epochs = 1000
+# Settings for tensorflow
+learning_rate = 0.05
+optimizer = tf.train.AdamOptimizer
+n_epochs = 1000
 	
-  # Fetch the values, and prepare the train/test split
-  stock_values = fetch_stock_price(symbol, datetime.date(2015, 1, 1), datetime.date(2016, 12, 31))
-  minibatch_cos_X, minibatch_cos_y = format_dataset(stock_values, feat_dimension)
-  train_X = minibatch_cos_X[:train_size, :].astype(np.float32)
-  train_y = minibatch_cos_y[:train_size].reshape((-1, 1)).astype(np.float32)
-  test_X = minibatch_cos_X[train_size:, :].astype(np.float32)
-  test_y = minibatch_cos_y[train_size:].reshape((-1, 1)).astype(np.float32)
+# Fetch the values, and prepare the train/test split
+stock_values = fetch_stock_price(symbol, datetime.date(2015, 1, 1), datetime.date(2016, 12, 31))
+minibatch_cos_X, minibatch_cos_y = format_dataset(stock_values, feat_dimension)
+train_X = minibatch_cos_X[:train_size, :].astype(np.float32)
+train_y = minibatch_cos_y[:train_size].reshape((-1, 1)).astype(np.float32)
+test_X = minibatch_cos_X[train_size:, :].astype(np.float32)
+test_y = minibatch_cos_y[train_size:].reshape((-1, 1)).astype(np.float32)
 ```
 
 经过实验，将脚本中的参数做如下设置，模型表现最好：
 
 ```python
-  learning_rate = 0.5
-  n_epochs = 20000
-  optimizer = tf.train.AdamOptimizer
+learning_rate = 0.5
+n_epochs = 20000
+optimizer = tf.train.AdamOptimizer
 ```
 
 脚本会有以下类似的输出：
@@ -3263,9 +3263,9 @@ def regression_ANN(x, weights, biases):
   mae: 4.6968
 ```
 
-这个例子中，模型依然没有过拟合，简单的回归模型一定比不用模型的效果好。开始训练的时候，损失特别高，但是随着迭代次数的增加，损失会趋于0。同样的，因为本例预测的是实际价格，所以用mae分数作为评估很容易理解。基于模型预测第二天的股票价格，与真实价格平均差0.5美元；而不做任何学习的价格与真实价格相差9倍之多。
+这个例子中，模型依然没有过拟合，简单的回归模型一定比不用模型的效果好。开始训练的时候，损失特别高，但是随着迭代次数的增加，损失会趋于0。同样的，因为本例预测的是实际价格，所以用MAE分数作为评估很容易理解。基于模型预测第二天的股票价格，与真实价格平均差0.5美元；而不做任何学习的价格与真实价格相差9倍之多。
 
-接下来，本章直观地评估模型的性能，下图是模型预测的值：
+接下来，直观地评估模型的性能.下图是模型预测的值：
 ![](figures\127_1.jpg) 
 
 下图是绝对误差，虚线代表绝对误差的趋势：
@@ -3276,18 +3276,18 @@ def regression_ANN(x, weights, biases):
 
 注意，这只是简单的回归模型的性能，此模型没有利用特征之间的时间相关性。那么如何更好地利用时间相关性呢？
 
-### 长短期记忆神经网络—LSTM入门
+### 5.4 长短期记忆神经网络—LSTM入门
 
 **长短期记忆神经网络（Long Short-Term Memory, LSTM）**模型是递归神经网络（Recurrent Neural Networks, RNN）的特例。由于对其全面、严谨的描述超出了本书的范围，故不再赘述。本节将只讲述其本质。
 
-> 读者若有兴趣，可参考Packt所著以下书籍：https://www.packtpub.com/big-data-and-business-intelligence/neural-network-programming-tensorflow。也可参考这个页面https://www.packtpub.com/big-data-and-business-intelligence/neural-networks-r。
+> 读者若有兴趣，参考https://www.packtpub.com/big-data-and-business-intelligence/neural-networks-r。
 
 简单来说，RNN适用于序列数据：以多维信号作为输入，并生成多维输出信号。下图是一个RNN的例子，这个RNN模型能够处理五个时间步长（每个时间步长是一个输入）。图的下半部分是RNN的输入，上半部分是输出。每个输入或输出都包含一个N维的特征：
 ![](figures\130_1.jpg) 
 
 在RNN的内部存在许多时间阶段；每个阶段不仅与它本身的输入和输出相连，也与上一阶段的输出相连。所以，每个当前阶段的输出不再仅是当前输入的函数，还依赖于上一阶段的输出（上一阶段的输出依赖于上一阶段的输入和上上阶段的输出，以此类推）。这种设置保证了每个输入可以影响到接下来的所有输出，换句话说，每个输出都是前面所有输入及当前输入的函数。
 
-> 注意，并不是所有的输出都会被使用。例如，在一个情感分析任务中，给定一个句子（时间序列输入信号），需要判定其情感倾向（积极/消极），这时，只有最后一个输出被认为是最终输出，其他的输出不会被作为输出使用。谨记，因为只有最后的一个输出包含了整个句子所有的情感信息，所以只会使用最后一个输出。
+> 注意，并不是所有的输出都会被使用。例如，在一个情感分析任务中，给定一个句子（时间序列输入信号），需要判定其情感倾向（积极/消极）。这时，只有最后一个输出被认为是最终输出，其他的输出不会被作为输出使用。因为只有最后的一个输出包含了整个句子所有的情感信息，所以只会使用最后一个输出。
 
 LSTM模型是RNN的演化：RNN中的文本过长时，在训练阶段，可能导致极小或极大的梯度在整个网络中进行反向传播，从而致使权重为零或无穷大。这种情况经常表述为梯度散失/梯度爆炸。为了解决这一问题，LSTM在每个阶段都有两个输出：一个是模型的真正输出，而另一个是内部状态，被称作记忆。
 
@@ -3299,17 +3299,17 @@ LSTM模型是RNN的演化：RNN中的文本过长时，在训练阶段，可能�
 - 时间步长
 - 特征
 
-在前面的情感分析例子中，训练张量是三维的，x轴代表所有输入的句子，y轴代表构成句子的单词，z轴代表词典中的词。例如：要对包含一百万条句子的英语语料库（大约20,000个不同的词汇）进行句子情感分析任务，每个句子最长包含50个词，张量维度为1M x 50 x 20K。
+在前面的情感分析例子中，训练张量是三维的，x轴代表所有输入的句子，y轴代表构成句子的单词，z轴代表词典中的词。例如：要对包含一百万条句子的英语语料库（大约20000个不同的词汇）进行句子情感分析任务，每个句子最长包含50个词，张量维度为`1M x 50 x 20K`。
 
-### 利用LSTM进行股票价格预测
+### 5.5 利用LSTM进行股票价格预测
 
-LSTM可以方便我们探测信号中所包含的时间冗余信息。上一节向读者介绍了观测矩阵需要格式化成3维的张量，三个坐标轴分别是：
+LSTM有利于探测信号中所包含的时间冗余信息。上一节介绍了观测矩阵需要格式化成3维的张量，三个坐标轴分别是：
 
 - 第一个坐标轴包含数据样本
 - 第二个坐标轴包含时间序列
 - 第三个坐标轴包含输入的特征
 
-由于本章处理的是一维的信号数据，因此将LSTM的输入张量格式化为（None，`time_dimension`，1）,其中`time_dimention`是时间窗口的长度。以下是代码，依然先从余弦信号开始。建议读者将文件命名为`4_rnn_cosine.py`。
+由于处理的是一维的信号数据，因此将LSTM的输入张量格式化为`(None, time_dimension, 1)`,其中`time_dimention`是时间窗口的长度。以下是代码，依然先从余弦信号开始。建议读者将文件命名为`4_rnn_cosine.py`。
 
 1. 首先，引入包：
 
@@ -3341,7 +3341,7 @@ n_epochs = 100
 n_embeddings = 64
 ```
 
-4. 接下来，生成有噪声的余弦信号，并把这些数据重塑为3D张量格式 （None，`time_dimension`，1）。代码如下：
+4. 接下来，生成有噪声的余弦信号，并把这些数据重塑为3D张量格式`(None, time_dimension, 1)`,。代码如下：
 
 ```python
 cos_values = fetch_cosine_values(train_size + test_size + time_dimension)
@@ -3361,7 +3361,7 @@ X_tf = tf.placeholder("float", shape=(None, time_dimension, 1), name="X")
 y_tf = tf.placeholder("float", shape=(None, 1), name="y")
 ```
 
-6. 接下来定义模型。embedding层不同的神经元个数会对模型性能产生不同的影响，故本节会用不同神经元数目的embedding层来进行实验。如前面小节所述，本节只使用通过线性回归后（全连接层）的最后一个输出以作为预测结果：
+6. 接下来定义模型。嵌入层不同的神经元个数会对模型性能产生不同的影响，因此本节会用不同神经元数目的嵌入层来进行实验。如前面小节所述，本节只使用通过线性回归后（全连接层）的最后一个输出以作为预测结果：
 
 ```python
 def RNN(x, weights, biases):
@@ -3443,7 +3443,7 @@ test_X_ts = test_X[:, :, np.newaxis]
 weights = tf.Variable(tf.truncated_normal([n_embeddings, 1], mean=0.0, stddev=10.0), name="weights")
 ```
 
-经过几次测试，我们发现将参数作如下设置，模型的表现最好：
+经过几次测试，将参数作如下设置，模型的表现最好：
 
 ```
 learning_rate = 0.1
@@ -3549,7 +3549,7 @@ $> tensorboard --logdir=./logs/tf/stock_price_lstm
 
 ## 第6章 构建和训练机器翻译系统
 
-本项目的目标是训练一个**人工智能（artificial intelligence，AI）** 模型，以用于在两种语言之间进行翻译。具体的，将德语句子自动地翻译成英语。同时，本章所构建的模型可以适用于任何两种语言的互译。
+本项目的目标是训练一个**人工智能（artificial intelligence，AI）** 模型，以用于在两种语言之间进行翻译。具体说来，将德语句子自动地翻译成英语。同时，本章所构建的模型可以适用于任何两种语言的互译。
 
 本章包括以下四个部分：
 
@@ -3558,7 +3558,7 @@ $> tensorboard --logdir=./logs/tf/stock_price_lstm
 * 机器翻译模型训练
 * 测试及翻译
 
-上述每个部分都是本章的关键点，按照上述顺序讲解有助于帮助读者形成清晰的画面。
+上述每个部分都是本章的关键点，按照上述顺序讲解有助于读者理解。
 
 ###机器翻译系统架构
 
@@ -3644,6 +3644,7 @@ def retrieve_corpora(translated_sentences_l1_l2='alignment-de-en.txt'):
 	return sentences_l1, sentences_l2
 ```
 此函数的参数是一个文件名：即包含NLTK COMTRANS语料库对齐语句的文件。函数返回两个句子列表（实际是个包含一系列标记的句子列表），其中一个是源语言（本例中是德语），另一个是需要翻译的目标语言（本例子中是英语）。
+
   3. 在Python RePL上对此函数进行测试：
   
 ```python
@@ -3704,7 +3705,7 @@ def filter_sentence_length(sentences_l1, sentences_l2, min_len=0, max_len=20):
 			filtered_sentences_l2.append(sentences_l2[i])
 	return filtered_sentences_l1, filtered_sentences_l2
 ```
-  同样的，在REPL中看一下经过过滤后还剩下多少句子。初始有33000多个句子：
+  同样的，在REPL中查看经过过滤后剩余句子数量。初始有33000多个句子：
 ```python
 filt_clean_sen_l1, filt_clean_sen_l2 =filter_sentence_length(clean_sen_l1, clean_sen_l2)
 print("# Filtered Corpora length (i.e. number of sentences)")
@@ -3719,6 +3720,7 @@ assert len(filt_clean_sen_l1) == len(filt_clean_sen_l2)
 过滤后还剩下将近15000个句子，基本上是原语料库的一半。
 
 接下来，为了使用人工智能模型，需要将文本转化成数字。为了实现这一目标，本章为每种语言都创建了一个词典。这个词典需要包含大部分的单词，因为本章会丢弃一些低频词汇。在tf-idf（一个文档中的词条词频乘以它的逆文档频率，即这个词条在多少个文档中出现过）中这也是常见的做法。丢弃罕见的词汇可以加速计算，并使得结果更具有可扩展性和通用性。本章还需要在每个词典中设置四个特殊的标记：
+
   1. 用一种符号来表示补全（稍后会进行解释）
   2. 用一种符号来分隔开两个句子
   3. 用一种符号来标识句子结尾
@@ -3778,7 +3780,7 @@ def sentences_to_indexes(sentences, indexed_dictionary):
 	print('[sentences_to_indexes] Did not find {} words'.format(not_found_counter))
 	return indexed_sentences
 ```
- 这一步很简单，用ID替换标记。如果标记不在词典里，就用unknown标记的ID替换。读者可在REPL中查看，经过上述步骤后，句子变成了什么样：
+ 这一步很简单，用ID替换标记。如果标记不在词典里，就用unknown标记的ID替换。读者可在REPL中查看，经过上述步骤后，改成这样了：
 ```python
 dict_l1 = create_indexed_dictionary(filt_clean_sen_l1, dict_size=15000, storage_path="/tmp/l1_dict.p")
 dict_l2 = create_indexed_dictionary(filt_clean_sen_l2, dict_size=10000, storage_path="/tmp/l2_dict.p")
@@ -3857,7 +3859,8 @@ EN: 4 -> 22
 ```
 读者可以看到，输入和输出都用0补全成了固定的长度（0对应于词典中的`_PAD`），在输出句子的开头和结尾之前标记了1和2。文献已有证明，在输入句子的开头和输出句子的结尾进行补全，效果比较好。进行补全步骤后，输入句子长度为20个标记，输出句子长度为22个标记。
 
-###训练机器翻译模型
+### 训练机器翻译模型
+
 目前为止我们已经讲述了如何对语料库进行预处理，接下来要讲述如何运用模型。模型已经训练好了，读者可直接从https://github.com/tensorflow/models/blob/master/tutorials/rnn/translate/seq2seq_model.py 进行下载。
 
 > 上述代码片段以Apache 2.0方式授权。十分感谢将此模型开源的作者。2015版权所有者为TensorFlow的作者。受Apache  2.0版本许可保护，未经授权不得使用。读者可以从http://www.apache.org/licenses/LICENSE-2.0 获取授权副本。除非法律另有规定或书面、软件同意，授权分发参照 “原样提供，且不提供任何形式的保证和条件（AS IS BASIS , WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND ）”进行。读者可查看特定语言许可的条款，以及此许可下的一系列限制。
@@ -3879,7 +3882,7 @@ path_l2_dict = "/tmp/l2_dict.p"
 model_dir = "/tmp/translate "
 model_checkpoints = model_dir + "/translate.ckpt"
 ```
-接下来，定义一个函数，把之前小节中创建的工具都应用起来。给定一个布尔类型的标志，此函数会返回语料库。具体来说，如果参数是`False`，函数会从零开始建立词典（并保存）；否则，函数会直接从路径中读取词典：
+接下来，定义一个函数，把之前小节中创建的工具都应用起来。给定一个布尔类型的参数，此函数会返回语料库。具体来说，如果参数是`False`，函数会从零开始建立词典（并保存）；否则，函数会直接从路径中读取词典：
 ```python
 def build_dataset(use_stored_dictionary=False):
 	sen_l1, sen_l2 = retrieve_corpora()
@@ -3942,6 +3945,7 @@ def get_seq2seq_model(session, forward_only, dict_lengths, max_sentence_lengths,
 	return model
 ```
 此函数调用模型构建函数，并传入以下参数：
+
 * 源语言的词典大小（本例中的德语）
 * 目标语言的词典大小（本例中的英语）
 * 桶结构（由于已将所有的序列都补全成为了固定的长度，故本例的桶中只有一组数值）
@@ -4024,7 +4028,7 @@ eval: perplexity 1.8646006006241982
 [...]
 ```
 
-###测试和翻译
+### 测试和翻译
 
 翻译的代码在`test_translator.py`中。
 首先引入一些包，并设置已训练好的模型路径：
@@ -4117,14 +4121,16 @@ Model output: if the house gave this proposal , i would like to hear mr byrne .
 ```
 上述结果可显示出，输出中虽然有些有问题的标记，但结果大部分是正确的。为了缓解这个问题，则需要更复杂的RNN，更长或更多样化的语料库。
 
-###课后作业
+### 课后作业
 
 本章模型是在同一个数据集上进行的测试和训练。这在数据科学中并不是理想做法，但是对于项目跑通也是必须的。读者可以尝试寻找更长的语料库，并把它分成两部分：一份用于训练，一份用于测试：
+
 * 尝试改变模型的设置：这些改变如何影响模型性能和训练时间？
 * 分析`seq2seq_model.py`的代码，请读者思考，如何把损失情况画到TensorBoard中？
 * NLTK同样包含法语语料库，如何将德语同时翻译成英语和法语？
 
-###小结
+### 小结
+
 本章为读者介绍了如何利用RNN构建一个机器翻译系统。具体地，本章讲解了如何组织语料库，如何训练模型以及如何进行测试。下一章会为读者讲解RNN的其他应用：聊天机器人。
 
 ## 第7章 训练像人类一样的聊天机器人 
@@ -7698,7 +7704,7 @@ def fit(self, sess, s, r, epochs=1):
 
 `global_step`作为结果之一被返回。它是一个计数器，可以跟踪到目前为止在训练中使用的批数量，并且记录下来供以后使用。  
 
-## 为经验回放创建记忆  
+### 为经验回放创建记忆  
 
 在定义了大脑（TensorFlow神经网络）之后，我们的下一步是定义记忆，即数据存储，这将为DQN的学习过程提供动力。在每一个用于训练的游戏会话中，一步由一个状态和一个动作组成，与随后的状态和该会话的最终奖励一起被记录下来（最终奖励只有在该会话结束时才会知道）。  
 
