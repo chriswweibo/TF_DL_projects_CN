@@ -57,9 +57,45 @@ TensorFlow是最流行的机器学习和深度学习框架之一。它提供了�
 
 第3章，*为图像生成描述*，帮助读者借助或不借助预训练模型学习描述生成。
 
+第4章，*为条件图像生成建立GAN*，介绍如何通过GAN逐步再现所需的图像。使用的数据集是手写字符数据集（数字和字母都是Char74K的）。
+
+第5章，*利用LSTM预测股票价格*，介绍如何预测一维信号，即股票价格。给定历史价格，学习使用LSTM结构预测未来价格，并保证预测更加准确。
+
+第6章，*构建和训练机器翻译系统*，介绍如何使用TensorFlow构建和训练先进的机器翻译系统。
+
+第7章，*训练像人类一样的聊天机器人*， 介绍如何从零开始构建智能聊天机器人，以及如何与它交互。
+
+第8章，*检测重复的Quora问题*，讨论用于检测Quora数据集中，重复问题的方法。这些方法也可以用在其它类似的数据集上。
+
+第9章，*构建TensorFlow推荐系统*，介绍实际案例的大规模应用。读者会学习到如何通过AWS实现云端GPU计算。
+
+第10章，*基于强化学习的视频游戏*，介绍如何构建人工智能系统玩转“月球登陆器”游戏。该项目基于已有的OpenAI Gym项目并使用TensorF进行整合。OpenAI Gym提供了不同的游戏环境，帮助研究如何使用AI智能体，以及背后的Tensorflow神经网络模型算法。
 
 
+### 预备知识
 
+书中的例子可以在Windows, Ubuntu和Mac上运行，并且介绍了安装方法。读者需要基本的Python知识，机器学习算法和深度学习算法，并且熟悉Tensorflow。
+
+### 
+你现在已经是Packt书籍的荣誉所有者。你还拥有以下权利：
+
+## 下载示例代码
+
+读者可以从 http://www.packtpub.com 的个人账户下载本书的示例代码文件。如果从别的地方购买的本书，可以访问 http://www.packtpub.com/support，注册后，代码文件会直接电邮发出。可以通过下列步骤下载代码文件：
+
+1.	登录或注册www.packtpub.com.
+2.	选择SUPPORT标签。
+3.	点击Code Downloads & Errata。
+4.	在Search框中输入书名，按照屏幕上的说明进行操作。
+
+
+文件下载完成之后，确保使用下列软件的最新版解压或抽取文件：
+
+* Windows：WinRAR / 7-Zip
+* Mac：Zipeg / iZip / UnRarX
+* Linux：7-Zip / PeaZip
+
+本书的代码也放在了Github上：https://github.com/PacktPublishing/TensorFlow-Deep-Learning-Projects。读者也可以获取更多书籍和视频的代码：https://github.com/PacktPublishing/。
 
 
 ## 第1章  用卷积网络识别交通标志
@@ -1720,7 +1756,7 @@ model.fit_generator(data_generator(batch_size=batch_size),
 
 下一章会研究**生成对抗网络（Generative Adversarial Networks，GAN）**的概念。GAN非常有趣而且有用，可以产生各种用途的图像。 
 
-##第4章 为条件图像生成建立GAN
+## 第4章 为条件图像生成建立GAN
 
 Yann LeCun，Facebook人工智能的领导者，最近提出“生成对抗网络是机器学习十年来最有趣的想法”。 这一观点也引起了学界对这一深度学习方法的浓厚兴趣,并得以证实。如果读者阅读了最近有关深度学习的论文（          同时注意到LinkedIn或Medium相关话题的内容趋势），就会发现GAN已经产生了非常多的变体。
 
