@@ -85,7 +85,7 @@ TensorFlow是最流行的机器学习和深度学习框架之一。它提供了�
 
 第9章，*构建TensorFlow推荐系统*，介绍实际案例的大规模应用。读者会学习到如何通过AWS实现云端GPU计算。
 
-第10章，*基于强化学习的视频游戏*，介绍如何构建人工智能系统玩转“月球登陆器”游戏。该项目基于已有的OpenAI Gym项目并使用TensorF进行整合。OpenAI Gym提供了不同的游戏环境，帮助研究如何使用AI智能体，以及背后的Tensorflow神经网络模型算法。
+第10章，*基于强化学习的视频游戏*，介绍如何构建人工智能系统玩转“登月飞行器”游戏。该项目基于已有的OpenAI Gym项目并使用TensorF进行整合。OpenAI Gym提供了不同的游戏环境，帮助研究如何使用AI智能体，以及背后的Tensorflow神经网络模型算法。
 
 
 ### 预备知识
@@ -231,9 +231,7 @@ print(dataset.y[0, :]) #label
 ![](figures\11_1.jpg)
 
 ```
-[[1. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
-
-0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+[[1. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
 ```
 
 
@@ -245,9 +243,7 @@ print(dataset.y[-1, :]) #label
 ```
 ![](figures\12_1.jpg)
 ```
-[[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
-
-0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1.]]
+[[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1.]]
 ```
 
 可以发现，图像的特征向量维度为32*32。标签只在第一个位置值为1。
@@ -437,27 +433,27 @@ with tf.Session() as session:
 
 训练之后，需要在测试集上测试模型。这里，使用整个测试集测试，而不是分批处理。由于不使用dropout，对应的参数需要设为false:
 ```python
-   print("TEST SET PERFORMANCE")
-   y_test_pred, test_loss = session.run([out_y_pred, loss],                                         
+print("TEST SET PERFORMANCE")
+y_test_pred, test_loss = session.run([out_y_pred, loss],                                         
                                         feed_dict = {in_X_tensors_batch :
                                         X_test,in_y_tensors_batch : y_test, is_training : False})
 ```
 最后，打印分类结果并画出混淆矩阵来观察误分类的情况：
 ```python
-   print(" test_loss_score=", test_loss)
-   y_test_pred_classified = np.argmax(y_test_pred, axis=1).astype(np.int32)    
-   y_test_true_classified = np.argmax(y_test, axis=1).astype(np.int32)
-   print(classification_report(y_test_true_classified, y_test_pred_classified))
-   cm = confusion_matrix(y_test_true_classified, y_test_pred_classified)
-   plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
-   plt.colorbar()    
-   plt.tight_layout()    
-   plt.show()
-   #log2的版本，强调错误的分类
-   plt.imshow(np.log2(cm + 1), interpolation='nearest',cmap=plt.get_cmap("tab20"))
-   plt.colorbar()    
-   plt.tight_layout()    
-   plt.show() tf.reset_default_graph()
+print(" test_loss_score=", test_loss)
+y_test_pred_classified = np.argmax(y_test_pred, axis=1).astype(np.int32)    
+y_test_true_classified = np.argmax(y_test, axis=1).astype(np.int32)
+print(classification_report(y_test_true_classified, y_test_pred_classified))
+cm = confusion_matrix(y_test_true_classified, y_test_pred_classified)
+plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+plt.colorbar()    
+plt.tight_layout()    
+plt.show()
+#log2的版本，强调错误的分类
+plt.imshow(np.log2(cm + 1), interpolation='nearest',cmap=plt.get_cmap("tab20"))
+plt.colorbar()    
+plt.tight_layout()    
+plt.show() tf.reset_default_graph()
 ```
 
 最后，运行带有一些参数的函数。这里，学习率是0.001，批大小256，迭代10次：
@@ -555,9 +551,7 @@ avg/total 0.99 0.99   0.99     9803
 ### 1.6 后续问题
 
 * 尝试添加或去掉卷积层或全连接层。这些改变会导致性能怎样变化？
-
 * 这个简单的项目表明了dropout的必要性。改变dropout的比例，观察输出的过拟合和欠拟合情况。
-
 * 现在，拍一张所在城市的交通标志图，在现实生活中测试一下训练好的模型！
 
 
@@ -600,7 +594,7 @@ avg/total 0.99 0.99   0.99     9803
 * 图像定位，找出图像中特定物体的位置。
 * 图像分割，每个像素点都具有标签，表示该点是物体还是背景，以便可以从背景中分离出感兴趣的区域。
 
-    正如LIN, Tsung-Yi等人的文章《Microsoft coco: common objects in context》（其接收在European conference on computer vision.Springer, Cham, 2014.p.740-755，文章见https://arxiv.org/abs/1405.0312）中所提到的， 训练卷积网络的必要性在于能够在**“微软常见物体数据集（MSCOCO）”**上创建能够实现上述部分或全部目标的上下文。该数据集包含91类对象，采用分层排序的方式，其中82类包含5000个以上有标签的实例。数据集共含有2500000个描述对象，它们分布在32800张图像中。
+正如LIN, Tsung-Yi等人的文章《Microsoft coco: common objects in context》（其接收在European conference on computer vision.Springer, Cham, 2014.p.740-755，文章见https://arxiv.org/abs/1405.0312）中所提到的， 训练卷积网络的必要性在于能够在**“微软常见物体数据集（MSCOCO）”**上创建能够实现上述部分或全部目标的上下文。该数据集包含91类对象，采用分层排序的方式，其中82类包含5000个以上有标签的实例。数据集共含有2500000个描述对象，它们分布在32800张图像中。
 
 下面是MSCOCO数据集中可辨识的类：
 
@@ -708,7 +702,7 @@ avg/total 0.99 0.99   0.99     9803
 
 为了实现这些目标，需要：
 
-1. 下载一个训练好的模型（`-protobuf`以支持`.pb`格式）并放入内存，作为TensorFlow一个会话
+1. 下载一个训练好的模型（`-protobuf`以支持`.pb`格式）并放入内存，作为TensorFlow一个会话。
 2. 重新编写TensorFlow提供的帮助代码，以便于更容易地将标签、类别和可视化工具加载到一个易于导入到脚本的类中。
 3. 准备一个简单的脚本来演示它的使用，输入数据来自摄像头捕获的单个图像、视频和视频。
 
@@ -777,16 +771,16 @@ protoc-3.4.0-win32/bin/protoc.exe object_detection/protos/*.proto --python_out=.
 
  通过加载必要的包来运行`TensorFlow_detection.py`项目脚本：
 ```python
-    import os
-    import numpy as np
-    import TensorFlow as tf
-    import six.moves.urllib as urllib
-    import tarfile
-    from PIL import Image
-    from tqdm import tqdm
-    from time import gmtime, strftime
-    import json
-    import cv2
+import os
+import numpy as np
+import TensorFlow as tf
+import six.moves.urllib as urllib
+import tarfile
+from PIL import Image
+from tqdm import tqdm
+from time import gmtime, strftime
+import json
+import cv2
 ```
 为了能够处理视频，除`OpenCV3`之外，还需要`moviepy`包。`moviepy`包是一个开源项目，可以从http://zulko.github.io/moviepy/下载并免费使用，许可证来自MIT。正如它的主页中描述的，`moviepy`是一个可以进行视频编辑（可以剪切，合并，插入标题）、视频合成（非线性编辑）、视频处理或加入特效的工具。
 
@@ -805,8 +799,8 @@ except:
 ```
 最后，需要TensorFlow项目接口中`object_detection`下的两个有用的函数：
 ```python
-    from object_detection.utils import label_map_util
-    from object_detection.utils import visualization_utils as vis_util
+from object_detection.utils import label_map_util
+from object_detection.utils import visualization_utils as vis_util
 ```
 
 定义`DetectionObj`类和它的`init`步骤。初始化只针对一个参数和模型名（最初的设置可以接受性能较差但速度更快、更轻量的模型，例如SSD MobileNet），但一些内部参数可以改变，以适合类的使用：
@@ -896,22 +890,21 @@ class DetectionObj(object):
 
 `load_frozen_model`和`download_frozen_model`这两个函数会帮助`init`从磁盘中加载选中的冻结模型。如果模型不可访问，它们会从网上下载`tar`格式的模型并且解压到合适的目录（即`object_detection`目录）下：
 ```python
-    def load_frozen_model(self):
-            """
-         Loading frozen detection model in ckpt
-            file from disk to memory
+def load_frozen_model(self):
+      """
+      Loading frozen detection model in ckpt
+      file from disk to memory
+      """
+    detection_graph = tf.Graph()
+    with detection_graph.as_default():
+        od_graph_def =  tf.GraphDef()
 
-        """
-        detection_graph = tf.Graph()
-        with detection_graph.as_default():
-            od_graph_def =  tf.GraphDef()
+    with tf.gfile.GFile(self.CKPT_FILE, 'rb') as fid:
+        serialized_graph = fid.read()
+        od_graph_def.ParseFromString(serialized_graph)
+        tf.import_graph_def(od_graph_def, name='')
 
-        with tf.gfile.GFile(self.CKPT_FILE, 'rb') as fid:
-            serialized_graph = fid.read()
-            od_graph_def.ParseFromString(serialized_graph)
-            tf.import_graph_def(od_graph_def, name='')
-
-       return detection_graph
+    return detection_graph
 ```
 函数`download_frozen_model`使用了`tqdm`包，从而使新模型的互联网下载过程可视化。一些模型相当大（超过600MB），下载可能需要很长时间。提供流程的可见反馈和预估剩余时间可以让操作过程更有信心：
 ```python
@@ -959,18 +952,17 @@ for file in tar_file.getmembers():
 ```
 下面的两个函数，`load_image_from_disk`和`load_image_into_numpy_array` 可以从磁盘中选择图像并转化为适合任何TensorFlow模型的`numpy`数组：
 ```python
-    def load_image_from_disk(self, image_path):
-        return Image.open(image_path)
-    def load_image_into_numpy_array(self, image):
-    try:
-        (im_width, im_height) = image.size
-    return np.array(image.getdata()).reshape((im_height, im_width, 3)).astype(np.uint8)
-    except:
+def load_image_from_disk(self, image_path):
+    return Image.open(image_path)
+def load_image_into_numpy_array(self, image):
+try:
+    (im_width, im_height) = image.size
+return np.array(image.getdata()).reshape((im_height, im_width, 3)).astype(np.uint8)
+except:
+    # If the previous procedure fails, we expect the
+    # image is already a Numpy ndarray
 
-       # If the previous procedure fails, we expect the
-       # image is already a Numpy ndarray
-
-       return image
+    return image
 ```
 `detect`函数是分类功能的核心。该函数接收图像列表。布尔标记`annotate_on_image`，可以控制脚本在给定的图像上可视化边框和注释。
 
@@ -982,71 +974,68 @@ for file in tar_file.getmembers():
 
 结果存到一个列表中。如有需要，图像会带着检测边框一并展示：
 ```python
-     def detect(self, images, annotate_on_image=True):
-        """
-        Processing a list of images, feeding it
-        into the detection model and getting from it scores,
-        bounding boxes and predicted classes present
-        in the images
-        """
+def detect(self, images, annotate_on_image=True):
+  """
+  Processing a list of images, feeding it
+  into the detection model and getting from it scores,
+  bounding boxes and predicted classes present
+  in the images
+  """
 
-        if type(images) is not list:
-                 images = [images]
+    if type(images) is not list:
+              images = [images]
 
-        results = list()
+    results = list()
 
-        for image in images:
+    for image in images:
                 # the array based representation of the image will
                 # be used later in order to prepare the resulting
                 # image with boxes and labels on it.
-                image_np = self.load_image_into_numpy_array(image)
+            image_np = self.load_image_into_numpy_array(image)
                 # Expand dimensions since the model expects images
                 # to have shape: [1, None, None, 3]
-                image_np_expanded = np.expand_dims(image_np, axis=0)
-                image_tensor = \
-                        self.DETECTION_GRAPH.get_tensor_by_name(
-                            'image_tensor:0')
+            image_np_expanded = np.expand_dims(image_np, axis=0)
+            image_tensor = \
+                     self.DETECTION_GRAPH.get_tensor_by_name(
+                        'image_tensor:0')
                 # Each box represents a part of the image where a
                 # particular object was detected.
-                boxes = self.DETECTION_GRAPH.get_tensor_by_name(
-                            'detection_boxes:0')
+            boxes = self.DETECTION_GRAPH.get_tensor_by_name(
+                        'detection_boxes:0')
                 # Each score represent how level of confidence
                 # for each of the objects.Score could be shown
 
        # on the result image, together with the class label.
 
-        scores = self.DETECTION_GRAPH.get_tensor_by_name(
-                        'detection_scores:0')
+    scores = self.DETECTION_GRAPH.get_tensor_by_name(
+                    'detection_scores:0')
 
-        classes = self.DETECTION_GRAPH.get_tensor_by_name(
-                        'detection_classes:0')
-                num_detections = \
-                     self.DETECTION_GRAPH.get_tensor_by_name(
-                        'num_detections:0')
+    classes = self.DETECTION_GRAPH.get_tensor_by_name(
+                    'detection_classes:0')
+            num_detections = \
+                  self.DETECTION_GRAPH.get_tensor_by_name(
+                    'num_detections:0')
          # Actual detection happens here
-         (boxes, scores, classes, num_detections) = \
-                     self.TF_SESSION.run(
-                     [boxes, scores, classes, num_detections],
-                     feed_dict={image_tensor: image_np_expanded})
-        if annotate_on_image:
-
-            new_image = self.detection_on_image(
-                           image_np, boxes, scores, classes)
-            results.append((new_image, boxes,
-                           scores, classes, num_detections))
-
-        else:
-
-            results.append((image_np, boxes,
-                                        scores, classes, num_detections))
-
-        return results
+      (boxes, scores, classes, num_detections) = \
+                  self.TF_SESSION.run(
+                  [boxes, scores, classes, num_detections],
+                  feed_dict={image_tensor: image_np_expanded})
+                  
+    if annotate_on_image:
+        new_image = self.detection_on_image(
+                        image_np, boxes, scores, classes)
+        results.append((new_image, boxes,
+                        scores, classes, num_detections))
+    else:
+        results.append((image_np, boxes,
+                                    scores, classes, num_detections))
+    return results
 ```
 函数`detection_on_image`的作用是处理`detect`函数的结果并返回一张包含边框的新图像，并通过`visualize_image`函数展示在屏幕上（读者可以调整延迟参数，它对应着脚本处理另一图像之前，当前图像在屏幕上停留的秒数）。
 ```python
-    def detection_on_image(self, image_np, boxes, scores,
+def detection_on_image(self, image_np, boxes, scores,
                             classes):
-        """
+    """
         Put detection boxes on the images over
         the detected classes
         """
@@ -1062,7 +1051,7 @@ for file in tar_file.getmembers():
 ```
 函数`visualize_image`提供了一些可以修改的参数，以便适应我们在项目中的特殊需求。首先，`image_size`提供了屏幕上展示图像的尺寸。因此，过大或过小的图像都可以调整，以便和要求的尺寸相近。延迟参数`latency`，定义了每幅图像展示在屏幕上的秒数，这样可以锁定物体检测过程，直到处理下一幅图像。最后，`bluish_correction`是图像为**BGR**（这一格式颜色通道按**蓝-绿-红**的顺序组织，这是OpenCV库中的一种标准，详见https://stackoverflow.com/questions/14556545/why-opencv-usingbgr-colour-space-instead-of-rgb）而非**RGB**（**红-绿-蓝**）格式时提供的校正。模型需要的是RGB格式。
 ```python
-  def visualize_image(self, image_np, image_size=(400, 300), 
+def visualize_image(self, image_np, image_size=(400, 300), 
                       latency=3, bluish_correction=True):
       height, width, depth = image_np.shape
       reshaper = height/float(image_size[0])
@@ -1090,7 +1079,7 @@ for file in tar_file.getmembers():
 ```
 JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的置信度）以及边框的顶点，并且给出了高度和宽度在原图中的百分比（相对值，不是绝对的像素点）：
 ```python
-  def serialize_annotations(self, boxes, scores, classes, filename='data.json'):
+def serialize_annotations(self, boxes, scores, classes, filename='data.json'):
       """
       Saving annotations to disk, to a JSON file
       """
@@ -1110,7 +1099,7 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
 ```
 函数`get_time`可以很方便地将真实时间转化为字符串并存在文件名：
 ```python
-    def get_time(self):
+def get_time(self):
         """
         Returning a string reporting the actual date and time
         """
@@ -1120,7 +1109,7 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
 最后，准备三个检测渠道，分别处理图像，视频和网络摄像头。处理图像的渠道把每幅图像加载到一个列表中。视频渠道使`moviepy`中的`VideoFileClip`模型在简单通过`detect`函数之后，完成大量操作并被封装在`annotate_photogram`函数中。最后，网络摄像头渠道的快照依赖于简单的基于OpenCV的VideoCapture函数`capture_webcam`，记录网络摄像头返回的最后一些快照（操作考虑到了网络摄像头适应环境光线水平所需的必要时间）：
 
 ```python
-  def annotate_photogram(self, photogram):
+def annotate_photogram(self, photogram):
   """
       Annotating a video's photogram with bounding boxes
       over detected classes
@@ -1131,11 +1120,11 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
 ```
 `capture_webcam`函数利用`cv2.VideoCapture`（http://docs.opencv.org/3.0-beta/modules/videoio/doc/reading_and_writing_video.html） 获取网络摄像头的图像。由于摄像头需要首先适应拍照环境的光线，再将照片输入目标检测程序前，程序会丢弃开始的一些照片。这样，网络摄像头总有时间调节灯光设置：
 ```python
-    def capture_webcam(self):
+def capture_webcam(self):
         """
         Capturing an image from the integrated webcam
         """
-        def get_image(device):
+      def get_image(device):
             """
             Internal function to capture a single image             
             from the camera and return it in PIL format
@@ -1160,7 +1149,7 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
         print('Done')
         # releasing the camera and making it reusable
         del (camera)
-        return camera_capture
+      return camera_capture
 ```
 `file_pipeline`函数包括从存储图像到加载图像所需的所有步骤，并对它们进行可视化/注释：
 
@@ -1169,7 +1158,7 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
 3. 将每幅图像的注释结果写入JSON文件
 4. 如果布尔参数`visualize`需要，在电脑屏幕上展示图像和边框
 ```python
-    def file_pipeline(self, images, visualize=True):
+def file_pipeline(self, images, visualize=True):
         """
         A pipeline for processing and annotating lists of
         images to load from disk         
@@ -1188,7 +1177,7 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
 ```
 `video_pipeline`会组织所有步骤，完成使用边框注释视频，并存入磁盘：
 ```python
-    def video_pipeline(self, video, audio=False):
+def video_pipeline(self, video, audio=False):
         """
         A pipeline to process a video on disk and annotating it         
         by bounding box.The output is a new annotated video.
@@ -1210,7 +1199,7 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
 4. 把注释保存到JSON文件
 5. 展示图像和边框
 ```python
-    def webcam_pipeline(self):
+def webcam_pipeline(self):
         """
         A pipeline to process an image acquired by the internal webcam
         and annotate it, saving a JSON file to disk
@@ -1244,7 +1233,7 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
 
 然后激活类，声明使用SSD MobileNet v1模型。之后，必须将每幅图像的路径放入列表并传递给`file_pipeline`方法：
 ```python
-  from TensorFlow_detection import DetectionObj
+from TensorFlow_detection import DetectionObj
 
   if__name__ == "__main__":
 
@@ -1269,28 +1258,23 @@ JSON文件指出了检测的类——一只狗，置信度的水平（约0.91的
 这里读者可以看到JSON文件中产生的分数。只有8个检测到的物体得分高于阈值0.5，其它16个得分较低：
 
 ```python
-    "scores": [0.9099398255348206, 0.8124723434448242, 0.7853631973266602,
-    0.709653913974762, 0.5999227166175842, 0.5942907929420471,
-    0.5858771800994873, 0.5656214952468872, 0.49047672748565674,
-    0.4781857430934906, 0.4467884600162506, 0.4043623208999634,
-    0.40048354864120483, 0.38961756229400635, 0.35605812072753906,
-    0.3488095998764038, 0.3194449841976166, 0.3000411093235016,
-    0.294520765542984, 0.2912806570529938, 0.2889115810394287,
-    0.2781482934951782, 0.2767323851585388, 0.2747304439544678]
+"scores": [0.9099398255348206, 0.8124723434448242, 0.7853631973266602, 
+0.709653913974762, 0.5999227166175842, 0.5942907929420471, 0.5858771800994873, 0.5656214952468872,0.49047672748565674,0.4781857430934906, 0.4467884600162506, 0.4043623208999634,0.40048354864120483,0.38961756229400635, 0.35605812072753906,
+0.3488095998764038, 0.3194449841976166, 0.3000411093235016,0.294520765542984, 
+0.2912806570529938, 0.2889115810394287,0.2781482934951782, 0.2767323851585388, 
+0.2747304439544678]
 ```
 同时，发现检测到的物体对应的类。很多置信度较低的汽车被检测到。事实上它们有可能是图中的其它车，也可能是误判。配合检测API的使用，读者可能需要调整阈值或使用其它模型。只有当它被不同的模型以较高阈值重复检测到时才保留，认为这是需要检测的物体：
 
 ```python
-   "classes": ["car", "person", "person", "person", "person", "car", "car",
-    "person", "person", "person", "person", "person", "person", "person", "car", "car", "person", "person",
-   "car", "car", "person", "car", "car", "car"]
+"classes": ["car", "person", "person", "person", "person", "car", "car", "person", "person", "person", "person", "person", "person", "person", "car", "car", "person", "person", "car", "car", "person", "car", "car", "car"]
 ```
 对视频的检测采用同样的脚本。这一次，读者只需要指出合适的方法——`video_pipeline`，视频的路径，并设置生成的视频是否需要有音频（默认音频被过滤）。脚本自己可以完成任务，并把修改和注释的视频保存在与原始视频相同的目录下（读者可以很快找到它，它在原有文件名前加上了`annotated_`）：
 ```python
-   from TensorFlow_detection import DetectionObj
-   if__name__ == "__main__":
-        detection = DetectionObj(model='ssd_mobilenet_v1_coco_11_06_2017')
-       detection.video_pipeline(video="./sample_videos/ducks.mp4", audio=False)
+from TensorFlow_detection import DetectionObj
+if__name__ == "__main__":
+      detection = DetectionObj(model='ssd_mobilenet_v1_coco_11_06_2017')
+      detection.video_pipeline(video="./sample_videos/ducks.mp4", audio=False)
 ```
 最后读者可以将这个方法用于摄像头，使用`webcam_pipeline`函数：
 ```python
@@ -1556,7 +1540,8 @@ architectures，LRCN）**。
 
 #### 3.4.7 基于注意力机制的描述
 
-详情请参阅Xu等人在论文（https://arxiv.org/pdf/1502.03044）中提出的一种基于**注意力机制（attention mechanism）**的图像描述方法。
+详情请参阅Xu等人在论文（https://arxiv.org/pdf/1502.03044）
+中提出的一种基于**注意力机制（attention mechanism）**的图像描述方法。
 
 基于注意力的描述方法最近比较流行，得益于更好的准确性：
 
@@ -1572,7 +1557,7 @@ architectures，LRCN）**。
 
 这里展示了几个示例，其中以时间序列的方式出色的展现了对象的可视化：
 
-![以时间序列方式标出物体](figures\66_2.png)
+![以时序方式标出物体](figures\66_2.png)
 
 结果真的很好！
 
@@ -1774,7 +1759,7 @@ model.fit_generator(data_generator(batch_size=batch_size),
 
 在本章中，我们学习了图像描述技术。首先，我们了解了词向量的嵌入空间。然后，对几种图像描述处理方法进行了研究。接着实现了图像描述模型。  
 
-下一章会研究**生成对抗网络（Generative Adversarial Networks，GAN）**的概念。GAN非常有趣而且有用，可以产生各种用途的图像。 
+下一章会研究生成对抗网络的概念。GAN非常有趣而且有用，可以产生各种用途的图像。 
 
 ----------
 
@@ -1787,13 +1772,9 @@ Yann LeCun，Facebook人工智能的领导者，最近提出“生成对抗网�
 GAN可以激发想象力，因为它们能展示人工智能的创造力，而不仅仅是它的计算能力。本章将： 
 
 * 揭开GAN的神秘面纱，为读者提供所有必要的概念来理解GAN是什么，现在能做什么，以及期望GAN做什么。 
-
 * 演示如何基于初始的示例图像来生成图像（即所谓的非监督的GAN）。
-
 * 解释如何使利用GAN生成读者所需类型的结果图。
-
 * 建立一个基本的，完整的项目，可以处理不同的手写字符和图标数据集。 
-
 * 为读者提供如何在云（特别是亚马逊云）上训练GAN的基本指令。           
 
 GAN的成功很大程度上取决于使用的特定神经网络结构，以及它们所面对的问题和提供给它们的数据。 本章选择的数据集可以提供满意的结果，希望读者能享受并被GAN的创造力所激励！
@@ -1809,7 +1790,7 @@ GAN的成功很大程度上取决于使用的特定神经网络结构，以及�
 
 如果说以前使用马尔可夫链的尝试远不能令人信服，那么这种网络所产生的初始图像是惊人的。 在下图中，读者可以看到论文中提出的一些示例，分别来自于MNIST，以及多伦多人脸数据集（Toronto Face Dataset，TFD），一个非公开数据集和cifar10数据集。
 
-![图1：GAN的第一篇论文中采用不同数据集生成新图像的样本 a) MNIST b) TFD c) 和 d) CIFAR-10 来源：GOODFELLOW, Ian, et al.Generative Adversarial Nets.In: Advances in Neural Information Processing Systems.2014.p.2672-2680](figures\72_1.jpg)
+![GAN的第一篇论文中采用不同数据集生成新图像的样本 a) MNIST b) TFD c) 和 d) CIFAR-10 来源：GOODFELLOW, Ian, et al.Generative Adversarial Nets.In: Advances in Neural Information Processing Systems.2014.p.2672-2680](figures\72_1.jpg)
 
 
 这篇论文被认为颇具创新性，因为它把一个非常深的神经网络和博弈理论结合在一个真正智能的体系结构中，它不需要像通常的反向传播那样需要更多的训练。GAN是一种生成模型，可以生成数据，因为它们刻画了模型分布图（例如，GAN学习数据分布）。因此，当GAN生成某种东西时，就好像是从那个分布中取样一样。 
@@ -1821,7 +1802,7 @@ GAN为何能成为如此成功的生成模型在于对抗。事实上，GAN的�
 我们可以从一个真实数据集着手，例如`R`，它包含不同种类的图像或数据（尽管图像是GAN的主要应用，但并不局限于此）。之后我们可以建立生成网络`G`，用来生成与真实数据尽可能相似的伪造数据；我们还需要建立一个判别器`D`，用来比较`G`生成的数据和真实数据，指出数据是否真实。
 Goodfellow用艺术伪造者这一比喻来描述生成器，而判别器是侦探（或是艺术评论家），必须揭露他们的罪行。伪造者和侦探之间存在一个挑战，因为伪造者需要更有技巧以便不被侦探发现，而侦探在寻找伪造者方面也需要提升。伪造者和侦探之间的一切无休无止，直到伪造的产品与原始的完全相似。事实上，当GAN是过拟合时，它们会重新输出原始数据。这似乎看起来很像市场竞争。而事实上它也确实是，因为GAN的想法就起源于竞争博弈论。
 
-> 在GAN中，生成器产生图像，直到判别器无法分辨它们的真假。生成器的一个明显的解决方案是简单地复制一些训练图像或采用判别器无法判断的看起来成功的生成图像。我们的项目将应用的是单面标签平滑（one-sided label smoothing）技术的解决方案。具体描述见SALIMANS, Tim等人的论文《Improved techniques for training gans》。收录于“ Advances in Neural Information Processing Systems.2016.p.2234-2242”: https://arxiv.org/abs/1606.03498。
+> 在GAN中，生成器产生图像，直到判别器无法分辨它们的真假。生成器的一个明显的解决方案是简单地复制一些训练图像或采用判别器无法判断的看起来成功的生成图像。我们的项目将应用的是单面标签平滑（one-sided label smoothing）技术的解决方案。具体描述见SALIMANS, Tim等人的论文《Improved techniques for training gans》。收录于“Advances in Neural Information Processing Systems.2016.p.2234-2242”: https://arxiv.org/abs/1606.03498。
 
 下面讨论GAN如何运作。首先，生成器`G`没有线索，完全随机地生成数据（事实上它甚至不考虑原始数据），因此它会被判别器`D`惩罚——此时分辨真实数据和伪造数据是很容易的。`G`承担误判责任，并开始尝试不同的取值以获得更好的`D`反馈。这一过程也是随机完成的，因为`G`能看见的是随机的输入`Z`，它无法接触真实的数据。在很多次尝试和失败后，在判别器的指导下，生成器最终会指出如何生成并开始生成可靠的输出。最后，经过足够长的时间，即使生成器并没有见到过其中任何一个示例，它也会完全复制所有原始数据。
 
@@ -1834,8 +1815,6 @@ Goodfellow用艺术伪造者这一比喻来描述生成器，而判别器是侦�
 不管怎样，除了Goodfellow和他的同事们最初的描述实施方法的论文之外，值得注意的最著名的的实施方案是**深度卷积对抗网络（deep convolutional generative adversarial networks，DCGAN）**和**条件生成对抗网络（conditional GANs，CGAN）**。
 
 * DCGAN是基于CNN结构的GAN（RADFORD, Alec; METZ, Luke;CHINTALA, Soumith.Unsupervised representation learning with deep convolutionalgenerative adversarial networks.arXiv preprint arXiv:1511.06434, 2015: https://arxiv.org/abs/1511.06434）。
-
-
 * CGAN是在DCGAN的基础上，在输入标签上增加了一些条件，从而使得到的结果中包含期望的特征（MIRZA, Mehdi;OSINDERO, Simon.Conditional generative adversarial nets.arXiv preprint arXiv:1411.1784, 2014: https://arxiv.org/abs/1411.1784）。本书的项目会编写一个CGAN的类并在不同的数据集上训练它，来证明其功能。
 
  此外也有一些有趣的例子（本书项目中不包括这些），给出了图像生成或改进的实际解决方案：
@@ -2866,33 +2845,33 @@ Amazon EC2并不是唯一的云服务。之所以向推荐这个服务，是因�
    * 留意机器的IP。例如 xx.xx.xxx.xxx。
    * 从一个shell指向`.pem`文件所在的目录。例如`ssh -i deeplearning_jupyter.pem ubuntu@ xx.xx.xxx.xxx`
    * 当访问了服务器后，通过键入以下命令来配置它的jupyter服务器：
+   
+```
+jupyter notebook --generate-config
+sed -ie "s/#c.NotebookApp.ip = 'localhost'/#c.NotebookApp.ip =
+'*'/g" ~/.jupyter/jupyter_notebook_config.py
 
-   ```
-   jupyter notebook --generate-config
-   sed -ie "s/#c.NotebookApp.ip = 'localhost'/#c.NotebookApp.ip =
-   '*'/g" ~/.jupyter/jupyter_notebook_config.py
-
-   ```
+```
 
    * 通过复制代码来操作服务器（例如，通过git克隆代码库）并存储可能需要的所有库。例如，读者可以为特定项目存储下面的包：
 
-   ```
-   sudo pip3 install tqdm 
-   sudo pip3 install conda
-   ```
+```
+sudo pip3 install tqdm 
+sudo pip3 install conda
+```
 
    * 用下面的命令启动Jupyter服务：
 
-   ```
-   jupyter notebook --ip=0.0.0.0 --no-browser
-   ```
+```
+jupyter notebook --ip=0.0.0.0 --no-browser
+```
 
    * 此时，服务器开始运行，读者的ssh shell将提示读者从Jupyter获得日志。在这些日志中，记录令牌（它是一个由数字和字母组成的序列）。
    * 打开读者的浏览器并在地址栏输入：
 
-   ```
-   http://xx.xx.xxx.xxx:8888/
-   ```
+```
+http://xx.xx.xxx.xxx:8888/
+```
 
    当需要时，输入令牌，读者可以在本地机器上使用Jupyter notebook，但实际上它是在服务器上运行。现在，读者拥有了一个强大的GPU服务器，可以运行在GAN上的所有实验。
    
@@ -3060,6 +3039,7 @@ plt.show()
 ```
 
 代码很简单，引入几个包后，便绘制出周期为10（频率为0.01）、20个点的余弦时间序列:
+
 ![](figures\116_1.jpg) 
 
 
@@ -3094,6 +3074,7 @@ plt.show()
 ```
 
 画出的图如下所示：
+
 ![](figures\117_1.jpg) 
 
 从图中可以看出，时间序列数据已被转化为观测向量，每个向量的长度是5。
@@ -3116,6 +3097,7 @@ plt.show()
 ```
 
 价格走势图如下所示:
+
 ![](figures\118_1.jpg) 
 
 图中的每条线都是时间序列，本节按照处理余弦信号的方式将其转化为观测矩阵（利用`format_dataset`函数）。
@@ -3307,6 +3289,7 @@ for i in range(n_epochs):
 ![](figures\124_1.jpg) 
 
 最后一个图显示了模型预测的时间序列与真实的时间序列会重叠在一起。对一个简单的线性回归来说，这个结果不错。
+
 ![](figures\125_1.jpg) 
 
 接下来，本章在股票价格上使用同样的模型。建议读者把下面的代码保存到一个新文件中，并命名为`3_regression_stock_price.py`。这里只需要改变导入的包名，其余的不用改动。
@@ -3362,13 +3345,17 @@ optimizer = tf.train.AdamOptimizer
 
 这个例子中，模型依然没有过拟合，简单的回归模型一定比不用模型的效果好。开始训练的时候，损失特别高，但是随着迭代次数的增加，损失会趋于0。同样的，因为本例预测的是实际价格，所以用MAE分数作为评估很容易理解。基于模型预测第二天的股票价格，与真实价格平均差0.5美元；而不做任何学习的价格与真实价格相差9倍之多。
 
+
 接下来，直观地评估模型的性能.下图是模型预测的值：
+
 ![](figures\127_1.jpg) 
 
 下图是绝对误差，虚线代表绝对误差的趋势：
+
 ![](figures\128_1.jpg) 
 
 下图是真实数据和训练集上的预测数据：
+
 ![](figures\129_1.jpg) 
 
 注意，这只是简单的回归模型的性能，此模型没有利用特征之间的时间相关性。那么如何更好地利用时间相关性呢？
@@ -3380,6 +3367,7 @@ optimizer = tf.train.AdamOptimizer
 > 读者若有兴趣，参考https://www.packtpub.com/big-data-and-business-intelligence/neural-networks-r。
 
 简单来说，RNN适用于序列数据：以多维信号作为输入，并生成多维输出信号。下图是一个RNN的例子，这个RNN模型能够处理五个时间步长（每个时间步长是一个输入）。图的下半部分是RNN的输入，上半部分是输出。每个输入或输出都包含一个N维的特征：
+
 ![](figures\130_1.jpg) 
 
 在RNN的内部存在许多时间阶段；每个阶段不仅与它本身的输入和输出相连，也与上一阶段的输出相连。所以，每个当前阶段的输出不再仅是当前输入的函数，还依赖于上一阶段的输出（上一阶段的输出依赖于上一阶段的输入和上上阶段的输出，以此类推）。这种设置保证了每个输入可以影响到接下来的所有输出，换句话说，每个输出都是前面所有输入及当前输入的函数。
@@ -3506,17 +3494,17 @@ with tf.Session() as sess:
 经过超参数优化后，输出如下：
 
 ```
-  Training iteration 0 MSE 0.0603129
-  Training iteration 100 MSE 0.0054377
-  Training iteration 200 MSE 0.00502512
-  Training iteration 300 MSE 0.00483701 ...
-  Training iteration 9700 MSE 0.0032881
-  Training iteration 9800 MSE 0.00327899
-  Training iteration 9900 MSE 0.00327195
-  Test dataset: 0.00416444
-  Evaluation of the predictions:
-  MSE: 0.00416444
-  mae: 0.0545878
+Training iteration 0 MSE 0.0603129
+Training iteration 100 MSE 0.0054377
+Training iteration 200 MSE 0.00502512
+Training iteration 300 MSE 0.00483701 ...
+Training iteration 9700 MSE 0.0032881
+Training iteration 9800 MSE 0.00327899
+Training iteration 9900 MSE 0.00327195
+Test dataset: 0.00416444
+Evaluation of the predictions:
+MSE: 0.00416444
+mae: 0.0545878
 
 ```
 
@@ -3625,9 +3613,11 @@ $> tensorboard --logdir=./logs/tf/stock_price_lstm
 ```
 
 打开浏览器，输入`localhost:6006`，读者在第一个选项卡中可以看到MSE和MAE的曲线：
+
 ![](figures\137_1.jpg) 
 
 图中两条曲线的趋势不错，它们一开始在下降，然后趋于平稳。读者也可以在`tensorflow`图（在**GRAPH**选项卡中）中看到模型的各个组成部分如何互相连接，以及所做的运算是如何相互影响的。读者还可以放大查看LSTM是如何在Tensorflow建立的：
+
 ![](figures\138_1.jpg) 
 
 到此为止，这个项目就结束了。
@@ -3647,8 +3637,6 @@ $> tensorboard --logdir=./logs/tf/stock_price_lstm
 ----------
 
 ## 第6章 构建和训练机器翻译系统
-
-本项目的目标是训练一个**人工智能（artificial intelligence，AI）** 模型，以用于在两种语言之间进行翻译。具体说来，将德语句子自动地翻译成英语。同时，本章所构建的模型可以适用于任何两种语言的互译。
 
 本项目的目标是训练一个**人工智能（artificial intelligence，AI）** 模型，用于在两种语言之间进行翻译。具体说来，将德语句子自动地翻译成英语。同时，本章所构建的模型可以适用于任何两种语言的互译。
 
@@ -3681,10 +3669,10 @@ $> tensorboard --logdir=./logs/tf/stock_price_lstm
 
 本项目用这些语料的原因如下：
 
- 	1. 方便下载，且方便在Python中引入。
-	2. 不需要为了从硬盘或互联网读入语料库而写函数。NLTK已将此步封装成了函数。
-	3. 所需空间小，可以在许多笔记本电脑上使用。
-	4. 可以从互联网上免费下载。
+1. 方便下载，且方便在Python中引入。
+2. 不需要为了从硬盘或互联网读入语料库而写函数。NLTK已将此步封装成了函数。
+3. 所需空间小，可以在许多笔记本电脑上使用。
+4. 可以从互联网上免费下载。
 
 > 读者如果需要查询Comtrans项目的更多信息，可以登录http://www.fask.uni-mainz.de/user/rapp/comtrans/。
 
@@ -3720,7 +3708,7 @@ print(comtrans.aligned_sents()[0].alignment)
 ```
 代码输出为：
 ```
-	0-0 1-1 1-2 2-3
+0-0 1-1 1-2 2-3
 ```
 德语中的第一个单词对应到英语里的第一个单词（*Wiederaufnahme*对应*Resumption*），第二个单词对应到第二和三个单词（*der*对应*of* 和*the*），第三个单词对应到第四个单词（*Sitzungsperiode*对应*session*）。
 
@@ -3728,7 +3716,7 @@ print(comtrans.aligned_sents()[0].alignment)
 
 第一步是对语料库进行检索。上一节已经为读者介绍如何操作，接下来要把这些操作封装成一个正式的函数。为了方便其他脚本调用，将其封装到`corpora_tools.py`中。
 
-  1.为方便后续使用，先引入一些包：
+1. 为方便后续使用，先引入一些包：
 
 ```python
 import pickle
@@ -3736,7 +3724,7 @@ import re
 from collections import Counter
 from nltk.corpus import comtrans
 ```
-  2. 构建函数以方便在语料库中检索：
+2. 构建函数以方便在语料库中检索：
   
 ```python
 def retrieve_corpora(translated_sentences_l1_l2='alignment-de-en.txt'): 
@@ -3748,7 +3736,7 @@ def retrieve_corpora(translated_sentences_l1_l2='alignment-de-en.txt'):
 ```
 此函数的参数是一个文件名：即包含NLTK COMTRANS语料库对齐语句的文件。函数返回两个句子列表（实际是个包含一系列标记的句子列表），其中一个是源语言（本例中是德语），另一个是需要翻译的目标语言（本例子中是英语）。
 
-  3. 对此函数进行测试：
+3. 对此函数进行测试：
   
 ```python
 sen_l1, sen_l2 = retrieve_corpora()
@@ -3759,7 +3747,7 @@ print("# Corpora length (i.e. number of sentences)")
 print(len(sen_l1))
 assert len(sen_l1) == len(sen_l2)
 ```
-  4. 输出如下：
+4. 输出如下：
   
 ```
 Retrieving corpora: alignment-de-en.txt
@@ -3771,7 +3759,7 @@ EN: ['Resumption', 'of', 'the', 'session']
 ```
   本例也打印了每个语料库中的句子数目，并断言源语言与目标语言的句子数量相等。
 
-  5. 接下来，需要清空标记。具体地，需要标记标点符号，并把所有标记改成小写。为了实现这一步，本章会在`corpora_tools.py`中创建一个新的函数。用`regex`模块来对标记进行分割。
+5. 接下来，需要清空标记。具体地，需要标记标点符号，并把所有标记改成小写。为了实现这一步，本章会在`corpora_tools.py`中创建一个新的函数。用`regex`模块来对标记进行分割。
 
 ```python
 def clean_sentence(sentence):
@@ -3779,7 +3767,7 @@ def clean_sentence(sentence):
 	clean_words = [re.split(regex_splitter, word.lower()) for word in sentence]
 	return [w for words in clean_words for w in words if words if w]
 ```
-  6. 测试这个函数：
+6. 测试这个函数：
   
 ```python
 clean_sen_l1 = [clean_sentence(s) for s in sen_l1]
@@ -3796,7 +3784,7 @@ EN: ['resumption', 'of', 'the', 'session']
 
 接下来，需要过滤掉特别长的句子，这些句子不好处理。因为本章的目标是保证模型可以在本地机器上运行，所以应该将句子长度限制为`N`个标记。所以设置`N＝20`，以便可以在24小时之内完成模型训练。如果读者的电脑性能比较好，可以将`N`设置的大一些。为了使函数足够通用，默认句子长度设置为0，即，空标记集。
 
-  1. 函数的逻辑很简单：如果句子的标记长度或其翻译的标记长度大于`N`，则这个句子和其对应的翻译会被删除：
+函数的逻辑很简单：如果句子的标记长度或其翻译的标记长度大于`N`，则这个句子和其对应的翻译会被删除：
   
 ```python
 def filter_sentence_length(sentences_l1, sentences_l2, min_len=0, max_len=20):
@@ -4241,7 +4229,6 @@ Model output: if the house gave this proposal , i would like to hear mr byrne .
 
 
 ### 6.5 小结
->>>>>>> 7151f97a33a54653970e5c0e6ed5080a23d59f27
 
 本章为读者介绍了如何利用RNN构建一个机器翻译系统。具体地，本章讲解了如何组织语料库，如何训练模型以及如何进行测试。下一章会为读者讲解RNN的其他应用：聊天机器人。
 
@@ -4278,9 +4265,7 @@ Model output: if the house gave this proposal , i would like to hear mr byrne .
 这个数据集是一个`.zip`压缩文件。解压之后，文件包含以下几个子文件：
 
 - `README.txt` 包含数据集的介绍，语料库文件的格式，收集过程的具体信息和作者的联系方式。
-
 - `Chameleons.pdf`是语料库的原始文件。尽管这个文件对聊天机器人没有多大意义，但是它介绍了对话中使用的语言，是深入理解语料库的优质信息。
-
 - `movie_conversations.txt`包含所有对话结构。对于每一组对话，它包括两个对话角色的ID，电影的ID，和以时间顺序排列的语句（或者准确的说是，语言表达）ID列表。例如，文件的第一行是：
 
   `u0 +++$+++ u2 +++$+++ m0 +++$+++ ['L194', 'L195', 'L196', 'L197']`
@@ -4302,13 +4287,12 @@ Model output: if the house gave this proposal , i would like to hear mr byrne .
 - `movie_characters_metadata.txt`包含电影角色的信息，例如角色出现的电影名称，性别（如果知道的话）和影片字幕中的人物位置（如果知道的话）。例如，角色`u2`在文中的描述如下：
 
   `u2 +++$+++ CAMERON +++$+++ m0 +++$+++ 10 things i hate about you +++$+++ m +++$+++ 3`
-
+  
   角色`u2`的名字为`CAMERON`，它出现在电影`m0`中，名称为“10 things i hate about you"。角色的性别为男性，影片字幕中的人物位置为第三个。
 
 - `raw_script_urls.txt` 包含每一个电影对话的原始URL链接。例如，电影`m0`如下：
 
   `m0 +++$+++ 10 things i hate about you +++$+++`
-
   `http://www.dailyscript.com/scripts/10Things.html`
 
   可以看到，大部分文件都使用标记`+++$+++`来分割字段。另外，文件的格式看起来也很简单，利于解析。需要在解析文件的时候注意，文件格式不是UTF-8的，而是ISO-8859-1的。
@@ -4753,7 +4737,7 @@ Quora（www.quora.com）是一个社区驱动的问答网站。用户可以在�
 
 查看数据之后，可以确定项目中要争取优化的目标。这一章中会使准确率作为度量来评估模型的性能。准确率关注于预测的有效程度，可能会丢失不同模型之间的重要差异，例如鉴别能力（模型检测重复问题的能力更强）或者概率分数的正确度（重复问题和非重复问题的有多大区别？）。
 
-选择准确率是基于以下事实：这个度量是被Quora工程团队拿来确定数据集的基准表现（其博客提到了这一点： https://engineering.quora.com/Semantic-Question-Matching-with-Deep-Learning）。使用准确率可以结果更易于和Quora工程团队的结果，以及其他科研文献的结果进行评估和比较。另外，在实际应用中，本书的工作可以基于预测正确错误与否进行快速评估，而不用涉及其他考量。
+选择准确率是基于以下事实：这个度量是被Quora工程团队拿来确定数据集的基准表现（其博客提到了这一点：https://engineering.quora.com/Semantic-Question-Matching-with-Deep-Learning）。使用准确率可以结果更易于和Quora工程团队的结果，以及其他科研文献的结果进行评估和比较。另外，在实际应用中，本书的工作可以基于预测正确错误与否进行快速评估，而不用涉及其他考量。
 
 首先介绍基础的特征工程。
 
@@ -4790,19 +4774,12 @@ data = data.drop(['id', 'qid1', 'qid2'], axis=1)
 首先构造一些基本的特征。这些基础特征包括基于长度的特征和基于字符串的特征：
 
 1. 问题1的长度
-
 2. 问题2的长度
-
 3. 两个长度的差异
-
 4. 去除空格后，问题1的字符串长度
-
 5. 去除空格后，问题2的字符串长度
-
 6. 问题1的词数
-
 7. 问题2的词数
-
 8. 问题1和问题2中相同词的数量
 
 这些特征都可以通过一行代码得到。使用Python中的`pandas`和`apply`方法转换原始输入:
@@ -4865,17 +4842,11 @@ pip install python-Levenshtein
 `fuzzywuzzy`库提供了不同的比率，但是我们只会用到下面几种：
 
 1. QRatio
-
 2. WRatio
-
 3. 部分比率
-
 4. 部分令牌集比率
-
 5. 部分令牌排序比率
-
 6. 令牌集比率
-
 7. 令牌排序比率
 
 下面是Quora数据的`fuzzywuzzy`例子特征： 
@@ -4907,7 +4878,7 @@ fuzz.partial_ratio("Why did Trump win the Presidency?",
 
 ```python
 fuzz.partial_ratio("How can I start an online shopping (e-commerce) website?", 
-                    "Which web technology is best suitable for building a big E-Commerce website?")
+                  "Which web technology is best suitable for building a big E-Commerce website?")
 ```
 
 这时，返回值是57。
@@ -5153,29 +5124,17 @@ def sent2vec(s, model):
 最终的Word2vec（w2v）特征也包括其他距离，例如更常见的欧式距离或余弦距离。完整的特征集合也包含对两个文档向量分布的一些度量：
 
 1. 词移距离
-
 2. 归一化词移距离
-
 3. 问题1向量和问题2向量的余弦距离
-
 4. 问题1向量和问题2向量的曼哈顿距离
-
 5. 问题1向量和问题2向量的杰拉德相似度
-
 6. 问题1向量和问题2向量的堪培拉距离
-
 7. 问题1向量和问题2向量的欧氏距离
-
 8. 问题1向量和问题2向量的闵可夫斯基距离
-
 9. 问题1向量和问题2向量的布雷克蒂斯距离
-
 10. 问题1向量的偏度
-
 11. 问题2向量的偏度
-
 12. 问题1向量的峰度
-
 13. 问题2向量的峰度
 
 
@@ -5184,7 +5143,6 @@ def sent2vec(s, model):
 另一个w2v特征集合包含Word2vec向量自身的矩阵：
 
 1. 问题1的Word2vec向量
-
 2. 问题2的Word2vec向量
 
 
@@ -6079,13 +6037,13 @@ baseline = np.tile(top, num_groups).reshape(-1, 5)
 `tile`函数的输入是一个数组，重复`num_group`次。重塑之后，最终数组如下：
 
 ```python
-  array([[3527, 3506, 1347, 2730, 180],
-         [3527, 3506, 1347, 2730, 180],
-         [3527, 3506, 1347, 2730, 180],
-         ...,
-         [3527, 3506, 1347, 2730, 180],
-         [3527, 3506, 1347, 2730, 180],
-         [3527, 3506, 1347, 2730, 180]])
+array([[3527, 3506, 1347, 2730, 180],
+       [3527, 3506, 1347, 2730, 180],
+       [3527, 3506, 1347, 2730, 180],
+       ...,
+       [3527, 3506, 1347, 2730, 180],
+       [3527, 3506, 1347, 2730, 180],
+       [3527, 3506, 1347, 2730, 180]])
 ```
 
 
@@ -6182,10 +6140,10 @@ $$\hat{r}_{ui}=\mu+b_i+b_u+q^T_i p_u$$
 
 评分分成了4个因素：
 
-- $$\mu$$是全局偏置
-- $$b_i$$是物品的偏置（就是Netflix中电影分类的偏置）
-- $$b_u$$是用户的偏置
-- $$q^T_i p_u$$是用户向量和物品向量的内积
+- $\mu$是全局偏置
+- $b_i$是物品的偏置（就是Netflix中电影分类的偏置）
+- $b_u$是用户的偏置
+- $q^T_i p_u$是用户向量和物品向量的内积
 
 最后一个因素，用户向量和物品向量的内积，是矩阵分解叫法的来源。
 
@@ -6199,7 +6157,7 @@ $$R \approx U^TI$$
 
 要让预测的评分$\hat{r}_{ui}$与观察到的评分$r_{ui}$尽可能的接近，需要最小化二者之间的误差平方和。因此，训练目标函数如下：
 
-$$minimize\sum(r_{ui}-\hat{r}_{ui})^2+\lambda(\lVert p_u \rVert ^2 +\lVert q_i \rVert ^2 )$$
+$$minimize\sum(r_{ui}-\hat{r}_{ui})^2+\lambda(\parallel p_u \parallel ^2 +\parallel q_i \parallel ^2 )$$
 
 评分矩阵的分解方法有时也叫作**SVD**，因为这种方法受经典的奇异值分解方法启发，其同时优化误差平方和。但是，经典的SVD方法容易在训练集上过拟合，这也是为什么我们在目标函数上加上一个正则项。
 
@@ -6326,7 +6284,7 @@ $$\hat{r}_{ui}=\mu+b_i+b_u+q_i^Tp_u$$
 
 回忆一下目标函数：
 
-$$minimize\sum(r_{ui}-\hat{r}_{ui})^2+\lambda(\lVert p_u \rVert ^2 +\lVert q_i \rVert ^2 )$$
+$$minimize\sum(r_{ui}-\hat{r}_{ui})^2+\lambda(\parallel p_u \parallel ^2 +\parallel q_i \parallel ^2 )$$
 
 注意，这个目标函数依然使用误差平方和，这已经不再适合我们的二分类问题。而使用TensorFlow，这些都不是问题，可以很容易的调整优化目标。
 
@@ -6821,7 +6779,7 @@ df_train_wrap.head()
 ```
 结果如下：
 
-![](\figures\241_1.png)
+![](figures\241_1.png)
 
 这些序列长度不同，这对RNN来说是个问题。所以需要把他们转成定长的序列。这样就可以方便的给模型输入数据了。 
 
@@ -6859,6 +6817,9 @@ $$X=[0,e_1,e_2,0,0]$$
 $$Y=[e_1,e_2,0,0,0]$$ 
 
 如果输入太长，比如$$[e_1,e_2,e_3,e_4,e_5,e_6,e_7]$$，可以把它分成几个序列：
+
+![](figures\242_1.png)
+
 $$
 X=\begin{cases}
 [0,e_1,e_2,e_3,e_4] \\ 
@@ -6942,6 +6903,7 @@ class Config:
 config = Config()
 ```
 `Config`类定义了下列参数：
+
 - `num_steps`——定长序列的大小
 - `num_items`——训练数据中物品的数量（为哑物品0加1）
 - `num_users`——训练数据中用户的数量（为哑用户0加1）
@@ -7165,6 +7127,7 @@ return pred_all
 ```
 
 这里要实现：
+
 1. 首先，初始化预测矩阵，其大小是验证集中物品的数量乘以推荐物品的数量。
 2. 然后，运行数据集中的每一个交易场景。
 3. 每次从哑物品开始，并且LSTM为空的0状态。
@@ -7555,7 +7518,7 @@ conda install -c https://conda.anaconda.org/kne pybox2d
 
 * 从屏幕顶部移动到着陆台附近后以零速度着陆会获得100到140点的奖励（可以在着陆台外着陆）。
 * 如果着陆舱选择离开着陆台而不是留下，它将失去先前的一些奖励。
-* 每一局中（指一次游戏过程）在着陆舱撞毁或安全着陆时，分别提供额外的-100或+100点。  
+* 每一局中（指一次游戏过程）在着陆舱撞毁或安全着陆时，分别提供额外的-100或+100点。
 * 与地面接触的每条腿有10点奖励。
 * 点燃主引擎需要每帧消耗0.3点奖励（但燃料是无限的）。
 * 过关给予200点奖励。
@@ -7609,8 +7572,8 @@ $$Q(s,a)=r$$
 
 这篇论文演示了如何使用神经网络学习$Q$函数来玩一系列的雅达利游戏（例如架束导弹、突围、拉力赛、乒乓球、Q伯特、海洋行动和空间入侵者）——只需输入视频（60Hz采样率，210×160分辨率，RGB视频）并输出操纵杆和射击按钮命令。本文将这种方法命名为**深度Q网络（Deep Q-Network， DQN）**，并介绍了经验回放和探索与利用的概念。下一节将讨论这些概念。当尝试将深度学习应用于强化学习时，这些概念有助于克服一些关键问题： 
 
-* 没有足够的例子可供学习——这是强化学习所必需的，使用深度学习时更是不可或缺的。  
-* 在行动和有效奖励之间有较长的延迟，这需要在获得奖励之前处理一系列可变长度的行动。  
+* 没有足够的例子可供学习——这是强化学习所必需的，使用深度学习时更是不可或缺的。
+* 在行动和有效奖励之间有较长的延迟，这需要在获得奖励之前处理一系列可变长度的行动。
 * 一系列高度相关的动作序列（因为动作通常会影响到后续的动作），这可能导致任何随机梯度下降算法过度适应最新的示例，或者只是非最优收敛（随机梯度下降期望随机示例，而不是相关示例）。  
 
 Mnih和其他研究人员的论文《Human-level control through deep reinforcement learning》（http://www.davidqiu.com:8888/research/nature14236.pdf）只是证实了DQN的有效性，即利用DQN进行了更多的游戏，并将DQN的性能与人类玩家和经典强化学习算法进行比较。在许多游戏中，尽管长期策略仍然是算法的一个问题，但DQN被证明比人类的表现得更好。在某些游戏中，比如“突围”，智能体发现了一些狡猾的策略，比如挖一条隧道穿过墙壁，以轻松的方式把球送进并摧毁墙壁。在其他的比赛中，比如“蒙特祖马的复仇”，智能体仍然表现得较为迷茫。  
@@ -7753,8 +7716,8 @@ def two_layers_network(self, x, layer_1_nodes=32,
 
 此外，还使用TensorBoard记录了一些值：  
 
-* 批的平均损失，以便在训练期间跟踪训练状况。  
-* 批最大预测奖励，以便跟踪指示最成功的行动预测。  
+* 批的平均损失，以便在训练期间跟踪训练状况。
+* 批最大预测奖励，以便跟踪指示最成功的行动预测。 
 * 批平均预测奖励，以便跟踪预测一般动作的趋势。
 
 下面是`create_network`的代码：
@@ -7855,11 +7818,11 @@ class Memory:
 
 要编码的下一个类是智能体。它具有初始化和维护大脑（提供近似$Q$函数）和记忆的作用。更重要的是，它是与环境互动的主要对象。它的初始化设置了一系列的参数，（根据以往在这个游戏中训练智能体的经验）这些参数大多是固定的。当然读者可以在初始化智能体时显式的更改它们：  
 
-* `epsilon = 1.0`是探索—利用参数的初始值。1.0迫使智能体完全依赖于探索，即随机移动。  
-* `epsilon_min = 0.01`设置探索—利用参数的最小值：值0.01表示着陆舱随机移动的可能性为1%，而不总是基于$Q$函数反馈。这意味着一直有一个非常小的机会找到另一个更优的方式完成游戏。  
-* `epsilon_decay = 0.9994`是调节`epsilon`减小到最小值的速度。在这个设置中，在大约5000个游戏会话之后，它将被调整到最小值。一般来说，这个参数应该为算法提供至少200万个可供学习的样本。  
+* `epsilon = 1.0`是探索—利用参数的初始值。1.0迫使智能体完全依赖于探索，即随机移动。
+* `epsilon_min = 0.01`设置探索—利用参数的最小值：值0.01表示着陆舱随机移动的可能性为1%，而不总是基于$Q$函数反馈。这意味着一直有一个非常小的机会找到另一个更优的方式完成游戏。 
+* `epsilon_decay = 0.9994`是调节`epsilon`减小到最小值的速度。在这个设置中，在大约5000个游戏会话之后，它将被调整到最小值。一般来说，这个参数应该为算法提供至少200万个可供学习的样本。
 * `gamma = 0.99`是奖励折现因子，近似的$Q$函数将根据它来衡量当前奖励和未来奖励，它控制了算法玩游戏的方式是按短视或按长远打算（在月球着陆器这个游戏中，最好按长远打算，因为奖励只在登月舱着陆时才会得到）。
-* `learing_rate = 0.0001`是Adam优化器学习样本的学习速率。  
+* `learing_rate = 0.0001`是Adam优化器学习样本的学习速率。 
 * `epochs = 1`是神经网络拟合批样本而使用的训练轮数。
 * `batch_size = 32`是批大小。
 * `memory = Memory(memory_size=250000)`是内存队列的大小。  
